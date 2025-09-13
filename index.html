@@ -29,6 +29,7 @@
             min-height: 100vh;
             margin: 0;
             padding: 0;
+            padding-bottom: 70px;
         }
         
         .glass-effect {
@@ -78,37 +79,6 @@
             100% { transform: scale(1); }
         }
         
-        .typewriter {
-            overflow: hidden;
-            border-right: .15em solid orange;
-            white-space: nowrap;
-            animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
-        }
-        
-        @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
-        }
-        
-        @keyframes blink-caret {
-            from, to { border-color: transparent }
-            50% { border-color: orange; }
-        }
-        
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.5s ease-in;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
         .notification {
             position: fixed;
             top: 20px;
@@ -121,17 +91,64 @@
             from { transform: translateX(100px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 0;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-item {
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item.active {
+            color: #667eea;
+            transform: translateY(-5px);
+        }
+        
+        .nav-item.active i {
+            color: #667eea;
+        }
+        
+        .typewriter {
+            overflow: hidden;
+            white-space: nowrap;
+            animation: typing 3.5s steps(40, end);
+        }
+        
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        
+        .shine-effect {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            background-size: 200% 100%;
+            animation: shine 2s infinite;
+        }
+        
+        @keyframes shine {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 pb-20">
     <!-- লগইন/রেজিস্টার কন্টেইনার -->
     <div id="authContainer" class="glass-effect p-8 rounded-3xl shadow-2xl w-full max-w-md">
         <!-- লোগো এবং হেডিং -->
         <div class="text-center mb-8">
-            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 pulse-effect">
                 <i class="fas fa-coins text-3xl text-yellow-500"></i>
             </div>
-            <h1 class="text-3xl font-bold text-white mb-2">Earn<span class="text-yellow-400">Zone</span></h1>
+            <h1 class="text-3xl font-bold text-white mb-2 typewriter">Earn<span class="text-yellow-400">Zone</span></h1>
             <p class="text-gray-200">পয়েন্ট অর্জন করুন এবং উত্তোলন করুন</p>
         </div>
 
@@ -199,202 +216,156 @@
 
     <!-- মেইন অ্যাপ কন্টেন্ট -->
     <div id="appContent" class="hidden w-full max-w-4xl">
-        <!-- হেডার -->
-        <header class="glass-effect rounded-2xl p-4 mb-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user text-xl text-white"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-white font-semibold" id="userName">ইউজার</h2>
-                        <p class="text-gray-200 text-sm">আইডি: <span id="userId">লোড হচ্ছে...</span></p>
-                    </div>
+        <!-- প্রোফাইল সেকশন -->
+        <div class="glass-effect rounded-2xl p-6 mb-6 text-center">
+            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user text-2xl text-white"></i>
+            </div>
+            <h2 class="text-white font-semibold text-xl mb-1" id="userName">ইউজার</h2>
+            <p class="text-gray-200 text-sm mb-3">আইডি: <span id="userId">লোড হচ্ছে...</span></p>
+            
+            <!-- ইউজার তথ্য -->
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <div class="bg-white bg-opacity-10 rounded-xl p-3">
+                    <p class="text-gray-200 text-xs">মোট ব্যালেন্স</p>
+                    <p class="text-white font-semibold text-lg" id="userBalance">০ পয়েন্ট</p>
                 </div>
-                <div class="text-right">
-                    <div class="bg-white bg-opacity-20 rounded-xl px-3 py-1">
-                        <p class="text-sm text-gray-200">রেফারেল কোড</p>
-                        <p class="text-white font-bold" id="referralCode">লোড হচ্ছে...</p>
-                    </div>
+                <div class="bg-white bg-opacity-10 rounded-xl p-3">
+                    <p class="text-gray-200 text-xs">আজকের ইনকাম</p>
+                    <p class="text-white font-semibold text-lg" id="todayEarnings">০ পয়েন্ট</p>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-xl p-3">
+                    <p class="text-gray-200 text-xs">কমপ্লিট টাস্ক</p>
+                    <p class="text-white font-semibold text-lg" id="completedTasks">০ টি</p>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-xl p-3">
+                    <p class="text-gray-200 text-xs">রেফারেল</p>
+                    <p class="text-white font-semibold text-lg" id="totalReferrals">০ জন</p>
                 </div>
             </div>
-        </header>
+        </div>
 
         <!-- নোটিশ বার -->
-        <div class="glass-effect rounded-2xl p-3 mb-6">
+        <div class="glass-effect rounded-2xl p-3 mb-6 shine-effect">
             <div class="flex items-center">
                 <i class="fas fa-bullhorn text-yellow-400 mr-3"></i>
-                <marquee behavior="scroll" direction="left" class="text-white text-sm">
-                    🎉 নতুন ইউজারদের জন্য ১০০ পয়েন্ট বোনাস! রেফারেল দিয়ে আরও বেশি আয় করুন!
+                <marquee behavior="scroll" direction="left" class="text-white text-sm" id="noticeBar">
+                    <!-- নোটিশ এখানে লোড হবে -->
                 </marquee>
             </div>
         </div>
 
-        <!-- ব্যালেন্স কার্ড -->
-        <div class="glass-effect rounded-2xl p-6 mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <p class="text-gray-200 text-sm">মোট ব্যালেন্স</p>
-                    <h2 class="text-3xl font-bold text-white" id="userBalance">০ পয়েন্ট</h2>
-                </div>
-                <div class="floating-btn bg-yellow-500 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer">
-                    <i class="fas fa-gift text-xl text-white"></i>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white bg-opacity-10 rounded-xl p-3">
-                    <p class="text-gray-200 text-sm">আজকের ইনকাম</p>
-                    <p class="text-white font-semibold" id="todayEarnings">০ পয়েন্ট</p>
-                </div>
-                <div class="bg-white bg-opacity-10 rounded-xl p-3">
-                    <p class="text-gray-200 text-sm">কমপ্লিট টাস্ক</p>
-                    <p class="text-white font-semibold" id="completedTasks">০ টি</p>
-                </div>
-            </div>
-        </div>
-
         <!-- ডেইলি বোনাস -->
-        <div class="glass-effect rounded-2xl p-6 mb-6">
+        <div class="glass-effect rounded-2xl p-6 mb-6 text-center">
             <h3 class="text-white font-semibold mb-3">🎁 ডেইলি বোনাস</h3>
             <p class="text-gray-200 text-sm mb-4">অ্যাড দেখে ডেইলি বোনাস নিন</p>
-            <button class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold">
+            <button class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold pulse-effect">
                 <span id="bonusAmount">৫০</span> পয়েন্ট নিন
             </button>
         </div>
 
-        <!-- নেভিগেশন ট্যাব -->
-        <div class="glass-effect rounded-2xl p-2 mb-6">
-            <div class="flex justify-around">
-                <button class="tab-btn active px-4 py-2 text-white font-semibold" data-tab="home">
-                    <i class="fas fa-home mr-2"></i>হোম
-                </button>
-                <button class="tab-btn px-4 py-2 text-gray-300" data-tab="tasks">
-                    <i class="fas fa-tasks mr-2"></i>টাস্ক
-                </button>
-                <button class="tab-btn px-4 py-2 text-gray-300" data-tab="referral">
-                    <i class="fas fa-users mr-2"></i>রেফারেল
-                </button>
-                <button class="tab-btn px-4 py-2 text-gray-300" data-tab="withdraw">
-                    <i class="fas fa-wallet mr-2"></i>উইথড্র
-                </button>
+        <!-- টাস্ক সেকশন -->
+        <div class="glass-effect rounded-2xl p-6 mb-20">
+            <h3 class="text-white font-semibold mb-4 text-center">📋 উপলব্ধ টাস্ক</h3>
+            <div class="space-y-4" id="tasksList">
+                <div class="task-card glass-effect p-4 text-center">
+                    <p class="text-gray-200">টাস্ক লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- বটম নেভিগেশন -->
+        <div class="bottom-nav">
+            <div class="flex justify-around items-center">
+                <div class="nav-item active text-center" data-tab="home">
+                    <i class="fas fa-home text-xl text-blue-500"></i>
+                    <p class="text-xs mt-1 text-blue-500">হোম</p>
+                </div>
+                <div class="nav-item text-center" data-tab="tasks">
+                    <i class="fas fa-tasks text-xl text-gray-500"></i>
+                    <p class="text-xs mt-1 text-gray-500">টাস্ক</p>
+                </div>
+                <div class="nav-item text-center" data-tab="referral">
+                    <i class="fas fa-users text-xl text-gray-500"></i>
+                    <p class="text-xs mt-1 text-gray-500">রেফারেল</p>
+                </div>
+                <div class="nav-item text-center" data-tab="withdraw">
+                    <i class="fas fa-wallet text-xl text-gray-500"></i>
+                    <p class="text-xs mt-1 text-gray-500">উইথড্র</p>
+                </div>
             </div>
         </div>
 
         <!-- ট্যাব কন্টেন্ট -->
         <div class="tab-content-container">
-            <!-- হোম ট্যাব -->
-            <div id="homeTab" class="tab-content active">
-                <div class="glass-effect rounded-2xl p-6 mb-6">
-                    <h3 class="text-white font-semibold mb-4">🏆 টপ আর্নার্স</h3>
-                    <div class="space-y-3" id="leaderboard">
-                        <div class="flex items-center justify-between p-3 bg-white bg-opacity-10 rounded-xl">
-                            <div class="flex items-center">
-                                <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center mr-3">
-                                    <span class="text-white font-bold">1</span>
-                                </div>
-                                <span class="text-white">লোড হচ্ছে...</span>
-                            </div>
-                            <span class="text-green-400 font-semibold">০ পয়েন্ট</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- টাস্ক ট্যাব -->
-            <div id="tasksTab" class="tab-content">
-                <div class="glass-effect rounded-2xl p-6">
-                    <h3 class="text-white font-semibold mb-4">📋 উপলব্ধ টাস্ক</h3>
-                    <div class="space-y-4" id="tasksList">
-                        <div class="task-card glass-effect p-4">
-                            <div class="flex justify-between items-start mb-3">
-                                <h4 class="text-white font-semibold">টাস্ক লোড হচ্ছে...</h4>
-                                <span class="bg-green-500 text-white px-2 py-1 rounded-lg text-sm">০ পয়েন্ট</span>
-                            </div>
-                            <p class="text-gray-200 text-sm mb-3">টাস্ক বিবরণ লোড হচ্ছে...</p>
-                            <button class="w-full bg-blue-500 text-white py-2 rounded-lg">স্টার্ট করুন</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- রেফারেল ট্যাব -->
-            <div id="referralTab" class="tab-content">
-                <div class="glass-effect rounded-2xl p-6">
-                    <h3 class="text-white font-semibold mb-4">👥 রেফারেল সিস্টেম</h3>
-                    <p class="text-gray-200 text-sm mb-4">বন্ধুকে রেফার করুন এবং ১০০ পয়েন্ট বোনাস পান</p>
-                    
-                    <div class="bg-white bg-opacity-10 rounded-xl p-4 mb-4">
-                        <p class="text-gray-200 text-sm mb-2">আপনার রেফারেল লিংক</p>
-                        <div class="flex">
-                            <input type="text" class="flex-1 bg-white bg-opacity-20 text-white p-2 rounded-l-lg" 
-                                   value="লোড হচ্ছে..." readonly id="referralLink">
-                            <button class="bg-blue-500 text-white px-4 rounded-r-lg">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
+            <div id="referralTab" class="glass-effect rounded-2xl p-6 mb-20 hidden">
+                <h3 class="text-white font-semibold mb-4 text-center">👥 রেফারেল সিস্টেম</h3>
+                <p class="text-gray-200 text-sm mb-4 text-center">বন্ধুকে রেফার করুন এবং ১০০ পয়েন্ট বোনাস পান</p>
+                
+                <div class="bg-white bg-opacity-10 rounded-xl p-4 mb-4">
+                    <p class="text-gray-200 text-sm mb-2 text-center">আপনার রেফারেল লিংক</p>
+                    <div class="flex">
+                        <input type="text" class="flex-1 bg-white bg-opacity-20 text-white p-2 rounded-l-lg text-center" 
+                               value="লোড হচ্ছে..." readonly id="referralLink">
+                        <button class="bg-blue-500 text-white px-4 rounded-r-lg" id="copyReferralBtn">
+                            <i class="fas fa-copy"></i>
+                        </button>
                     </div>
-
-                    <div class="grid grid-cols-3 gap-3 mb-4">
-                        <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
-                            <p class="text-2xl font-bold text-white" id="totalReferrals">০</p>
-                            <p class="text-gray-200 text-xs">মোট রেফার</p>
-                        </div>
-                        <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
-                            <p class="text-2xl font-bold text-white" id="activeReferrals">০</p>
-                            <p class="text-gray-200 text-xs">অ্যাক্টিভ</p>
-                        </div>
-                        <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
-                            <p class="text-2xl font-bold text-white" id="referralPoints">০</p>
-                            <p class="text-gray-200 text-xs">পয়েন্ট</p>
-                        </div>
-                    </div>
-
-                    <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold">
-                        <i class="fab fa-telegram-plane mr-2"></i>টেলিগ্রামে শেয়ার করুন
-                    </button>
                 </div>
+
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
+                        <p class="text-2xl font-bold text-white" id="totalReferralsTab">০</p>
+                        <p class="text-gray-200 text-xs">মোট রেফার</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
+                        <p class="text-2xl font-bold text-white" id="activeReferrals">০</p>
+                        <p class="text-gray-200 text-xs">অ্যাক্টিভ</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
+                        <p class="text-2xl font-bold text-white" id="referralPoints">০</p>
+                        <p class="text-gray-200 text-xs">পয়েন্ট</p>
+                    </div>
+                </div>
+
+                <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold" onclick="shareOnTelegram()">
+                    <i class="fab fa-telegram-plane mr-2"></i>টেলিগ্রামে শেয়ার করুন
+                </button>
             </div>
 
             <!-- উইথড্র ট্যাব -->
-            <div id="withdrawTab" class="tab-content">
-                <div class="glass-effect rounded-2xl p-6">
-                    <h3 class="text-white font-semibold mb-4">💸 উইথড্র পয়েন্ট</h3>
-                    
-                    <div class="mb-4">
-                        <label class="block text-gray-200 text-sm mb-2">পয়েন্ট পরিমাণ</label>
-                        <input type="number" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white" 
-                               placeholder="উইথড্র করার পয়েন্ট লিখুন" id="withdrawAmount">
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="block text-gray-200 text-sm mb-2">পেমেন্ট মেথড</label>
-                        <div class="grid grid-cols-2 gap-3" id="paymentMethods">
-                            <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center cursor-pointer">
-                                <i class="fas fa-mobile-alt text-2xl text-blue-400 mb-2"></i>
-                                <p class="text-white text-sm">bKash</p>
-                            </div>
-                            <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center cursor-pointer">
-                                <i class="fas fa-mobile-alt text-2xl text-green-400 mb-2"></i>
-                                <p class="text-white text-sm">Nagad</p>
-                            </div>
+            <div id="withdrawTab" class="glass-effect rounded-2xl p-6 mb-20 hidden">
+                <h3 class="text-white font-semibold mb-4 text-center">💸 উইথড্র পয়েন্ট</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-200 text-sm mb-2">পয়েন্ট পরিমাণ</label>
+                    <input type="number" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white text-center" 
+                           placeholder="উইথড্র করার পয়েন্ট লিখুন" id="withdrawAmount">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-200 text-sm mb-2 text-center">পেমেন্ট মেথড</label>
+                    <div class="grid grid-cols-2 gap-3" id="paymentMethods">
+                        <div class="text-center">
+                            <p class="text-gray-200 text-sm">পেমেন্ট মেথড</p>
+                            <p class="text-white text-xs">এডমিন প্যানেল থেকে সেট করুন</p>
                         </div>
                     </div>
-                    
-                    <div class="mb-4">
-                        <label class="block text-gray-200 text-sm mb-2">অ্যাকাউন্ট নম্বর</label>
-                        <input type="text" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white" 
-                               placeholder="আপনার অ্যাকাউন্ট নম্বর লিখুন" id="accountNumber">
-                    </div>
-                    
-                    <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold">
-                        উইথড্র করুন
-                    </button>
-                    
-                    <div class="mt-4 bg-white bg-opacity-10 rounded-xl p-3">
-                        <p class="text-gray-200 text-sm"><i class="fas fa-info-circle mr-2"></i>ন্যূনতম উইথড্র: ৫০০ পয়েন্ট</p>
-                        <p class="text-gray-200 text-sm"><i class="fas fa-info-circle mr-2"></i>সর্বোচ্চ উইথড্র: ১০,০০০ পয়েন্ট</p>
-                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-200 text-sm mb-2">অ্যাকাউন্ট নম্বর</label>
+                    <input type="text" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white text-center" 
+                           placeholder="আপনার অ্যাকাউন্ট নম্বর লিখুন" id="accountNumber">
+                </div>
+                
+                <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold" id="withdrawBtn">
+                    উইথড্র করুন
+                </button>
+                
+                <div class="mt-4 bg-white bg-opacity-10 rounded-xl p-3">
+                    <p class="text-gray-200 text-sm text-center"><i class="fas fa-info-circle mr-2"></i>এডমিন প্যানেল থেকে উইথড্র মেথড সেটআপ প্রয়োজন</p>
                 </div>
             </div>
         </div>
@@ -422,7 +393,6 @@
 
         // ==================== AUTHENTICATION FUNCTIONS ====================
         
-        // Google লগইন
         async function handleGoogleLogin() {
             try {
                 showLoading('Google লগইন হচ্ছে...');
@@ -435,7 +405,6 @@
             }
         }
 
-        // ইমেইল লগইন
         async function handleEmailLogin() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
@@ -455,7 +424,6 @@
             }
         }
 
-        // রেজিস্টার
         async function handleRegister() {
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
@@ -494,7 +462,6 @@
                 const userDoc = await userRef.get();
                 
                 if (!userDoc.exists) {
-                    // নতুন用户
                     await userRef.set({
                         email: user.email,
                         points: 100,
@@ -511,12 +478,13 @@
                         banned: false
                     });
                 } else {
-                    // Existing user
                     await userRef.update({
                         last_seen: new Date()
                     });
                 }
                 
+                currentUser = user;
+                loadUserData();
                 return true;
             } catch (error) {
                 console.error('User data processing error:', error);
@@ -524,7 +492,133 @@
             }
         }
 
-        // ==================== UI FUNCTIONS ====================
+        // ==================== USER DATA LOADING ====================
+        async function loadUserData() {
+            if (!currentUser) return;
+            
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    
+                    // Update UI
+                    document.getElementById('userName').textContent = userData.email || 'ইউজার';
+                    document.getElementById('userId').textContent = currentUser.uid.substring(0, 8);
+                    document.getElementById('userBalance').textContent = `${userData.points || 0} পয়েন্ট`;
+                    document.getElementById('todayEarnings').textContent = `${userData.todayEarnings || 0} পয়েন্ট`;
+                    document.getElementById('completedTasks').textContent = `${userData.completedTasks || 0} টি`;
+                    document.getElementById('totalReferrals').textContent = `${userData.totalReferrals || 0} জন`;
+                    document.getElementById('totalReferralsTab').textContent = userData.totalReferrals || 0;
+                    
+                    if (userData.referralCode) {
+                        document.getElementById('referralLink').value = `https://t.me/earn_zone_user_bot?start=${userData.referralCode}`;
+                    }
+                    
+                    loadNotice();
+                    loadTasks();
+                }
+            } catch (error) {
+                console.error("ইউজার ডেটা লোড করতে সমস্যা:", error);
+            }
+        }
+
+        // ==================== NOTICE SYSTEM ====================
+        async function loadNotice() {
+            try {
+                const noticeDoc = await db.collection('adminSettings').doc('notices').get();
+                if (noticeDoc.exists) {
+                    const noticeData = noticeDoc.data();
+                    if (noticeData.currentNotice) {
+                        document.getElementById('noticeBar').innerHTML = noticeData.currentNotice;
+                    }
+                }
+            } catch (error) {
+                console.error("নোটিশ লোড করতে সমস্যা:", error);
+            }
+        }
+
+        // ==================== TASK SYSTEM ====================
+        async function loadTasks() {
+            try {
+                const tasksSnapshot = await db.collection('tasks').where('enabled', '==', true).get();
+                const tasksList = document.getElementById('tasksList');
+                tasksList.innerHTML = '';
+                
+                if (tasksSnapshot.empty) {
+                    tasksList.innerHTML = `
+                        <div class="task-card glass-effect p-4 text-center">
+                            <p class="text-gray-200">কোন টাস্ক পাওয়া যায়নি</p>
+                            <p class="text-gray-400 text-sm mt-2">এডমিন প্যানেল থেকে টাস্ক যোগ করুন</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                tasksSnapshot.forEach(doc => {
+                    const task = doc.data();
+                    const taskElement = document.createElement('div');
+                    taskElement.className = 'task-card glass-effect p-4';
+                    taskElement.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <h4 class="text-white font-semibold">${task.title}</h4>
+                            <span class="bg-green-500 text-white px-2 py-1 rounded-lg text-sm">${task.points} পয়েন্ট</span>
+                        </div>
+                        <p class="text-gray-200 text-sm mb-3">${task.description || 'টাস্কটি সম্পন্ন করুন'}</p>
+                        <p class="text-gray-400 text-xs mb-2">নেটওয়ার্ক: ${task.network || 'N/A'}</p>
+                        <button class="w-full bg-blue-500 text-white py-2 rounded-lg" onclick="startTask('${doc.id}')">
+                            স্টার্ট করুন
+                        </button>
+                    `;
+                    tasksList.appendChild(taskElement);
+                });
+            } catch (error) {
+                console.error("টাস্ক লোড করতে সমস্যা:", error);
+            }
+        }
+
+        async function startTask(taskId) {
+            try {
+                const taskDoc = await db.collection('tasks').doc(taskId).get();
+                if (taskDoc.exists) {
+                    const task = taskDoc.data();
+                    showNotification(`টাস্ক শুরু করা হয়েছে: ${task.title}`);
+                    
+                    // Show ad based on network
+                    await showAd(task.network);
+                    
+                    // Complete task and add points
+                    await completeTask(taskId, task);
+                }
+            } catch (error) {
+                console.error('Task error:', error);
+                showError('টাস্ক শুরু করতে সমস্যা হয়েছে');
+            }
+        }
+
+        async function showAd(network) {
+            // Ad showing logic based on network
+            return new Promise(resolve => {
+                setTimeout(resolve, 2000); // Simulate ad loading
+            });
+        }
+
+        async function completeTask(taskId, taskData) {
+            try {
+                const userRef = db.collection('users').doc(currentUser.uid);
+                await userRef.update({
+                    points: firebase.firestore.FieldValue.increment(taskData.points),
+                    todayEarnings: firebase.firestore.FieldValue.increment(taskData.points),
+                    completedTasks: firebase.firestore.FieldValue.increment(1)
+                });
+                
+                showNotification(`🎉 ${taskData.points} পয়েন্ট পেয়েছেন!`);
+                loadUserData();
+            } catch (error) {
+                console.error('Complete task error:', error);
+            }
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
@@ -582,6 +676,12 @@
             }
         }
 
+        function shareOnTelegram() {
+            const referralLink = document.getElementById('referralLink').value;
+            const message = `🎯 EarnZone অ্যাপটি ব্যবহার করে পয়েন্ট অর্জন করুন! আমার রেফারেল লিংক: ${referralLink}`;
+            window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(message)}`, '_blank');
+        }
+
         // ==================== EVENT LISTENERS ====================
         document.getElementById('loginTab').addEventListener('click', () => {
             document.getElementById('loginForm').classList.remove('hidden');
@@ -597,18 +697,54 @@
             document.getElementById('loginTab').classList.remove('bg-blue-500', 'text-white');
         });
 
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.getAttribute('data-tab');
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const tab = this.getAttribute('data-tab');
                 
-                // Update active tab
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('text-white', 'bg-blue-500'));
-                btn.classList.add('text-white', 'bg-blue-500');
+                // Update active nav
+                document.querySelectorAll('.nav-item').forEach(nav => {
+                    nav.classList.remove('active');
+                    nav.querySelector('i').classList.remove('text-blue-500');
+                    nav.querySelector('p').classList.remove('text-blue-500');
+                });
+                
+                this.classList.add('active');
+                this.querySelector('i').classList.add('text-blue-500');
+                this.querySelector('p').classList.add('text-blue-500');
                 
                 // Show corresponding tab content
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                document.getElementById(tab + 'Tab').classList.add('active');
+                document.querySelectorAll('.tab-content-container > div').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                
+                if (tab === 'referral' || tab === 'withdraw') {
+                    document.getElementById(tab + 'Tab').classList.remove('hidden');
+                }
             });
+        });
+
+        document.getElementById('copyReferralBtn').addEventListener('click', function() {
+            const referralInput = document.getElementById('referralLink');
+            referralInput.select();
+            document.execCommand('copy');
+            showNotification('রেফারেল লিংক কপি করা হয়েছে!');
+        });
+
+        document.getElementById('withdrawBtn').addEventListener('click', function() {
+            const amount = document.getElementById('withdrawAmount').value;
+            const account = document.getElementById('accountNumber').value;
+            
+            if (!amount || amount < 500) {
+                showError('ন্যূনতম ৫০০ পয়েন্ট উইথড্র করতে হবে');
+                return;
+            }
+            
+            if (!account) {
+                showError('অ্যাকাউন্ট নম্বর লিখুন');
+                return;
+            }
+            
+            showNotification(`উইথড্র রিকোয়েস্ট সাবমিট হয়েছে! ${amount} পয়েন্ট পাঠানো হবে`);
         });
 
         // ==================== INITIALIZE APP ====================
