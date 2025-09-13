@@ -7,116 +7,396 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Firebase SDK -->
+    <!-- Ad Networks SDK -->
+    <script src='//libtl.com/sdk.js' data-zone='9797628' data-sdk='show_9797628'></script>
+    <script src="https://ad.gigapub.tech/script?id=2868"></script>
+    <script src="https://cdn.tgads.space/assets/js/adexium-widget.min.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap');
         
         * {
             font-family: 'Hind Siliguri', sans-serif;
+            box-sizing: border-box;
         }
         
         body {
-            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            margin: 0;
+            padding: 0;
         }
         
-        .login-container {
+        .glass-effect {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 400px;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
         }
         
-        .btn-google {
-            background: #DB4437;
-            transition: all 0.3s;
+        .btn-gradient {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            transition: all 0.3s ease;
         }
         
-        .btn-google:hover {
-            background: #C53929;
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
         
-        .error-message {
-            background: #f56565;
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
+        .task-card {
+            transition: all 0.3s ease;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .floating-btn {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .pulse-effect {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .typewriter {
+            overflow: hidden;
+            border-right: .15em solid orange;
+            white-space: nowrap;
+            animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: orange; }
+        }
+        
+        .tab-content {
             display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
-<body>
-    <!-- লগইন কন্টেইনার -->
-    <div id="loginContainer" class="login-container">
+<body class="min-h-screen flex items-center justify-center p-4">
+    <!-- লগইন/রেজিস্টার কন্টেইনার -->
+    <div id="authContainer" class="glass-effect p-8 rounded-3xl shadow-2xl w-full max-w-md">
+        <!-- লোগো এবং হেডিং -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-white mb-2">🎯 EarnZone</h1>
-            <p class="text-gray-300">লগইন করুন এবং পয়েন্ট অর্জন শুরু করুন</p>
+            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-coins text-3xl text-yellow-500"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">Earn<span class="text-yellow-400">Zone</span></h1>
+            <p class="text-gray-200">পয়েন্ট অর্জন করুন এবং উত্তোলন করুন</p>
+        </div>
+
+        <!-- ট্যাব সুইচ বাটন -->
+        <div class="flex bg-white bg-opacity-20 rounded-xl p-1 mb-6">
+            <button id="loginTab" class="flex-1 py-2 rounded-xl font-semibold text-white bg-blue-500">লগইন</button>
+            <button id="registerTab" class="flex-1 py-2 rounded-xl font-semibold text-gray-300">রেজিস্টার</button>
+        </div>
+
+        <!-- লগইন ফর্ম -->
+        <div id="loginForm" class="space-y-4">
+            <div>
+                <input type="email" id="loginEmail" placeholder="📧 আপনার ইমেইল" 
+                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
+            </div>
+            <div>
+                <input type="password" id="loginPassword" placeholder="🔒 পাসওয়ার্ড" 
+                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
+            </div>
+            <button onclick="handleEmailLogin()" class="w-full btn-gradient text-white py-4 rounded-xl font-semibold text-lg">
+                <i class="fas fa-sign-in-alt mr-2"></i>লগইন করুন
+            </button>
+
+            <!-- Google লগইন -->
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-300 border-opacity-50"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-transparent text-gray-200">অথবা</span>
+                </div>
+            </div>
+
+            <button onclick="handleGoogleLogin()" class="w-full bg-white text-gray-700 py-4 rounded-xl font-semibold text-lg">
+                <i class="fab fa-google mr-2 text-red-500"></i>Google দিয়ে লগইন
+            </button>
+        </div>
+
+        <!-- রেজিস্টার ফর্ম -->
+        <div id="registerForm" class="space-y-4 hidden">
+            <div>
+                <input type="email" id="registerEmail" placeholder="📧 ইমেইল ঠিকানা" 
+                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
+            </div>
+            <div>
+                <input type="password" id="registerPassword" placeholder="🔒 পাসওয়ার্ড (至少 ৬ অক্ষর)" 
+                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
+            </div>
+            <div>
+                <input type="password" id="confirmPassword" placeholder="✅ পাসওয়ার্ড নিশ্চিত করুন" 
+                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
+            </div>
+            <button onclick="handleRegister()" class="w-full btn-gradient text-white py-4 rounded-xl font-semibold text-lg">
+                <i class="fas fa-user-plus mr-2"></i>অ্যাকাউন্ট তৈরি করুন
+            </button>
+
+            <p class="text-center text-gray-200 text-sm mt-4">
+                রেজিস্টার করলে <span class="text-yellow-400 font-semibold">১০০ পয়েন্ট বোনাস</span> পাবেন!
+            </p>
         </div>
 
         <!-- Error Message -->
-        <div id="errorMessage" class="error-message"></div>
-
-        <!-- Google লগইন -->
-        <div class="mb-6">
-            <h2 class="text-xl font-semibold text-white mb-4">Google দিয়ে লগইন</h2>
-            <button onclick="handleGoogleLogin()" class="w-full btn-google text-white p-3 rounded-lg font-semibold mb-3">
-                <i class="fab fa-google mr-2"></i> Google দিয়ে লগইন
-            </button>
-            <p class="text-gray-400 text-sm">Google অ্যাকাউন্ট দিয়ে লগইন করুন</p>
-        </div>
-
-        <!-- Divider -->
-        <div class="flex items-center mb-6">
-            <div class="flex-grow border-t border-gray-600"></div>
-            <span class="mx-4 text-gray-400">অথবা</span>
-            <div class="flex-grow border-t border-gray-600"></div>
-        </div>
-
-        <!-- ইমেইল/পাসওয়ার্ড লগইন -->
-        <div class="mb-6">
-            <h2 class="text-xl font-semibold text-white mb-4">ইমেইল দিয়ে লগইন</h2>
-            <input type="email" id="loginEmail" placeholder="আপনার ইমেইল" class="w-full p-3 rounded-lg mb-3 bg-gray-800 text-white border border-gray-700">
-            <input type="password" id="loginPassword" placeholder="পাসওয়ার্ড" class="w-full p-3 rounded-lg mb-3 bg-gray-800 text-white border border-gray-700">
-            <button onclick="handleEmailLogin()" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition">
-                লগইন করুন
-            </button>
-            <p class="text-gray-400 text-sm mt-3 text-center">
-                নতুন ইউজার? <a href="#" onclick="showRegisterForm()" class="text-blue-400">রেজিস্টার করুন</a>
-            </p>
-        </div>
-
-        <!-- রেজিস্টার ফর্ম (Initially hidden) -->
-        <div id="registerForm" class="hidden">
-            <h2 class="text-xl font-semibold text-white mb-4">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
-            <input type="email" id="registerEmail" placeholder="ইমেইল" class="w-full p-3 rounded-lg mb-3 bg-gray-800 text-white border border-gray-700">
-            <input type="password" id="registerPassword" placeholder="পাসওয়ার্ড (至少 ৬ অক্ষর)" class="w-full p-3 rounded-lg mb-3 bg-gray-800 text-white border border-gray-700">
-            <input type="password" id="confirmPassword" placeholder="পাসওয়ার্ড নিশ্চিত করুন" class="w-full p-3 rounded-lg mb-3 bg-gray-800 text-white border border-gray-700">
-            <button onclick="handleRegister()" class="w-full bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition">
-                রেজিস্টার করুন
-            </button>
-            <p class="text-gray-400 text-sm mt-3 text-center">
-                ইতিমধ্যেই অ্যাকাউন্ট আছে? <a href="#" onclick="showLoginForm()" class="text-blue-400">লগইন করুন</a>
-            </p>
-        </div>
+        <div id="errorMessage" class="mt-4 p-3 bg-red-500 text-white rounded-xl text-center hidden"></div>
     </div>
 
-    <!-- মেইন অ্যাপ কন্টেন্ট (Initially hidden) -->
-    <div id="appContent" class="hidden">
-        <!-- আপনার অ্যাপের মূল কন্টেন্ট -->
-        <div class="p-4 text-center">
-            <h1 class="text-2xl font-bold text-white">লগইন সফল!</h1>
-            <p class="text-gray-300">আপনার অ্যাপের কন্টেন্ট লোড হচ্ছে...</p>
+    <!-- মেইন অ্যাপ কন্টেন্ট -->
+    <div id="appContent" class="hidden w-full max-w-4xl">
+        <!-- হেডার -->
+        <header class="glass-effect rounded-2xl p-4 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-white font-semibold" id="userName">ইউজার</h2>
+                        <p class="text-gray-200 text-sm">আইডি: <span id="userId">লোড হচ্ছে...</span></p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="bg-white bg-opacity-20 rounded-xl px-3 py-1">
+                        <p class="text-sm text-gray-200">রেফারেল কোড</p>
+                        <p class="text-white font-bold" id="referralCode">লোড হচ্ছে...</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- নোটিশ বার -->
+        <div class="glass-effect rounded-2xl p-3 mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-bullhorn text-yellow-400 mr-3"></i>
+                <marquee behavior="scroll" direction="left" class="text-white text-sm">
+                    🎉 নতুন ইউজারদের জন্য ১০০ পয়েন্ট বোনাস! রেফারেল দিয়ে আরও বেশি আয় করুন!
+                </marquee>
+            </div>
+        </div>
+
+        <!-- ব্যালেন্স কার্ড -->
+        <div class="glass-effect rounded-2xl p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <p class="text-gray-200 text-sm">মোট ব্যালেন্স</p>
+                    <h2 class="text-3xl font-bold text-white" id="userBalance">০ পয়েন্ট</h2>
+                </div>
+                <div class="floating-btn bg-yellow-500 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer">
+                    <i class="fas fa-gift text-xl text-white"></i>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white bg-opacity-10 rounded-xl p-3">
+                    <p class="text-gray-200 text-sm">আজকের ইনকাম</p>
+                    <p class="text-white font-semibold" id="todayEarnings">০ পয়েন্ট</p>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-xl p-3">
+                    <p class="text-gray-200 text-sm">কমপ্লিট টাস্ক</p>
+                    <p class="text-white font-semibold" id="completedTasks">০ টি</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ডেইলি বোনাস -->
+        <div class="glass-effect rounded-2xl p-6 mb-6">
+            <h3 class="text-white font-semibold mb-3">🎁 ডেইলি বোনাস</h3>
+            <p class="text-gray-200 text-sm mb-4">অ্যাড দেখে ডেইলি বোনাস নিন</p>
+            <button class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold">
+                <span id="bonusAmount">৫০</span> পয়েন্ট নিন
+            </button>
+        </div>
+
+        <!-- নেভিগেশন ট্যাব -->
+        <div class="glass-effect rounded-2xl p-2 mb-6">
+            <div class="flex justify-around">
+                <button class="tab-btn active px-4 py-2 text-white font-semibold" data-tab="home">
+                    <i class="fas fa-home mr-2"></i>হোম
+                </button>
+                <button class="tab-btn px-4 py-2 text-gray-300" data-tab="tasks">
+                    <i class="fas fa-tasks mr-2"></i>টাস্ক
+                </button>
+                <button class="tab-btn px-4 py-2 text-gray-300" data-tab="referral">
+                    <i class="fas fa-users mr-2"></i>রেফারেল
+                </button>
+                <button class="tab-btn px-4 py-2 text-gray-300" data-tab="withdraw">
+                    <i class="fas fa-wallet mr-2"></i>উইথড্র
+                </button>
+            </div>
+        </div>
+
+        <!-- ট্যাব কন্টেন্ট -->
+        <div class="tab-content-container">
+            <!-- হোম ট্যাব -->
+            <div id="homeTab" class="tab-content active">
+                <div class="glass-effect rounded-2xl p-6 mb-6">
+                    <h3 class="text-white font-semibold mb-4">🏆 টপ আর্নার্স</h3>
+                    <div class="space-y-3" id="leaderboard">
+                        <div class="flex items-center justify-between p-3 bg-white bg-opacity-10 rounded-xl">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-white font-bold">1</span>
+                                </div>
+                                <span class="text-white">লোড হচ্ছে...</span>
+                            </div>
+                            <span class="text-green-400 font-semibold">০ পয়েন্ট</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- টাস্ক ট্যাব -->
+            <div id="tasksTab" class="tab-content">
+                <div class="glass-effect rounded-2xl p-6">
+                    <h3 class="text-white font-semibold mb-4">📋 উপলব্ধ টাস্ক</h3>
+                    <div class="space-y-4" id="tasksList">
+                        <div class="task-card glass-effect p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="text-white font-semibold">টাস্ক লোড হচ্ছে...</h4>
+                                <span class="bg-green-500 text-white px-2 py-1 rounded-lg text-sm">০ পয়েন্ট</span>
+                            </div>
+                            <p class="text-gray-200 text-sm mb-3">টাস্ক বিবরণ লোড হচ্ছে...</p>
+                            <button class="w-full bg-blue-500 text-white py-2 rounded-lg">স্টার্ট করুন</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- রেফারেল ট্যাব -->
+            <div id="referralTab" class="tab-content">
+                <div class="glass-effect rounded-2xl p-6">
+                    <h3 class="text-white font-semibold mb-4">👥 রেফারেল সিস্টেম</h3>
+                    <p class="text-gray-200 text-sm mb-4">বন্ধুকে রেফার করুন এবং ১০০ পয়েন্ট বোনাস পান</p>
+                    
+                    <div class="bg-white bg-opacity-10 rounded-xl p-4 mb-4">
+                        <p class="text-gray-200 text-sm mb-2">আপনার রেফারেল লিংক</p>
+                        <div class="flex">
+                            <input type="text" class="flex-1 bg-white bg-opacity-20 text-white p-2 rounded-l-lg" 
+                                   value="লোড হচ্ছে..." readonly id="referralLink">
+                            <button class="bg-blue-500 text-white px-4 rounded-r-lg">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
+                            <p class="text-2xl font-bold text-white" id="totalReferrals">০</p>
+                            <p class="text-gray-200 text-xs">মোট রেফার</p>
+                        </div>
+                        <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
+                            <p class="text-2xl font-bold text-white" id="activeReferrals">০</p>
+                            <p class="text-gray-200 text-xs">অ্যাক্টিভ</p>
+                        </div>
+                        <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
+                            <p class="text-2xl font-bold text-white" id="referralPoints">০</p>
+                            <p class="text-gray-200 text-xs">পয়েন্ট</p>
+                        </div>
+                    </div>
+
+                    <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold">
+                        <i class="fab fa-telegram-plane mr-2"></i>টেলিগ্রামে শেয়ার করুন
+                    </button>
+                </div>
+            </div>
+
+            <!-- উইথড্র ট্যাব -->
+            <div id="withdrawTab" class="tab-content">
+                <div class="glass-effect rounded-2xl p-6">
+                    <h3 class="text-white font-semibold mb-4">💸 উইথড্র পয়েন্ট</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-200 text-sm mb-2">পয়েন্ট পরিমাণ</label>
+                        <input type="number" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white" 
+                               placeholder="উইথড্র করার পয়েন্ট লিখুন" id="withdrawAmount">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-200 text-sm mb-2">পেমেন্ট মেথড</label>
+                        <div class="grid grid-cols-2 gap-3" id="paymentMethods">
+                            <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center cursor-pointer">
+                                <i class="fas fa-mobile-alt text-2xl text-blue-400 mb-2"></i>
+                                <p class="text-white text-sm">bKash</p>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center cursor-pointer">
+                                <i class="fas fa-mobile-alt text-2xl text-green-400 mb-2"></i>
+                                <p class="text-white text-sm">Nagad</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-200 text-sm mb-2">অ্যাকাউন্ট নম্বর</label>
+                        <input type="text" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white" 
+                               placeholder="আপনার অ্যাকাউন্ট নম্বর লিখুন" id="accountNumber">
+                    </div>
+                    
+                    <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold">
+                        উইথড্র করুন
+                    </button>
+                    
+                    <div class="mt-4 bg-white bg-opacity-10 rounded-xl p-3">
+                        <p class="text-gray-200 text-sm"><i class="fas fa-info-circle mr-2"></i>ন্যূনতম উইথড্র: ৫০০ পয়েন্ট</p>
+                        <p class="text-gray-200 text-sm"><i class="fas fa-info-circle mr-2"></i>সর্বোচ্চ উইথড্র: ১০,০০০ পয়েন্ট</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -137,6 +417,9 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Global Variables
+        let currentUser = null;
+
         // ==================== AUTHENTICATION FUNCTIONS ====================
         
         // Google লগইন
@@ -146,7 +429,7 @@
                 const provider = new firebase.auth.GoogleAuthProvider();
                 const result = await auth.signInWithPopup(provider);
                 await processUserData(result.user, true);
-                hideLoginForm();
+                hideAuthForm();
             } catch (error) {
                 showError('Google লগইন Error: ' + error.message);
             }
@@ -166,15 +449,9 @@
                 showLoading('লগইন হচ্ছে...');
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
                 await processUserData(userCredential.user);
-                hideLoginForm();
+                hideAuthForm();
             } catch (error) {
-                if (error.code === 'auth/user-not-found') {
-                    showError('এই ইমেইলে কোনো অ্যাকাউন্ট নেই। রেজিস্টার করুন।');
-                } else if (error.code === 'auth/wrong-password') {
-                    showError('ভুল পাসওয়ার্ড');
-                } else {
-                    showError('লগইন Error: ' + error.message);
-                }
+                handleAuthError(error);
             }
         }
 
@@ -203,14 +480,10 @@
                 showLoading('রেজিস্টার হচ্ছে...');
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 await processUserData(userCredential.user, true);
-                hideLoginForm();
-                alert('🎉 রেজিস্টার সফল! ১০০ পয়েন্ট বোনাস পেয়েছেন!');
+                hideAuthForm();
+                showNotification('🎉 রেজিস্টার সফল! ১০০ পয়েন্ট বোনাস পেয়েছেন!');
             } catch (error) {
-                if (error.code === 'auth/email-already-in-use') {
-                    showError('এই ইমেইল already registered');
-                } else {
-                    showError('রেজিস্টার Error: ' + error.message);
-                }
+                handleAuthError(error);
             }
         }
 
@@ -218,8 +491,9 @@
         async function processUserData(user, isNewUser = false) {
             try {
                 const userRef = db.collection('users').doc(user.uid);
+                const userDoc = await userRef.get();
                 
-                if (isNewUser) {
+                if (!userDoc.exists) {
                     // নতুন用户
                     await userRef.set({
                         email: user.email,
@@ -254,37 +528,32 @@
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => errorDiv.style.display = 'none', 5000);
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => errorDiv.classList.add('hidden'), 5000);
         }
 
         function showLoading(message) {
             const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message + '...';
-            errorDiv.style.display = 'block';
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
             errorDiv.style.background = '#4299e1';
         }
 
-        function showRegisterForm() {
-            document.getElementById('registerForm').classList.remove('hidden');
-            document.querySelectorAll('div:not(#registerForm)').forEach(el => {
-                if (el.id !== 'registerForm' && el.id !== 'errorMessage') {
-                    el.style.display = 'none';
-                }
-            });
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification glass-effect p-4';
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                    <span class="text-white">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
         }
 
-        function showLoginForm() {
-            document.getElementById('registerForm').classList.add('hidden');
-            document.querySelectorAll('div:not(#registerForm)').forEach(el => {
-                if (el.id !== 'registerForm' && el.id !== 'errorMessage') {
-                    el.style.display = 'block';
-                }
-            });
-        }
-
-        function hideLoginForm() {
-            document.getElementById('loginContainer').style.display = 'none';
+        function hideAuthForm() {
+            document.getElementById('authContainer').classList.add('hidden');
             document.getElementById('appContent').classList.remove('hidden');
         }
 
@@ -297,16 +566,57 @@
             return result;
         }
 
+        function handleAuthError(error) {
+            switch(error.code) {
+                case 'auth/user-not-found':
+                    showError('এই ইমেইলে কোনো অ্যাকাউন্ট নেই। রেজিস্টার করুন।');
+                    break;
+                case 'auth/wrong-password':
+                    showError('ভুল পাসওয়ার্ড');
+                    break;
+                case 'auth/email-already-in-use':
+                    showError('এই ইমেইল already registered');
+                    break;
+                default:
+                    showError('Error: ' + error.message);
+            }
+        }
+
+        // ==================== EVENT LISTENERS ====================
+        document.getElementById('loginTab').addEventListener('click', () => {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('loginTab').classList.add('bg-blue-500', 'text-white');
+            document.getElementById('registerTab').classList.remove('bg-blue-500', 'text-white');
+        });
+
+        document.getElementById('registerTab').addEventListener('click', () => {
+            document.getElementById('registerForm').classList.remove('hidden');
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerTab').classList.add('bg-blue-500', 'text-white');
+            document.getElementById('loginTab').classList.remove('bg-blue-500', 'text-white');
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.getAttribute('data-tab');
+                
+                // Update active tab
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('text-white', 'bg-blue-500'));
+                btn.classList.add('text-white', 'bg-blue-500');
+                
+                // Show corresponding tab content
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(tab + 'Tab').classList.add('active');
+            });
+        });
+
         // ==================== INITIALIZE APP ====================
         auth.onAuthStateChanged(user => {
             if (user) {
-                // User is signed in
-                hideLoginForm();
-                console.log('User logged in:', user.email);
-            } else {
-                // User is signed out
-                document.getElementById('loginContainer').style.display = 'flex';
-                document.getElementById('appContent').classList.add('hidden');
+                currentUser = user;
+                hideAuthForm();
+                loadUserData();
             }
         });
 
