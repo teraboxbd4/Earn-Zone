@@ -1,762 +1,641 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EarnZone - পয়েন্ট আয় করুন</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Ad Networks SDK -->
-    <script src='//libtl.com/sdk.js' data-zone='9797628' data-sdk='show_9797628'></script>
-    <script src="https://ad.gigapub.tech/script?id=2868"></script>
-    <script src="https://cdn.tgads.space/assets/js/adexium-widget.min.js"></script>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
+    <title>Login - Task Networks</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap');
-        
-        * {
-            font-family: 'Hind Siliguri', sans-serif;
-            box-sizing: border-box;
+        :root {
+            --primary-color: #4A90E2;
+            --primary-dark: #357ABD;
+            --secondary-color: #50E3C2;
+            --accent-color: #F5A623;
+            --bg-light: #F7F7F7;
+            --bg-dark: #2C3E50;
+            --card-bg-light: #FFFFFF;
+            --card-bg-dark: #34495E;
+            --text-dark: #333333;
+            --text-light: #F7F7F7;
+            --border-color-light: #E0E0E0;
+            --border-color-dark: #4A657D;
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --transition: all 0.3s ease-in-out;
         }
-        
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+
+        * {
             margin: 0;
             padding: 0;
-            padding-bottom: 70px;
+            box-sizing: border-box;
         }
-        
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            overflow-x: hidden;
         }
-        
-        .btn-gradient {
-            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-            transition: all 0.3s ease;
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            perspective: 1000px;
         }
-        
-        .btn-gradient:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-        
-        .task-card {
-            transition: all 0.3s ease;
-            border-radius: 15px;
-            overflow: hidden;
-        }
-        
-        .task-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-        }
-        
-        .floating-btn {
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .pulse-effect {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            animation: slideIn 0.5s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+
+        .auth-card {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 10px 0;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-        }
-        
-        .nav-item {
-            transition: all 0.3s ease;
-        }
-        
-        .nav-item.active {
-            color: #667eea;
-            transform: translateY(-5px);
-        }
-        
-        .nav-item.active i {
-            color: #667eea;
-        }
-        
-        .typewriter {
+            border-radius: var(--border-radius);
+            padding: 35px 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            transform-style: preserve-3d;
+            animation: cardAppear 0.8s ease-out;
+            position: relative;
             overflow: hidden;
-            white-space: nowrap;
-            animation: typing 3.5s steps(40, end);
         }
-        
-        @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite linear;
+            z-index: 0;
         }
-        
-        .shine-effect {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            background-size: 200% 100%;
-            animation: shine 2s infinite;
+
+        .app-logo {
+            text-align: center;
+            margin-bottom: 25px;
+            position: relative;
+            z-index: 1;
         }
-        
-        @keyframes shine {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+
+        .app-logo h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .app-logo p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #f0f0f0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #999;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .auth-tab.active {
+            color: var(--primary-color);
+        }
+
+        .auth-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--primary-color);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .auth-form {
+            display: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-form.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 14px 15px;
+            border-radius: var(--border-radius-sm);
+            border: 2px solid #e0e0e0;
+            background: #fff;
+            color: #333;
+            font-size: 16px;
+            transition: var(--transition);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 42px;
+            cursor: pointer;
+            color: #999;
+            transition: var(--transition);
+        }
+
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+
+        .forgot-password {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .forgot-password a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--border-radius-sm);
+            border: none;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(74, 144, 226, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 25px 0;
+            color: #999;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider span {
+            padding: 0 15px;
+            font-size: 14px;
+        }
+
+        .social-login {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .social-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border-radius: var(--border-radius-sm);
+            border: 2px solid #e0e0e0;
+            background: #fff;
+            color: #555;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .social-btn i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .social-btn.google {
+            border-color: #dd4b39;
+            color: #dd4b39;
+        }
+
+        .social-btn.google:hover {
+            background: #dd4b39;
+            color: white;
+        }
+
+        .social-btn.facebook {
+            border-color: #3b5998;
+            color: #3b5998;
+        }
+
+        .social-btn.facebook:hover {
+            background: #3b5998;
+            color: white;
+        }
+
+        .floating-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            animation: float 15s infinite linear;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            bottom: 40px;
+        }
+
+        @keyframes cardAppear {
+            0% {
+                opacity: 0;
+                transform: translateY(30px) rotateX(10deg);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) rotateX(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: rotate(45deg) translateX(-100%);
+            }
+            100% {
+                transform: rotate(45deg) translateX(200%);
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-1000px) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 25px 20px;
+            }
+            
+            .app-logo h1 {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 pb-20">
-    <!-- লগইন/রেজিস্টার কন্টেইনার -->
-    <div id="authContainer" class="glass-effect p-8 rounded-3xl shadow-2xl w-full max-w-md">
-        <!-- লোগো এবং হেডিং -->
-        <div class="text-center mb-8">
-            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 pulse-effect">
-                <i class="fas fa-coins text-3xl text-yellow-500"></i>
-            </div>
-            <h1 class="text-3xl font-bold text-white mb-2 typewriter">Earn<span class="text-yellow-400">Zone</span></h1>
-            <p class="text-gray-200">পয়েন্ট অর্জন করুন এবং উত্তোলন করুন</p>
-        </div>
-
-        <!-- ট্যাব সুইচ বাটন -->
-        <div class="flex bg-white bg-opacity-20 rounded-xl p-1 mb-6">
-            <button id="loginTab" class="flex-1 py-2 rounded-xl font-semibold text-white bg-blue-500">লগইন</button>
-            <button id="registerTab" class="flex-1 py-2 rounded-xl font-semibold text-gray-300">রেজিস্টার</button>
-        </div>
-
-        <!-- লগইন ফর্ম -->
-        <div id="loginForm" class="space-y-4">
-            <div>
-                <input type="email" id="loginEmail" placeholder="📧 আপনার ইমেইল" 
-                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
-            </div>
-            <div>
-                <input type="password" id="loginPassword" placeholder="🔒 পাসওয়ার্ড" 
-                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
-            </div>
-            <button onclick="handleEmailLogin()" class="w-full btn-gradient text-white py-4 rounded-xl font-semibold text-lg">
-                <i class="fas fa-sign-in-alt mr-2"></i>লগইন করুন
-            </button>
-
-            <!-- Google লগইন -->
-            <div class="relative my-6">
-                <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-gray-300 border-opacity-50"></div>
-                </div>
-                <div class="relative flex justify-center text-sm">
-                    <span class="px-2 bg-transparent text-gray-200">অথবা</span>
-                </div>
-            </div>
-
-            <button onclick="handleGoogleLogin()" class="w-full bg-white text-gray-700 py-4 rounded-xl font-semibold text-lg">
-                <i class="fab fa-google mr-2 text-red-500"></i>Google দিয়ে লগইন
-            </button>
-        </div>
-
-        <!-- রেজিস্টার ফর্ম -->
-        <div id="registerForm" class="space-y-4 hidden">
-            <div>
-                <input type="email" id="registerEmail" placeholder="📧 ইমেইল ঠিকানা" 
-                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
-            </div>
-            <div>
-                <input type="password" id="registerPassword" placeholder="🔒 পাসওয়ার্ড (至少 ৬ অক্ষর)" 
-                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
-            </div>
-            <div>
-                <input type="password" id="confirmPassword" placeholder="✅ পাসওয়ার্ড নিশ্চিত করুন" 
-                       class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-200 border-none">
-            </div>
-            <button onclick="handleRegister()" class="w-full btn-gradient text-white py-4 rounded-xl font-semibold text-lg">
-                <i class="fas fa-user-plus mr-2"></i>অ্যাকাউন্ট তৈরি করুন
-            </button>
-
-            <p class="text-center text-gray-200 text-sm mt-4">
-                রেজিস্টার করলে <span class="text-yellow-400 font-semibold">১০০ পয়েন্ট বোনাস</span> পাবেন!
-            </p>
-        </div>
-
-        <!-- Error Message -->
-        <div id="errorMessage" class="mt-4 p-3 bg-red-500 text-white rounded-xl text-center hidden"></div>
-    </div>
-
-    <!-- মেইন অ্যাপ কন্টেন্ট -->
-    <div id="appContent" class="hidden w-full max-w-4xl">
-        <!-- প্রোফাইল সেকশন -->
-        <div class="glass-effect rounded-2xl p-6 mb-6 text-center">
-            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-user text-2xl text-white"></i>
-            </div>
-            <h2 class="text-white font-semibold text-xl mb-1" id="userName">ইউজার</h2>
-            <p class="text-gray-200 text-sm mb-3">আইডি: <span id="userId">লোড হচ্ছে...</span></p>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="floating-particles" id="particles"></div>
             
-            <!-- ইউজার তথ্য -->
-            <div class="grid grid-cols-2 gap-3 mt-4">
-                <div class="bg-white bg-opacity-10 rounded-xl p-3">
-                    <p class="text-gray-200 text-xs">মোট ব্যালেন্স</p>
-                    <p class="text-white font-semibold text-lg" id="userBalance">০ পয়েন্ট</p>
-                </div>
-                <div class="bg-white bg-opacity-10 rounded-xl p-3">
-                    <p class="text-gray-200 text-xs">আজকের ইনকাম</p>
-                    <p class="text-white font-semibold text-lg" id="todayEarnings">০ পয়েন্ট</p>
-                </div>
-                <div class="bg-white bg-opacity-10 rounded-xl p-3">
-                    <p class="text-gray-200 text-xs">কমপ্লিট টাস্ক</p>
-                    <p class="text-white font-semibold text-lg" id="completedTasks">০ টি</p>
-                </div>
-                <div class="bg-white bg-opacity-10 rounded-xl p-3">
-                    <p class="text-gray-200 text-xs">রেফারেল</p>
-                    <p class="text-white font-semibold text-lg" id="totalReferrals">০ জন</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- নোটিশ বার -->
-        <div class="glass-effect rounded-2xl p-3 mb-6 shine-effect">
-            <div class="flex items-center">
-                <i class="fas fa-bullhorn text-yellow-400 mr-3"></i>
-                <marquee behavior="scroll" direction="left" class="text-white text-sm" id="noticeBar">
-                    <!-- নোটিশ এখানে লোড হবে -->
-                </marquee>
-            </div>
-        </div>
-
-        <!-- ডেইলি বোনাস -->
-        <div class="glass-effect rounded-2xl p-6 mb-6 text-center">
-            <h3 class="text-white font-semibold mb-3">🎁 ডেইলি বোনাস</h3>
-            <p class="text-gray-200 text-sm mb-4">অ্যাড দেখে ডেইলি বোনাস নিন</p>
-            <button class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold pulse-effect">
-                <span id="bonusAmount">৫০</span> পয়েন্ট নিন
-            </button>
-        </div>
-
-        <!-- টাস্ক সেকশন -->
-        <div class="glass-effect rounded-2xl p-6 mb-20">
-            <h3 class="text-white font-semibold mb-4 text-center">📋 উপলব্ধ টাস্ক</h3>
-            <div class="space-y-4" id="tasksList">
-                <div class="task-card glass-effect p-4 text-center">
-                    <p class="text-gray-200">টাস্ক লোড হচ্ছে...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- বটম নেভিগেশন -->
-        <div class="bottom-nav">
-            <div class="flex justify-around items-center">
-                <div class="nav-item active text-center" data-tab="home">
-                    <i class="fas fa-home text-xl text-blue-500"></i>
-                    <p class="text-xs mt-1 text-blue-500">হোম</p>
-                </div>
-                <div class="nav-item text-center" data-tab="tasks">
-                    <i class="fas fa-tasks text-xl text-gray-500"></i>
-                    <p class="text-xs mt-1 text-gray-500">টাস্ক</p>
-                </div>
-                <div class="nav-item text-center" data-tab="referral">
-                    <i class="fas fa-users text-xl text-gray-500"></i>
-                    <p class="text-xs mt-1 text-gray-500">রেফারেল</p>
-                </div>
-                <div class="nav-item text-center" data-tab="withdraw">
-                    <i class="fas fa-wallet text-xl text-gray-500"></i>
-                    <p class="text-xs mt-1 text-gray-500">উইথড্র</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- ট্যাব কন্টেন্ট -->
-        <div class="tab-content-container">
-            <!-- রেফারেল ট্যাব -->
-            <div id="referralTab" class="glass-effect rounded-2xl p-6 mb-20 hidden">
-                <h3 class="text-white font-semibold mb-4 text-center">👥 রেফারেল সিস্টেম</h3>
-                <p class="text-gray-200 text-sm mb-4 text-center">বন্ধুকে রেফার করুন এবং ১০০ পয়েন্ট বোনাস পান</p>
-                
-                <div class="bg-white bg-opacity-10 rounded-xl p-4 mb-4">
-                    <p class="text-gray-200 text-sm mb-2 text-center">আপনার রেফারেল লিংক</p>
-                    <div class="flex">
-                        <input type="text" class="flex-1 bg-white bg-opacity-20 text-white p-2 rounded-l-lg text-center" 
-                               value="লোড হচ্ছে..." readonly id="referralLink">
-                        <button class="bg-blue-500 text-white px-4 rounded-r-lg" id="copyReferralBtn">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-3 gap-3 mb-4">
-                    <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
-                        <p class="text-2xl font-bold text-white" id="totalReferralsTab">০</p>
-                        <p class="text-gray-200 text-xs">মোট রেফার</p>
-                    </div>
-                    <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
-                        <p class="text-2xl font-bold text-white" id="activeReferrals">০</p>
-                        <p class="text-gray-200 text-xs">অ্যাক্টিভ</p>
-                    </div>
-                    <div class="bg-white bg-opacity-10 rounded-xl p-3 text-center">
-                        <p class="text-2xl font-bold text-white" id="referralPoints">০</p>
-                        <p class="text-gray-200 text-xs">পয়েন্ট</p>
-                    </div>
-                </div>
-
-                <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold" onclick="shareOnTelegram()">
-                    <i class="fab fa-telegram-plane mr-2"></i>টেলিগ্রামে শেয়ার করুন
-                </button>
+            <div class="app-logo">
+                <h1>Task Networks</h1>
+                <p>Sign in to access your account</p>
             </div>
 
-            <!-- উইথড্র ট্যাব -->
-            <div id="withdrawTab" class="glass-effect rounded-2xl p-6 mb-20 hidden">
-                <h3 class="text-white font-semibold mb-4 text-center">💸 উইথড্র পয়েন্ট</h3>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-200 text-sm mb-2">পয়েন্ট পরিমাণ</label>
-                    <input type="number" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white text-center" 
-                           placeholder="উইথড্র করার পয়েন্ট লিখুন" id="withdrawAmount">
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-200 text-sm mb-2 text-center">পেমেন্ট মেথড</label>
-                    <div class="grid grid-cols-2 gap-3" id="paymentMethods">
-                        <div class="text-center">
-                            <p class="text-gray-200 text-sm">পেমেন্ট মেথড</p>
-                            <p class="text-white text-xs">এডমিন প্যানেল থেকে সেট করুন</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-200 text-sm mb-2">অ্যাকাউন্ট নম্বর</label>
-                    <input type="text" class="w-full p-3 rounded-xl bg-white bg-opacity-20 text-white text-center" 
-                           placeholder="আপনার অ্যাকাউন্ট নম্বর লিখুন" id="accountNumber">
-                </div>
-                
-                <button class="w-full bg-green-500 text-white py-3 rounded-xl font-semibold" id="withdrawBtn">
-                    উইথড্র করুন
-                </button>
-                
-                <div class="mt-4 bg-white bg-opacity-10 rounded-xl p-3">
-                    <p class="text-gray-200 text-sm text-center"><i class="fas fa-info-circle mr-2"></i>এডমিন প্যানেল থেকে উইথড্র মেথড সেটআপ প্রয়োজন</p>
-                </div>
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login">Login</div>
+                <div class="auth-tab" data-tab="register">Register</div>
             </div>
+
+            <form class="auth-form active" id="loginForm">
+                <div class="input-group">
+                    <label class="input-label">Email</label>
+                    <input type="email" id="loginEmail" class="input-field" placeholder="Enter your email" required>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Password</label>
+                    <input type="password" id="loginPassword" class="input-field" placeholder="Enter your password" required>
+                    <span class="password-toggle" id="loginPasswordToggle">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <div class="forgot-password">
+                    <a href="#" id="forgotPasswordLink">Forgot Password?</a>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+
+                <div class="divider"><span>Or continue with</span></div>
+
+                <div class="social-login">
+                    <button type="button" class="social-btn google" id="googleLoginBtn">
+                        <i class="fab fa-google"></i> Google
+                    </button>
+                    <button type="button" class="social-btn facebook" id="facebookLoginBtn">
+                        <i class="fab fa-facebook-f"></i> Facebook
+                    </button>
+                </div>
+            </form>
+
+            <form class="auth-form" id="registerForm">
+                <div class="input-group">
+                    <label class="input-label">Full Name</label>
+                    <input type="text" id="registerName" class="input-field" placeholder="Enter your full name" required>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Email</label>
+                    <input type="email" id="registerEmail" class="input-field" placeholder="Enter your email" required>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Password</label>
+                    <input type="password" id="registerPassword" class="input-field" placeholder="Create a password (min. 6 characters)" required minlength="6">
+                    <span class="password-toggle" id="registerPasswordToggle">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Confirm Password</label>
+                    <input type="password" id="registerConfirmPassword" class="input-field" placeholder="Confirm your password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+
+                <div class="divider"><span>Or continue with</span></div>
+
+                <div class="social-login">
+                    <button type="button" class="social-btn google" id="googleRegisterBtn">
+                        <i class="fab fa-google"></i> Google
+                    </button>
+                    <button type="button" class="social-btn facebook" id="facebookRegisterBtn">
+                        <i class="fab fa-facebook-f"></i> Facebook
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+
+    <div class="toast" id="toast"></div>
 
     <script>
-        // ==================== FIREBASE CONFIGURATION ====================
-        const firebaseConfig = {
-            apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
-            authDomain: "earn-zone-a6dce.firebaseapp.com",
-            databaseURL: "https://earn-zone-a6dce-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "earn-zone-a6dce",
-            storageBucket: "earn-zone-a6dce.firebasestorage.app",
-            messagingSenderId: "470563695372",
-            appId: "1:470563695372:web:323d2941c316cef0a4b729"
-        };
+        // DOM elements
+        const authTabs = document.querySelectorAll('.auth-tab');
+        const authForms = document.querySelectorAll('.auth-form');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const loginPasswordToggle = document.getElementById('loginPasswordToggle');
+        const registerPasswordToggle = document.getElementById('registerPasswordToggle');
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+        const toast = document.getElementById('toast');
+        const particlesContainer = document.getElementById('particles');
+        const googleLoginBtn = document.getElementById('googleLoginBtn');
+        const facebookLoginBtn = document.getElementById('facebookLoginBtn');
+        const googleRegisterBtn = document.getElementById('googleRegisterBtn');
+        const facebookRegisterBtn = document.getElementById('facebookRegisterBtn');
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // Global Variables
-        let currentUser = null;
-
-        // ==================== AUTHENTICATION FUNCTIONS ====================
-        
-        async function handleGoogleLogin() {
-            try {
-                showLoading('Google লগইন হচ্ছে...');
-                const provider = new firebase.auth.GoogleAuthProvider();
-                const result = await auth.signInWithPopup(provider);
-                await processUserData(result.user, true);
-                hideAuthForm();
-            } catch (error) {
-                showError('Google লগইন Error: ' + error.message);
+        // Create floating particles
+        function createParticles() {
+            const colors = ['rgba(74, 144, 226, 0.3)', 'rgba(80, 227, 194, 0.3)', 'rgba(245, 166, 35, 0.3)'];
+            
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                const size = Math.random() * 10 + 5;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.top = `${Math.random() * 100}%`;
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.animationDuration = `${Math.random() * 10 + 15}s`;
+                particle.style.animationDelay = `${Math.random() * 5}s`;
+                
+                particlesContainer.appendChild(particle);
             }
         }
 
-        async function handleEmailLogin() {
+        // Show toast notification
+        function showToast(message, duration = 3000) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        // Switch between login and register tabs
+        authTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // Update active tab
+                authTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Show corresponding form
+                authForms.forEach(form => {
+                    form.classList.remove('active');
+                    if (form.id === `${tabName}Form`) {
+                        form.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Toggle password visibility
+        function togglePasswordVisibility(inputId, toggleBtn) {
+            const passwordInput = document.getElementById(inputId);
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
+
+        loginPasswordToggle.addEventListener('click', () => {
+            togglePasswordVisibility('loginPassword', loginPasswordToggle);
+        });
+
+        registerPasswordToggle.addEventListener('click', () => {
+            togglePasswordVisibility('registerPassword', registerPasswordToggle);
+        });
+
+        // Handle login form submission
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             
+            // Basic validation
             if (!email || !password) {
-                showError('ইমেইল এবং পাসওয়ার্ড প্রয়োজন');
+                showToast('Please fill in all fields');
                 return;
             }
+            
+            // Simulate login process
+            showToast('Login successful! Redirecting...');
+            
+            // Save user data to localStorage
+            localStorage.setItem('user', JSON.stringify({
+                email: email,
+                displayName: email.split('@')[0]
+            }));
+            
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = 'adminmahid.html';
+            }, 1500);
+        });
 
-            try {
-                showLoading('লগইন হচ্ছে...');
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                await processUserData(userCredential.user);
-                hideAuthForm();
-            } catch (error) {
-                handleAuthError(error);
-            }
-        }
-
-        async function handleRegister() {
+        // Handle register form submission
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('registerName').value;
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
             
-            if (!email || !password || !confirmPassword) {
-                showError('সব fields পূরণ করুন');
+            // Basic validation
+            if (!name || !email || !password || !confirmPassword) {
+                showToast('Please fill in all fields');
                 return;
             }
-
+            
             if (password !== confirmPassword) {
-                showError('পাসওয়ার্ড match করছে না');
+                showToast('Passwords do not match');
                 return;
             }
-
+            
             if (password.length < 6) {
-                showError('পাসওয়ার্ড至少 ৬ অক্ষরের হতে হবে');
-                return;
-            }
-
-            try {
-                showLoading('রেজিস্টার হচ্ছে...');
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                await processUserData(userCredential.user, true);
-                hideAuthForm();
-                showNotification('🎉 রেজিস্টার সফল! ১০০ পয়েন্ট বোনাস পেয়েছেন!');
-            } catch (error) {
-                handleAuthError(error);
-            }
-        }
-
-        // ==================== USER DATA PROCESSING ====================
-        async function processUserData(user, isNewUser = false) {
-            try {
-                const userRef = db.collection('users').doc(user.uid);
-                const userDoc = await userRef.get();
-                
-                if (!userDoc.exists) {
-                    await userRef.set({
-                        email: user.email,
-                        points: 100,
-                        todayEarnings: 0,
-                        completedTasks: 0,
-                        totalEarnings: 0,
-                        totalWithdrawn: 0,
-                        totalReferrals: 0,
-                        activeReferrals: 0,
-                        referralPoints: 0,
-                        referralCode: generateReferralCode(),
-                        createdAt: new Date(),
-                        lastSeen: new Date(),
-                        banned: false
-                    });
-                } else {
-                    await userRef.update({
-                        last_seen: new Date()
-                    });
-                }
-                
-                currentUser = user;
-                loadUserData();
-                return true;
-            } catch (error) {
-                console.error('User data processing error:', error);
-                return false;
-            }
-        }
-
-        // ==================== USER DATA LOADING ====================
-        async function loadUserData() {
-            if (!currentUser) return;
-            
-            try {
-                const userDoc = await db.collection('users').doc(currentUser.uid).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    
-                    // Update UI
-                    document.getElementById('userName').textContent = userData.email || 'ইউজার';
-                    document.getElementById('userId').textContent = currentUser.uid.substring(0, 8);
-                    document.getElementById('userBalance').textContent = `${userData.points || 0} পয়েন্ট`;
-                    document.getElementById('todayEarnings').textContent = `${userData.todayEarnings || 0} পয়েন্ট`;
-                    document.getElementById('completedTasks').textContent = `${userData.completedTasks || 0} টি`;
-                    document.getElementById('totalReferrals').textContent = `${userData.totalReferrals || 0} জন`;
-                    document.getElementById('totalReferralsTab').textContent = userData.totalReferrals || 0;
-                    
-                    if (userData.referralCode) {
-                        document.getElementById('referralLink').value = `https://t.me/earn_zone_user_bot?start=${userData.referralCode}`;
-                    }
-                    
-                    loadNotice();
-                    loadTasks();
-                }
-            } catch (error) {
-                console.error("ইউজার ডেটা লোড করতে সমস্যা:", error);
-            }
-        }
-
-        // ==================== NOTICE SYSTEM ====================
-        async function loadNotice() {
-            try {
-                const noticeDoc = await db.collection('adminSettings').doc('notices').get();
-                if (noticeDoc.exists) {
-                    const noticeData = noticeDoc.data();
-                    if (noticeData.currentNotice) {
-                        document.getElementById('noticeBar').innerHTML = noticeData.currentNotice;
-                    }
-                }
-            } catch (error) {
-                console.error("নোটিশ লোড করতে সমস্যা:", error);
-            }
-        }
-
-        // ==================== TASK SYSTEM ====================
-        async function loadTasks() {
-            try {
-                const tasksSnapshot = await db.collection('tasks').where('enabled', '==', true).get();
-                const tasksList = document.getElementById('tasksList');
-                tasksList.innerHTML = '';
-                
-                if (tasksSnapshot.empty) {
-                    tasksList.innerHTML = `
-                        <div class="task-card glass-effect p-4 text-center">
-                            <p class="text-gray-200">কোন টাস্ক পাওয়া যায়নি</p>
-                            <p class="text-gray-400 text-sm mt-2">এডমিন প্যানেল থেকে টাস্ক যোগ করুন</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                tasksSnapshot.forEach(doc => {
-                    const task = doc.data();
-                    const taskElement = document.createElement('div');
-                    taskElement.className = 'task-card glass-effect p-4';
-                    taskElement.innerHTML = `
-                        <div class="flex justify-between items-start mb-3">
-                            <h4 class="text-white font-semibold">${task.title}</h4>
-                            <span class="bg-green-500 text-white px-2 py-1 rounded-lg text-sm">${task.points} পয়েন্ট</span>
-                        </div>
-                        <p class="text-gray-200 text-sm mb-3">${task.description || 'টাস্কটি সম্পন্ন করুন'}</p>
-                        <p class="text-gray-400 text-xs mb-2">নেটওয়ার্ক: ${task.network || 'N/A'}</p>
-                        <button class="w-full bg-blue-500 text-white py-2 rounded-lg" onclick="startTask('${doc.id}')">
-                            স্টার্ট করুন
-                        </button>
-                    `;
-                    tasksList.appendChild(taskElement);
-                });
-            } catch (error) {
-                console.error("টাস্ক লোড করতে সমস্যা:", error);
-            }
-        }
-
-        async function startTask(taskId) {
-            try {
-                const taskDoc = await db.collection('tasks').doc(taskId).get();
-                if (taskDoc.exists) {
-                    const task = taskDoc.data();
-                    showNotification(`টাস্ক শুরু করা হয়েছে: ${task.title}`);
-                    
-                    // Show ad based on network
-                    await showAd(task.network);
-                    
-                    // Complete task and add points
-                    await completeTask(taskId, task);
-                }
-            } catch (error) {
-                console.error('Task error:', error);
-                showError('টাস্ক শুরু করতে সমস্যা হয়েছে');
-            }
-        }
-
-        async function showAd(network) {
-            // Ad showing logic based on network
-            return new Promise(resolve => {
-                setTimeout(resolve, 2000); // Simulate ad loading
-            });
-        }
-
-        async function completeTask(taskId, taskData) {
-            try {
-                const userRef = db.collection('users').doc(currentUser.uid);
-                await userRef.update({
-                    points: firebase.firestore.FieldValue.increment(taskData.points),
-                    todayEarnings: firebase.firestore.FieldValue.increment(taskData.points),
-                    completedTasks: firebase.firestore.FieldValue.increment(1)
-                });
-                
-                showNotification(`🎉 ${taskData.points} পয়েন্ট পেয়েছেন!`);
-                loadUserData();
-            } catch (error) {
-                console.error('Complete task error:', error);
-            }
-        }
-
-        // ==================== UTILITY FUNCTIONS ====================
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-            setTimeout(() => errorDiv.classList.add('hidden'), 5000);
-        }
-
-        function showLoading(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-            errorDiv.style.background = '#4299e1';
-        }
-
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'notification glass-effect p-4';
-            notification.innerHTML = `
-                <div class="flex items-center">
-                    <i class="fas fa-check-circle text-green-400 mr-2"></i>
-                    <span class="text-white">${message}</span>
-                </div>
-            `;
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 3000);
-        }
-
-        function hideAuthForm() {
-            document.getElementById('authContainer').classList.add('hidden');
-            document.getElementById('appContent').classList.remove('hidden');
-        }
-
-        function generateReferralCode() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let result = '';
-            for (let i = 0; i < 6; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
-
-        function handleAuthError(error) {
-            switch(error.code) {
-                case 'auth/user-not-found':
-                    showError('এই ইমেইলে কোনো অ্যাকাউন্ট নেই। রেজিস্টার করুন।');
-                    break;
-                case 'auth/wrong-password':
-                    showError('ভুল পাসওয়ার্ড');
-                    break;
-                case 'auth/email-already-in-use':
-                    showError('এই ইমেইল already registered');
-                    break;
-                default:
-                    showError('Error: ' + error.message);
-            }
-        }
-
-        function shareOnTelegram() {
-            const referralLink = document.getElementById('referralLink').value;
-            const message = `🎯 EarnZone অ্যাপটি ব্যবহার করে পয়েন্ট অর্জন করুন! আমার রেফারেল লিংক: ${referralLink}`;
-            window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(message)}`, '_blank');
-        }
-
-        // ==================== EVENT LISTENERS ====================
-        document.getElementById('loginTab').addEventListener('click', () => {
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('loginTab').classList.add('bg-blue-500', 'text-white');
-            document.getElementById('registerTab').classList.remove('bg-blue-500', 'text-white');
-        });
-
-        document.getElementById('registerTab').addEventListener('click', () => {
-            document.getElementById('registerForm').classList.remove('hidden');
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('registerTab').classList.add('bg-blue-500', 'text-white');
-            document.getElementById('loginTab').classList.remove('bg-blue-500', 'text-white');
-        });
-
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const tab = this.getAttribute('data-tab');
-                
-                // Update active nav
-                document.querySelectorAll('.nav-item').forEach(nav => {
-                    nav.classList.remove('active');
-                    nav.querySelector('i').classList.remove('text-blue-500');
-                    nav.querySelector('p').classList.remove('text-blue-500');
-                });
-                
-                this.classList.add('active');
-                this.querySelector('i').classList.add('text-blue-500');
-                this.querySelector('p').classList.add('text-blue-500');
-                
-                // Show corresponding tab content
-                document.querySelectorAll('.tab-content-container > div').forEach(content => {
-                    content.classList.add('hidden');
-                });
-                
-                if (tab === 'referral' || tab === 'withdraw') {
-                    document.getElementById(tab + 'Tab').classList.remove('hidden');
-                }
-            });
-        });
-
-        document.getElementById('copyReferralBtn').addEventListener('click', function() {
-            const referralInput = document.getElementById('referralLink');
-            referralInput.select();
-            document.execCommand('copy');
-            showNotification('রেফারেল লিংক কপি করা হয়েছে!');
-        });
-
-        document.getElementById('withdrawBtn').addEventListener('click', function() {
-            const amount = document.getElementById('withdrawAmount').value;
-            const account = document.getElementById('accountNumber').value;
-            
-            if (!amount || amount < 500) {
-                showError('ন্যূনতম ৫০০ পয়েন্ট উইথড্র করতে হবে');
+                showToast('Password must be at least 6 characters long');
                 return;
             }
             
-            if (!account) {
-                showError('অ্যাকাউন্ট নম্বর লিখুন');
+            // Simulate registration process
+            showToast('Registration successful! Redirecting...');
+            
+            // Save user data to localStorage
+            localStorage.setItem('user', JSON.stringify({
+                email: email,
+                displayName: name
+            }));
+            
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = 'adminmahid.html';
+            }, 1500);
+        });
+
+        // Handle forgot password
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            
+            if (!email) {
+                showToast('Please enter your email address first');
                 return;
             }
             
-            showNotification(`উইথড্র রিকোয়েস্ট সাবমিট হয়েছে! ${amount} পয়েন্ট পাঠানো হবে`);
+            showToast('Password reset email sent. Check your inbox.');
         });
 
-        // ==================== INITIALIZE APP ====================
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUser = user;
-                hideAuthForm();
-                loadUserData();
-            }
-        });
-
-        console.log("EarnZone অ্যাপ্লিকেশন শুরু হয়েছে...");
+        // Initialize the page
+        createParticles();
     </script>
 </body>
 </html>
