@@ -74,31 +74,19 @@
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
             <h1 class="header-title">Earn Zone</h1>
         </div>
-
         <div class="profile-section">
             <div class="profile-card">
                 <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
                 <div class="points-display" id="userPointsDisplay"><i class="fas fa-coins"></i> 0 Points</div>
                 <div class="stats-display">
-                    <div class="stat-item">
-                        <div class="stat-value" id="clicksToday">0</div>
-                        <div class="stat-label">Clicks Today</div>
-                    </div>
-                     <div class="stat-item">
-                        <div class="stat-value" id="ref-count">0</div>
-                        <div class="stat-label">Referrals</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="total-points">0</div>
-                        <div class="stat-label">Total Points</div>
-                    </div>
+                    <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
+                    <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
+                    <div class="stat-item"><div class="stat-value" id="total-points">0</div><div class="stat-label">Total Points</div></div>
                 </div>
             </div>
         </div>
-
         <div class="content-section" id="mainContent"></div>
-
         <div class="bottom-nav">
             <a href="#" class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
             <a href="#" class="nav-item" data-page="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></a>
@@ -106,18 +94,16 @@
             <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
             <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
         </div>
-        
         <div class="ad-modal-overlay" id="adModal">
             <div class="ad-modal">
                 <h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3>
                 <div class="spinner"></div>
             </div>
         </div>
-
         <div class="toast" id="toast"></div>
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -147,27 +133,20 @@
         document.addEventListener('DOMContentLoaded', () => {
             tg.ready();
             tg.expand();
-            
             applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
                 document.body.innerHTML = "<h1>Please open this app in Telegram.</h1>";
                 return;
             }
-
             loadInitialData(tgUser);
-
             document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    navigateTo(item.dataset.page);
-                });
+                item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
         });
 
-        // --- Data Loading & User Management ---
+        // --- Data Loading & User Management (WITH REFERRAL FIX) ---
         async function loadInitialData(tgUser) {
             const userId = tgUser.id;
             const adminRef = await database.ref('admin').once('value');
@@ -178,13 +157,10 @@
             bonusChannels = adminData.bonusChannels || {};
 
             const userRef = database.ref('users/' + userId);
-            
-            // Use .once() for initial load to handle referral logic cleanly
             const snapshot = await userRef.once('value');
             let userData = snapshot.val();
 
             if (!userData) {
-                // --- NEW USER CREATION & REFERRAL LOGIC ---
                 const referrerCode = tg.initDataUnsafe.start_param;
                 const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                 
@@ -197,9 +173,7 @@
                     claimedBonuses: []
                 };
 
-                // ** REFERRAL BUG FIX IS HERE **
                 if (referrerCode && referrerCode !== ownReferralCode) {
-                    // Find the user who referred this new user
                     const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
                     const referrerSnap = await referrerQuery.once('value');
                     
@@ -207,11 +181,9 @@
                         const referrerId = Object.keys(referrerSnap.val())[0];
                         const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
                         
-                        // Give bonus to the new user
                         userData.points += bonuses.referee;
                         userData.referredBy = referrerCode;
                         
-                        // Prepare atomic update to give bonus to referrer and link the users
                         const updates = {};
                         updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
                         updates[`/users/${referrerId}/referrals/${userId}`] = true;
@@ -222,11 +194,9 @@
                         showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
                     }
                 }
-                // Set the new user data (with referral bonus if applicable)
                 await userRef.set(userData);
             }
             
-            // Use .on() for real-time updates after initial load
             userRef.on('value', (snap) => {
                 currentUser = { id: userId, ...snap.val() };
                 const today = new Date().toISOString().split('T')[0];
@@ -254,25 +224,20 @@
             document.getElementById('ref-count').textContent = refCount;
         }
 
+        // --- Theme Management ---
         function applyTheme(theme) {
             document.body.classList.toggle('dark-mode', theme === 'dark');
             document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
             localStorage.setItem('earnZoneTheme', theme);
         }
+        function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
 
-        function toggleTheme() {
-            applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
-        }
-
+        // --- Navigation ---
         function navigateTo(page) {
             document.querySelector('.nav-item.active')?.classList.remove('active');
             const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
             if (newActive) newActive.classList.add('active');
-
-            const pages = {
-                home: renderHomePage, tasks: renderTasksPage, bonus: renderBonusPage,
-                withdraw: renderWithdrawPage, referral: renderReferralPage
-            };
+            const pages = { home: renderHomePage, tasks: renderTasksPage, bonus: renderBonusPage, withdraw: renderWithdrawPage, referral: renderReferralPage };
             if (pages[page]) pages[page]();
         }
 
@@ -280,11 +245,7 @@
         function renderHomePage() {
             mainContent.innerHTML = `
                 <div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div>
-                <div class="task-card">
-                    <button class="btn btn-primary" id="dailyBonusBtn">
-                        <i class="fas fa-gift"></i> Daily Bonus
-                    </button>
-                </div>
+                <div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2>
                     <div id="leaderboard-list"></div>
@@ -296,12 +257,7 @@
         function renderTasksPage() {
             let tasksHtml = Object.keys(tasks).map(taskId => {
                 const task = tasks[taskId];
-                return task.enabled ? `
-                    <div class="task-card">
-                        <h3>${task.network} Task (Reward: ${task.reward})</h3>
-                        <div id="${task.zoneId}"></div>
-                        <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:10px;">Start Task</button>
-                    </div>` : '';
+                return task.enabled ? `<div class="task-card"><h3>${task.network} Task (Reward: ${task.reward})</h3><div id="${task.zoneId}"></div><button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:10px;">Start Task</button></div>` : '';
             }).join('');
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || ''}</p></div>${tasksHtml || '<p>No tasks available.</p>'}`;
         }
@@ -309,13 +265,7 @@
         function renderBonusPage() {
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => {
                 const isClaimed = currentUser.claimedBonuses?.includes(id);
-                return channel.enabled ? `
-                    <li class="channel-item">
-                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span>
-                        <button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
-                            ${isClaimed ? 'Claimed' : 'Claim'}
-                        </button>
-                    </li>` : '';
+                return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : '';
             }).join('');
             mainContent.innerHTML = `<div class="task-card"><h2>Bonus Rewards</h2><ul class="channel-list">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`;
         }
@@ -333,10 +283,7 @@
                     <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
                     <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
                 </div>
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2>
-                    <div id="withdraw-history"></div>
-                </div>`;
+                <div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`;
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal);
             loadWithdrawHistory();
         }
@@ -363,10 +310,7 @@
                         <div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div>
                     </div>
                 </div>
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
-                    <div id="ref-leaderboard-list"></div>
-                </div>`;
+                <div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')); });
             document.getElementById('shareReferralLinkBtn').addEventListener('click', () => { tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}`); });
             loadLeaderboard('referrals', '#ref-leaderboard-list');
@@ -382,7 +326,7 @@
                 const updates = {};
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward);
                 updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true;
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); // Update leaderboard
+                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward);
                 database.ref().update(updates);
                 showToast(`+${reward} Points! Bonus claimed.`);
             }, 3000);
@@ -409,7 +353,7 @@
                 closeAdModal();
                 const updates = {};
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward);
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward); // Update leaderboard
+                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward);
                 database.ref().update(updates);
                 showToast(`+${task.reward} Points!`);
             }).catch(err => {
@@ -428,7 +372,7 @@
                     const updates = {};
                     updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward);
                     updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses;
-                    updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); // Update leaderboard
+                    updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward);
                     database.ref().update(updates);
                     showToast(`+${reward} bonus points claimed!`);
                 }
