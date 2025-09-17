@@ -11,7 +11,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
-    <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c273eb631018e08b894.js"></script>
+    <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c27eb631018e08b894.js"></script>
     <script src='//libtl.com/sdk.js' data-zone='9797628' data-sdk='show_9797628'></script>
     <style>
         :root {
@@ -52,7 +52,7 @@
         .referral-input-group { display: flex; } .referral-input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
-        .bottom-nav.disabled { pointer-events: none; opacity: 0.5; } /* ** NEW STYLE TO DISABLE NAV BAR ** */
+        .bottom-nav.disabled { pointer-events: none; opacity: 0.5; }
         .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
         .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
         .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
@@ -82,7 +82,7 @@
             </div>
         </div>
         <div class="content-section" id="mainContent"></div>
-        <div class="bottom-nav disabled" id="bottomNav"> <!-- ** START DISABLED ** -->
+        <div class="bottom-nav disabled" id="bottomNav">
             <a href="#" class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
             <a href="#" class="nav-item" data-page="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></a>
             <a href="#" class="nav-item" data-page="bonus"><i class="fas fa-gift"></i><span>Bonus</span></a>
@@ -154,8 +154,7 @@
                     const referrerCode = tg.initDataUnsafe.start_param;
                     const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                     userData = {
-                        name: currentTgName,
-                        photoUrl: currentTgPhoto,
+                        name: currentTgName, photoUrl: currentTgPhoto,
                         points: 0, referralCode: ownReferralCode,
                         taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
                         claimedBonuses: []
@@ -196,7 +195,7 @@
                     }
                     updateUI();
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                    navigateTo(currentPage);
+                    navigateTo(currentPage, true); // Force re-render
                 });
             } catch (error) {
                 console.error("Initialization Error:", error);
@@ -204,7 +203,10 @@
             }
         }
 
-        function navigateTo(page) {
+        function navigateTo(page, forceRender = false) {
+            const currentActive = document.querySelector('.nav-item.active');
+            if (!forceRender && currentActive && currentActive.dataset.page === page) return; // Don't re-render same page unless forced
+
             document.querySelector('.nav-item.active')?.classList.remove('active');
             const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
             if (newActive) newActive.classList.add('active');
@@ -223,24 +225,6 @@
             document.getElementById('ref-count').textContent = refCount;
         }
 
-        function applyTheme(theme) { /* ... unchanged ... */ }
-        function toggleTheme() { /* ... unchanged ... */ }
-        function renderHomePage() { /* ... unchanged ... */ }
-        function renderTasksPage() { /* ... unchanged ... */ }
-        function renderBonusPage() { /* ... unchanged ... */ }
-        async function renderWithdrawPage() { /* ... unchanged ... */ }
-        function renderReferralPage() { /* ... unchanged ... */ }
-        function handleDailyBonus() { /* ... unchanged ... */ }
-        function handleTaskClick(taskId) { /* ... unchanged ... */ }
-        function handleBonusClaim(channelId, reward, link) { /* ... unchanged ... */ }
-        async function loadWithdrawHistory() { /* ... unchanged ... */ }
-        function handleSubmitWithdrawal() { /* ... unchanged ... */ }
-        async function loadLeaderboard(type, elementId) { /* ... unchanged ... */ }
-        function openAdModal(title) { /* ... unchanged ... */ }
-        function closeAdModal() { /* ... unchanged ... */ }
-        function showToast(message, duration = 3000) { /* ... unchanged ... */ }
-        
-        // --- Full Function definitions ---
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
