@@ -178,21 +178,57 @@
             bonusChannels = adminData.bonusChannels || {};
 
             const userRef = database.ref('users/' + userId);
-            userRef.on('value', (snapshot) => {
-                let userData = snapshot.val();
-                if (!userData) {
-                    userData = {
-                        name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || `User ${userId}`,
-                        photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
-                        points: 0,
-                        referralCode: 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-                        taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
-                        claimedBonuses: []
-                    };
-                    userRef.set(userData);
-                }
-                currentUser = { id: userId, ...userData };
+            
+            // Use .once() for initial load to handle referral logic cleanly
+            const snapshot = await userRef.once('value');
+            let userData = snapshot.val();
 
+            if (!userData) {
+                // --- NEW USER CREATION & REFERRAL LOGIC ---
+                const referrerCode = tg.initDataUnsafe.start_param;
+                const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                
+                userData = {
+                    name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || `User ${userId}`,
+                    photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                    points: 0,
+                    referralCode: ownReferralCode,
+                    taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
+                    claimedBonuses: []
+                };
+
+                // ** REFERRAL BUG FIX IS HERE **
+                if (referrerCode && referrerCode !== ownReferralCode) {
+                    // Find the user who referred this new user
+                    const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
+                    const referrerSnap = await referrerQuery.once('value');
+                    
+                    if (referrerSnap.exists()) {
+                        const referrerId = Object.keys(referrerSnap.val())[0];
+                        const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
+                        
+                        // Give bonus to the new user
+                        userData.points += bonuses.referee;
+                        userData.referredBy = referrerCode;
+                        
+                        // Prepare atomic update to give bonus to referrer and link the users
+                        const updates = {};
+                        updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                        updates[`/users/${referrerId}/referrals/${userId}`] = true;
+                        updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
+                        updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                        
+                        await database.ref().update(updates);
+                        showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
+                    }
+                }
+                // Set the new user data (with referral bonus if applicable)
+                await userRef.set(userData);
+            }
+            
+            // Use .on() for real-time updates after initial load
+            userRef.on('value', (snap) => {
+                currentUser = { id: userId, ...snap.val() };
                 const today = new Date().toISOString().split('T')[0];
                 if (currentUser.taskStats?.lastResetDate !== today) {
                     database.ref(`users/${currentUser.id}/taskStats`).update({
@@ -208,6 +244,7 @@
         }
 
         function updateUI() {
+            if (!currentUser) return;
             document.getElementById('profileNameDisplay').textContent = currentUser.name;
             document.getElementById('profilePic').src = currentUser.photoUrl;
             document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${currentUser.points || 0} Points`;
@@ -217,7 +254,6 @@
             document.getElementById('ref-count').textContent = refCount;
         }
 
-        // --- Theme Management ---
         function applyTheme(theme) {
             document.body.classList.toggle('dark-mode', theme === 'dark');
             document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
@@ -228,7 +264,6 @@
             applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
         }
 
-        // --- Navigation ---
         function navigateTo(page) {
             document.querySelector('.nav-item.active')?.classList.remove('active');
             const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
@@ -276,7 +311,7 @@
                 const isClaimed = currentUser.claimedBonuses?.includes(id);
                 return channel.enabled ? `
                     <li class="channel-item">
-                        <span><i class="${channel.icon}"></i> ${channel.name} (+${channel.reward})</span>
+                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span>
                         <button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
                             ${isClaimed ? 'Claimed' : 'Claim'}
                         </button>
@@ -289,7 +324,6 @@
             const methodsSnap = await database.ref('admin/withdrawMethods').once('value');
             const methods = methodsSnap.val() || {};
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join('');
-
             mainContent.innerHTML = `
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2>
@@ -311,7 +345,6 @@
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
             const refCount = currentUser.referrals ? Object.keys(currentUser.referrals).length : 0;
             const earnedFromReferrals = refCount * (appSettings.referralBonus?.referrer || 0);
-
             mainContent.innerHTML = `
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-share-alt"></i> Refer & Earn</h2>
@@ -341,15 +374,15 @@
 
         // --- Feature Logic & Handlers ---
         function handleDailyBonus() {
-             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed.");
+            if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed.");
             const reward = appSettings.dailyBonus?.reward || 50;
             openAdModal('Daily Bonus Ad');
-            setTimeout(() => { // Simulate ad watch
+            setTimeout(() => {
                 closeAdModal();
                 const updates = {};
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward);
                 updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true;
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward);
+                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); // Update leaderboard
                 database.ref().update(updates);
                 showToast(`+${reward} Points! Bonus claimed.`);
             }, 3000);
@@ -376,7 +409,7 @@
                 closeAdModal();
                 const updates = {};
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward);
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward);
+                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward); // Update leaderboard
                 database.ref().update(updates);
                 showToast(`+${task.reward} Points!`);
             }).catch(err => {
@@ -395,7 +428,7 @@
                     const updates = {};
                     updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward);
                     updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses;
-                    updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward);
+                    updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); // Update leaderboard
                     database.ref().update(updates);
                     showToast(`+${reward} bonus points claimed!`);
                 }
