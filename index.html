@@ -137,9 +137,7 @@
                 const userId = tgUser.id;
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) {
-                    throw new Error("'/admin' data not found. Please import the database JSON file.");
-                }
+                if (!adminData) { throw new Error("'/admin' data not found. Please import the database JSON file."); }
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
@@ -152,8 +150,15 @@
                 if (!userData) {
                     const referrerCode = tg.initDataUnsafe.start_param;
                     const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                    
+                    // ** NAME FIX IS HERE **
+                    let userName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim();
+                    if (!userName) {
+                        userName = tgUser.username || `User ${userId}`;
+                    }
+
                     userData = {
-                        name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || `User ${userId}`,
+                        name: userName,
                         photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
                         points: 0, referralCode: ownReferralCode,
                         taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
@@ -213,8 +218,8 @@
         
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
-            document.getElementById('profileNameDisplay').textContent = currentUser.name;
-            document.getElementById('profilePic').src = currentUser.photoUrl;
+            document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
+            document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
             document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${currentUser.points || 0} Points`;
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             document.getElementById('total-points').textContent = currentUser.points || 0;
@@ -401,7 +406,12 @@
             const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value');
             const data = snapshot.val();
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; }
-            const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || 'Unknown', score })));
+            const promises = Object.entries(data).map(([id, score]) => 
+                database.ref(`users/${id}/name`).once('value').then(snap => ({ 
+                    name: snap.val() || `User ${id}`, // ** LEADERBOARD NAME FIX IS HERE **
+                    score 
+                }))
+            );
             const users = await Promise.all(promises);
             listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `
                 <div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join('');
