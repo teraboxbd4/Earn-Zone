@@ -134,7 +134,10 @@
             try {
                 const userId = tgUser.id;
                 const adminRef = await database.ref('admin').once('value');
-                const adminData = adminRef.val() || {};
+                const adminData = adminRef.val();
+                if (!adminData) {
+                    throw new Error("Admin data not found in database. Please import the JSON file.");
+                }
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
@@ -190,7 +193,7 @@
                 });
             } catch (error) {
                 console.error("Initialization Error:", error);
-                document.getElementById('loader').innerText = `Error: Could not load app data. Please check connection and Firebase Rules. Details: ${error.message}`;
+                document.getElementById('loader').innerText = `CRITICAL ERROR: ${error.message}. Please check your Firebase configuration and rules.`;
             }
         }
 
