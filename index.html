@@ -241,7 +241,6 @@
             
             const oldScript = document.getElementById('adextra-script');
             if (oldScript) oldScript.remove();
-
             const adExtraTask = Object.values(tasks).find(t => t.network.toLowerCase() === 'adeextra' && t.enabled);
             if (adExtraTask) {
                 const script = document.createElement('script');
@@ -251,62 +250,11 @@
                 document.body.appendChild(script);
             }
         }
-
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2>Bonus Rewards</h2><ul class="channel-list">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         function renderReferralPage() { const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`; const refCount = currentUser.referrals ? Object.keys(currentUser.referrals).length : 0; const earnedFromReferrals = refCount * (appSettings.referralBonus?.referrer || 0); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-share-alt"></i> Refer & Earn</h2><p style="margin-bottom: 15px;">${appSettings.notices?.referral || ''}</p><label>Your Referral Link</label><div class="referral-input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn" style="width: auto; padding: 0 15px;">Copy</button></div><button class="btn btn-primary" id="shareReferralLinkBtn" style="margin-top: 15px;"><i class="fas fa-share-alt"></i> Share on Telegram</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div><div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div></div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`; document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')); }); document.getElementById('shareReferralLinkBtn').addEventListener('click', () => { tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}`); }); loadLeaderboard('referrals', '#ref-leaderboard-list'); }
-        
-        // --- ** MAIN AD LOGIC FIX IS HERE ** ---
-        function handleTaskClick(taskId) {
-            const task = tasks[taskId];
-            const clickCounterRule = appSettings.clickCounterRule || 10;
-            const clicksToday = currentUser.taskStats?.clicksToday || 0;
-            if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`);
-            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
-            
-            openAdModal(`${task.network} Ad Playing...`);
-            let adPromise;
-            
-            try {
-                // Convert network name to lowercase for a reliable comparison
-                const networkName = task.network.toLowerCase();
-
-                switch(networkName) {
-                    case 'monetag':
-                        adPromise = window.show_9797628();
-                        break;
-                    case 'gigapub':
-                        adPromise = window.showGiga();
-                        break;
-                    case 'adexora':
-                        adPromise = window.showAdexora();
-                        break;
-                    case 'adeextra':
-                        // For AdeExtra, the ad is already on the page. We just simulate a delay.
-                        adPromise = new Promise(resolve => setTimeout(resolve, 5000));
-                        break;
-                    default:
-                        // This case will now be much harder to reach
-                        adPromise = Promise.reject('Unknown network');
-                }
-            } catch (e) {
-                adPromise = Promise.reject(`SDK error for ${task.network}`);
-            }
-
-            adPromise.then(() => {
-                closeAdModal();
-                const updates = {};
-                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward);
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward);
-                database.ref().update(updates);
-                showToast(`+${task.reward} Points!`);
-            }).catch(err => {
-                closeAdModal();
-                showToast(`Ad failed: ${err}. Please try again.`);
-            });
-        }
-        
         function handleDailyBonus() { if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); const reward = appSettings.dailyBonus?.reward || 50; openAdModal('Daily Bonus Ad'); setTimeout(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} Points! Bonus claimed.`); }, 3000); }
+        function handleTaskClick(taskId) { const task = tasks[taskId]; const clickCounterRule = appSettings.clickCounterRule || 10; const clicksToday = currentUser.taskStats?.clicksToday || 0; if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); openAdModal(`${task.network} Ad Playing...`); let adPromise; try { const networkName = task.network.toLowerCase(); switch(networkName) { case 'monetag': adPromise = window.show_9797628(); break; case 'gigapub': adPromise = window.showGiga(); break; case 'adexora': adPromise = window.showAdexora(); break; case 'adeextra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break; default: adPromise = Promise.reject('Unknown network'); } } catch (e) { adPromise = Promise.reject(`SDK error for ${task.network}`); } adPromise.then(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward); updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward); database.ref().update(updates); showToast(`+${task.reward} Points!`); }).catch(err => { closeAdModal(); showToast(`Ad failed: ${err}. Please try again.`); }); }
         function handleBonusClaim(channelId, reward, link) { showToast("Verifying, please wait...", 5000); tg.openTelegramLink(link); setTimeout(() => { const claimedBonuses = currentUser.claimedBonuses || []; if (!claimedBonuses.includes(channelId)) { claimedBonuses.push(channelId); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} bonus points claimed!`); } }, 5000); }
         async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
         function handleSubmitWithdrawal() { const method = document.getElementById('withdraw-method').value; const amount = parseInt(document.getElementById('withdraw-amount').value); const account = document.getElementById('withdraw-account').value.trim(); if (!method || !amount || !account) return showToast("Please fill all fields."); if (amount <= 0 || amount > currentUser.points) return showToast("You do not have enough points."); const requestData = { userId: currentUser.id, userName: currentUser.name, amount: amount, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP }; database.ref('withdrawRequests').push(requestData).then(() => { database.ref(`users/${currentUser.id}/points`).set(firebase.database.ServerValue.increment(-amount)); showToast("Withdrawal request submitted!"); navigateTo('withdraw'); }).catch(err => showToast("Error: Could not submit request.")); }
