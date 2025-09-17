@@ -21,7 +21,7 @@
             background-color: var(--bg-dark); color: var(--text-light); --header-bg: linear-gradient(135deg, var(--bg-dark), #1A2530); --card-bg: var(--card-bg-dark); --text-primary: var(--text-light); --text-secondary: #B0B0B0; --border-color: var(--border-color-dark); --input-bg: #4A657D; --input-border: #5A7E9C; --button-bg-secondary: #4A657D; --button-text-secondary: var(--secondary-color); --toggle-bg: #4A657D;
         }
         body:not(.dark-mode) {
-            background-color: var(--bg-light); color: var(--text-dark); --header-bg: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); --card-bg: var(--card-bg-light); --text-primary: var(--text-dark); --text-secondary: #666666; --border-color: var(--border-color-light); --input-bg: #F0F0E0; --input-border: #E0E0E0; --button-bg-secondary: #E9ECEF; --button-text-secondary: var(--primary-color); --toggle-bg: #E0E0E0;
+            background-color: var(--bg-light); color: var(--text-dark); --header-bg: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); --card-bg: var(--card-bg-light); --text-primary: var(--text-dark); --text-secondary: #666666; --border-color: var(--border-color-light); --input-bg: #F0F0F0; --input-border: #E0E0E0; --button-bg-secondary: #E9ECEF; --button-text-secondary: var(--primary-color); --toggle-bg: #E0E0E0;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
@@ -206,6 +206,7 @@
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
             if (!forceRender && currentActive && currentActive.dataset.page === page) return;
+
             document.querySelector('.nav-item.active')?.classList.remove('active');
             const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
             if (newActive) newActive.classList.add('active');
