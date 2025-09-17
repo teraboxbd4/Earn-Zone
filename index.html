@@ -146,14 +146,16 @@
                 const userRef = database.ref('users/' + userId);
                 const snapshot = await userRef.once('value');
                 let userData = snapshot.val();
+                
+                const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
+                const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
 
-                if (!userData) {
+                if (!userData) { // --- This is a NEW user ---
                     const referrerCode = tg.initDataUnsafe.start_param;
                     const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    let userName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
                     userData = {
-                        name: userName,
-                        photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                        name: currentTgName,
+                        photoUrl: currentTgPhoto,
                         points: 0, referralCode: ownReferralCode,
                         taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
                         claimedBonuses: []
@@ -176,6 +178,15 @@
                         }
                     }
                     await userRef.set(userData);
+                } else { // --- This is an EXISTING user ---
+                    // ** SELF-HEALING FIX IS HERE **
+                    // Check if the name or photo in the database is missing or different, and update it.
+                    if (userData.name !== currentTgName || userData.photoUrl !== currentTgPhoto) {
+                        await userRef.update({
+                            name: currentTgName,
+                            photoUrl: currentTgPhoto
+                        });
+                    }
                 }
                 
                 document.getElementById('loader').style.display = 'none';
