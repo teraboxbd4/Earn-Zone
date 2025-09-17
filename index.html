@@ -114,7 +114,7 @@
         let bonusChannels = {};
         const tg = window.Telegram.WebApp;
         const BOT_USERNAME = "earn_zone_user_bot";
-        let isDataLoaded = false;
+        let isDataLoaded = false; // ** THE NEW FLAG TO PREVENT RACE CONDITIONS **
 
         document.addEventListener('DOMContentLoaded', () => {
             tg.ready();
@@ -150,13 +150,7 @@
                 if (!userData) {
                     const referrerCode = tg.initDataUnsafe.start_param;
                     const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    
-                    // ** ROBUST NAME HANDLING **
-                    let userName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim();
-                    if (!userName) { // If first/last name are private or not set
-                        userName = tgUser.username || `User_${userId}`; // Fallback to username, then to User ID
-                    }
-
+                    let userName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
                     userData = {
                         name: userName,
                         photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
@@ -164,7 +158,6 @@
                         taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
                         claimedBonuses: []
                     };
-
                     if (referrerCode && referrerCode !== ownReferralCode) {
                         const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
                         const referrerSnap = await referrerQuery.once('value');
@@ -190,7 +183,7 @@
 
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
-                    isDataLoaded = true;
+                    isDataLoaded = true; // ** SET THE FLAG HERE **
                     const today = new Date().toISOString().split('T')[0];
                     if (currentUser.taskStats?.lastResetDate !== today) {
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
@@ -205,7 +198,9 @@
             }
         }
 
+        // --- ** NAVIGATION FIX IS HERE ** ---
         function navigateTo(page) {
+            // Only render the page if the initial data has been loaded.
             if (!isDataLoaded) {
                 document.getElementById('mainContent').innerHTML = "<p>Loading user data...</p>";
                 return;
@@ -219,7 +214,6 @@
         
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
-            // ** ROBUST UI UPDATE **
             document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
             document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${currentUser.points || 0} Points`;
@@ -410,7 +404,7 @@
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; }
             const promises = Object.entries(data).map(([id, score]) => 
                 database.ref(`users/${id}/name`).once('value').then(snap => ({ 
-                    name: snap.val() || `User ${id}`, // ** LEADERBOARD NAME FIX IS HERE **
+                    name: snap.val() || `User ${id}`,
                     score 
                 }))
             );
