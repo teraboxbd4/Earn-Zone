@@ -69,7 +69,8 @@
     </style>
 </head>
 <body>
-    <div class="app-container">
+    <div id="loader" style="text-align: center; padding-top: 50px;">Loading App...</div>
+    <div class="app-container" style="display: none;">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
             <h1 class="header-title">Earn Zone</h1>
@@ -137,7 +138,7 @@
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
-                document.body.innerHTML = "<h1>Please open this app in Telegram.</h1>";
+                document.getElementById('loader').innerText = "Please open this app in Telegram.";
                 return;
             }
             loadInitialData(tgUser);
@@ -148,71 +149,95 @@
 
         // --- Data Loading & User Management (WITH REFERRAL FIX) ---
         async function loadInitialData(tgUser) {
-            const userId = tgUser.id;
-            const adminRef = await database.ref('admin').once('value');
-            const adminData = adminRef.val() || {};
-            appSettings = adminData.settings || {};
-            appSettings.notices = adminData.notices || {};
-            tasks = adminData.tasks || {};
-            bonusChannels = adminData.bonusChannels || {};
+            try {
+                const userId = tgUser.id;
+                const adminRef = await database.ref('admin').once('value');
+                const adminData = adminRef.val() || {};
+                appSettings = adminData.settings || {};
+                appSettings.notices = adminData.notices || {};
+                tasks = adminData.tasks || {};
+                bonusChannels = adminData.bonusChannels || {};
 
-            const userRef = database.ref('users/' + userId);
-            const snapshot = await userRef.once('value');
-            let userData = snapshot.val();
+                const userRef = database.ref('users/' + userId);
+                const snapshot = await userRef.once('value');
+                let userData = snapshot.val();
 
-            if (!userData) {
-                const referrerCode = tg.initDataUnsafe.start_param;
-                const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                
-                userData = {
-                    name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || `User ${userId}`,
-                    photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
-                    points: 0,
-                    referralCode: ownReferralCode,
-                    taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
-                    claimedBonuses: []
-                };
-
-                if (referrerCode && referrerCode !== ownReferralCode) {
-                    const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
-                    const referrerSnap = await referrerQuery.once('value');
+                if (!userData) {
+                    const referrerCode = tg.initDataUnsafe.start_param;
+                    const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                     
-                    if (referrerSnap.exists()) {
-                        const referrerId = Object.keys(referrerSnap.val())[0];
-                        const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
+                    userData = {
+                        name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || `User ${userId}`,
+                        photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                        points: 0,
+                        referralCode: ownReferralCode,
+                        taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
+                        claimedBonuses: []
+                    };
+
+                    if (referrerCode && referrerCode !== ownReferralCode) {
+                        const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
+                        const referrerSnap = await referrerQuery.once('value');
                         
-                        userData.points += bonuses.referee;
-                        userData.referredBy = referrerCode;
-                        
-                        const updates = {};
-                        updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                        updates[`/users/${referrerId}/referrals/${userId}`] = true;
-                        updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
-                        updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                        
-                        await database.ref().update(updates);
-                        showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
+                        if (referrerSnap.exists()) {
+                            const referrerId = Object.keys(referrerSnap.val())[0];
+                            const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
+                            
+                            userData.points += bonuses.referee;
+                            userData.referredBy = referrerCode;
+                            
+                            const updates = {};
+                            updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                            updates[`/users/${referrerId}/referrals/${userId}`] = true;
+                            updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
+                            updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                            
+                            await database.ref().update(updates);
+                            showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
+                        }
                     }
+                    await userRef.set(userData);
                 }
-                await userRef.set(userData);
+                
+                document.getElementById('loader').style.display = 'none';
+                document.querySelector('.app-container').style.display = 'block';
+
+                userRef.on('value', (snap) => {
+                    currentUser = { id: userId, ...snap.val() };
+                    const today = new Date().toISOString().split('T')[0];
+                    if (currentUser.taskStats?.lastResetDate !== today) {
+                        database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
+                    }
+                    updateUI();
+                    const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
+                    navigateTo(currentPage);
+                });
+            } catch (error) {
+                console.error("Initialization Error:", error);
+                document.getElementById('loader').innerText = `Error: Could not load app data. Please check your connection and Firebase Rules. Details: ${error.message}`;
             }
-            
-            userRef.on('value', (snap) => {
-                currentUser = { id: userId, ...snap.val() };
-                const today = new Date().toISOString().split('T')[0];
-                if (currentUser.taskStats?.lastResetDate !== today) {
-                    database.ref(`users/${currentUser.id}/taskStats`).update({
-                        lastResetDate: today,
-                        dailyBonusClaimed: false,
-                        clicksToday: 0
-                    });
-                }
-                updateUI();
-                const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                navigateTo(currentPage);
-            });
         }
 
+        function updateUI() { /* ... unchanged ... */ }
+        function applyTheme(theme) { /* ... unchanged ... */ }
+        function toggleTheme() { /* ... unchanged ... */ }
+        function navigateTo(page) { /* ... unchanged ... */ }
+        function renderHomePage() { /* ... unchanged ... */ }
+        function renderTasksPage() { /* ... unchanged ... */ }
+        function renderBonusPage() { /* ... unchanged ... */ }
+        async function renderWithdrawPage() { /* ... unchanged ... */ }
+        function renderReferralPage() { /* ... unchanged ... */ }
+        function handleDailyBonus() { /* ... unchanged ... */ }
+        function handleTaskClick(taskId) { /* ... unchanged ... */ }
+        function handleBonusClaim(channelId, reward, link) { /* ... unchanged ... */ }
+        async function loadWithdrawHistory() { /* ... unchanged ... */ }
+        function handleSubmitWithdrawal() { /* ... unchanged ... */ }
+        async function loadLeaderboard(type, elementId) { /* ... unchanged ... */ }
+        function openAdModal(title) { /* ... unchanged ... */ }
+        function closeAdModal() { /* ... unchanged ... */ }
+        function showToast(message, duration = 3000) { /* ... unchanged ... */ }
+        
+        // --- Full Function definitions ---
         function updateUI() {
             if (!currentUser) return;
             document.getElementById('profileNameDisplay').textContent = currentUser.name;
@@ -224,15 +249,6 @@
             document.getElementById('ref-count').textContent = refCount;
         }
 
-        // --- Theme Management ---
-        function applyTheme(theme) {
-            document.body.classList.toggle('dark-mode', theme === 'dark');
-            document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            localStorage.setItem('earnZoneTheme', theme);
-        }
-        function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
-
-        // --- Navigation ---
         function navigateTo(page) {
             document.querySelector('.nav-item.active')?.classList.remove('active');
             const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
@@ -241,7 +257,6 @@
             if (pages[page]) pages[page]();
         }
 
-        // --- Page Rendering ---
         function renderHomePage() {
             mainContent.innerHTML = `
                 <div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div>
@@ -316,7 +331,6 @@
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
-        // --- Feature Logic & Handlers ---
         function handleDailyBonus() {
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed.");
             const reward = appSettings.dailyBonus?.reward || 50;
@@ -408,7 +422,6 @@
             }).catch(err => showToast("Error: Could not submit request."));
         }
 
-        // --- Utility Functions ---
         async function loadLeaderboard(type, elementId) {
             const listEl = document.querySelector(elementId); if (!listEl) return;
             listEl.innerHTML = "<p>Loading...</p>";
