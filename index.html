@@ -11,7 +11,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
-    <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c27eb631018e08b894.js"></script>
+    <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c273eb631018e08b894.js"></script>
     <script src='//libtl.com/sdk.js' data-zone='9797628' data-sdk='show_9797628'></script>
     <style>
         :root {
@@ -185,7 +185,7 @@
                 
                 document.getElementById('loader').style.display = 'none';
                 document.querySelector('.app-container').style.display = 'block';
-                document.getElementById('bottomNav').classList.remove('disabled'); // ** ENABLE NAV BAR **
+                document.getElementById('bottomNav').classList.remove('disabled');
 
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
@@ -195,7 +195,7 @@
                     }
                     updateUI();
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                    navigateTo(currentPage, true); // Force re-render
+                    navigateTo(currentPage, true);
                 });
             } catch (error) {
                 console.error("Initialization Error:", error);
@@ -205,7 +205,7 @@
 
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
-            if (!forceRender && currentActive && currentActive.dataset.page === page) return; // Don't re-render same page unless forced
+            if (!forceRender && currentActive && currentActive.dataset.page === page) return;
 
             document.querySelector('.nav-item.active')?.classList.remove('active');
             const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
