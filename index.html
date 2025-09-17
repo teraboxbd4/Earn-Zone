@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Ad Network SDKs (AdeExtra is now loaded dynamically) -->
+    <!-- Ad Network SDKs (AdeExtra is now loaded dynamically below) -->
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
     <script src='//libtl.com/sdk.js' data-zone='9797628' data-sdk='show_9797628'></script>
@@ -238,7 +238,6 @@
                 if (task.enabled) {
                     return `<div class="task-card">
                                 <h3>${task.network} Task (Reward: ${task.reward})</h3>
-                                <!-- This div is the target for the AdeExtra ad -->
                                 <div id="${task.zoneId}"></div> 
                                 <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:10px;">Start Task</button>
                             </div>`;
@@ -247,10 +246,15 @@
             }).join('');
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || ''}</p></div>${tasksHtml || '<p>No tasks available.</p>'}`;
 
-            // Now, dynamically load the AdeExtra script if its task exists
+            // 1. Remove any old AdeExtra script to prevent duplicates
+            const oldScript = document.getElementById('adextra-script');
+            if (oldScript) oldScript.remove();
+
+            // 2. If an AdeExtra task exists, create and load the new script
             const adExtraTask = Object.values(tasks).find(t => t.network === 'AdeExtra' && t.enabled);
             if (adExtraTask) {
                 const script = document.createElement('script');
+                script.id = 'adextra-script'; // Give it an ID to find and remove it later
                 script.src = `https://partner.adextra.io/jt/${adExtraTask.zoneId}.js`;
                 script.async = true;
                 document.body.appendChild(script);
