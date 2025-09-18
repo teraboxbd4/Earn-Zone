@@ -184,7 +184,10 @@
                 
                 document.getElementById('loader').style.display = 'none';
                 document.querySelector('.app-container').style.display = 'block';
-                document.getElementById('bottomNav').classList.remove('disabled');
+                
+                // --- LOADING FIX ---
+                // We now use a flag to enable navigation only AFTER the first data load completes.
+                let isInitialLoad = true; 
 
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
@@ -195,6 +198,12 @@
                     updateUI();
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
                     navigateTo(currentPage, true);
+
+                    // This block now ensures the nav bar is only enabled once the user object is ready.
+                    if (isInitialLoad) {
+                        document.getElementById('bottomNav').classList.remove('disabled');
+                        isInitialLoad = false;
+                    }
                 });
             } catch (error) {
                 console.error("Initialization Error:", error);
@@ -227,7 +236,6 @@
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         
-        // --- UNCHANGED PAGES ---
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
         function renderTasksPage() {
             let tasksHtml = Object.keys(tasks).map(taskId => {
@@ -253,7 +261,6 @@
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2>Bonus Rewards</h2><ul class="channel-list">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
-        // --- FULLY FIXED AND UPDATED REFERRAL PAGE ---
         function renderReferralPage() {
             if (!currentUser || !currentUser.referralCode) {
                 mainContent.innerHTML = `<div class="task-card"><p>Loading your referral info...</p></div>`;
