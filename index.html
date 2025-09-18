@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Earn Zone</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -31,7 +31,7 @@
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
-        .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); overflow-wrap: break-word; } /* Fix for long usernames */
+        .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); overflow-wrap: break-word; /* Fix for long usernames */ }
         .points-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; margin-top: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; }
         .stats-display { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; }
@@ -131,12 +131,12 @@
             });
         });
 
-        // --- START: REBUILT INITIALIZATION LOGIC TO FIX LOADING BUG ---
+        // --- START: ROBUST INITIALIZATION LOGIC TO FIX LOADING BUG ---
         async function loadInitialData(tgUser) {
             try {
                 const userId = tgUser.id;
                 
-                // 1. Fetch admin settings first
+                // STEP 1: Fetch admin settings first
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
                 if (!adminData) { throw new Error("'/admin' data not found. Please import the database JSON file."); }
@@ -145,7 +145,7 @@
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
 
-                // 2. Perform a one-time setup for the user (create if not exists)
+                // STEP 2: Perform a one-time setup/check for the user
                 const userRef = database.ref('users/' + userId);
                 const snapshot = await userRef.once('value');
                 let userData = snapshot.val();
@@ -186,12 +186,11 @@
                     }
                 }
                 
-                // 3. Hide loader and show app container now that setup is complete
                 document.getElementById('loader').style.display = 'none';
                 document.querySelector('.app-container').style.display = 'block';
 
-                // 4. Attach the real-time listener for live updates
-                let isFirstUpdate = true;
+                // STEP 3: Attach the real-time listener for live updates
+                let isFirstDataReceived = false;
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
                     
@@ -200,16 +199,17 @@
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
                     }
                     
-                    updateUI();
+                    updateUI(); // Always update the header profile card
 
-                    if (isFirstUpdate) {
-                        // On the first run, render the home page...
+                    // The logic that guarantees the fix:
+                    if (!isFirstDataReceived) {
+                        // For the very first data payload, render the home page.
                         navigateTo('home', true);
-                        // ...and ONLY THEN, enable the navigation bar.
+                        // And NOW, it is safe to enable navigation.
                         document.getElementById('bottomNav').classList.remove('disabled');
-                        isFirstUpdate = false;
+                        isFirstDataReceived = true;
                     } else {
-                        // For all future updates, just refresh the current page
+                        // For all subsequent updates, just refresh the content of the current page.
                         const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
                         navigateTo(currentPage, true);
                     }
@@ -219,8 +219,7 @@
                 document.getElementById('loader').innerHTML = `<p>CRITICAL ERROR: ${error.message}</p><p>Please check your Firebase Rules and ensure the database is not empty.</p>`;
             }
         }
-        // --- END: REBUILT INITIALIZATION LOGIC ---
-
+        // --- END: ROBUST INITIALIZATION LOGIC ---
 
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
