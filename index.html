@@ -230,6 +230,7 @@
             document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${currentUser.points || 0} Points`;
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             document.getElementById('total-points').textContent = currentUser.points || 0;
+            // The 'referrals' object might not exist for new users, so we check for it.
             const refCount = currentUser.referrals ? Object.keys(currentUser.referrals).length : 0;
             document.getElementById('ref-count').textContent = refCount;
         }
@@ -262,90 +263,92 @@
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2>Bonus Rewards</h2><ul class="channel-list">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
+        // --- START: UPDATED RENDER REFERRAL PAGE FUNCTION ---
         function renderReferralPage() {
             if (!currentUser || !currentUser.referralCode) {
                 mainContent.innerHTML = `<div class="task-card"><p>Loading your referral info...</p></div>`;
                 return; 
             }
-            const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
+            
+            // Calculate stats
             const refCount = currentUser.referrals ? Object.keys(currentUser.referrals).length : 0;
-            const earnedFromReferrals = refCount * (appSettings.referralBonus?.referrer || 0);
-            const bonusAmount = (appSettings.referralBonus?.referee || 100);
-            const adReward = appSettings.settings?.referralAdReward || 5;
+            const referrerBonus = appSettings.referralBonus?.referrer || 0;
+            const earnedFromReferrals = refCount * referrerBonus;
+            const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
 
             const pageHTML = `
-                <!-- NEW SECTION ADDED -->
+                <!-- Existing Code Box -->
                 <div class="task-card">
-                    <h2 class="section-title" style="justify-content: center;"><i class="fas fa-video" style="margin-right: 8px;"></i>Refer Ad</h2>
-                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 15px;">Watch a short ad to earn ${adReward} points.</p>
-                    <button class="btn btn-primary" id="referralAdBtn">Watch Ad & Earn</button>
-                </div>
-
-                <div class="task-card">
-                    <h2 class="section-title" style="justify-content: center; font-size: 1.4rem; margin-bottom: 10px;">Refer & Earn</h2>
-                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">Refer a friend and you both get ${bonusAmount} coins!</p>
+                    <h2 class="section-title" style="justify-content: center; font-size: 1.4rem;">Refer & Earn</h2>
+                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">
+                        Invite friends to earn ${referrerBonus} points for each referral!
+                    </p>
                     <label style="text-align: center; display: block; margin-bottom: 8px; color: var(--text-secondary);">Your Referral Code</label>
-                    <div style="background-color: var(--input-bg); padding: 15px; border-radius: var(--border-radius-sm); text-align: center; font-size: 1.5rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+                    <div style="background-color: var(--input-bg); padding: 15px; border-radius: var(--border-radius-sm); text-align: center; font-size: 1.5rem; font-weight: 700; letter-spacing: 2px; border: 1px solid var(--border-color);">
                         ${currentUser.referralCode}
                     </div>
-                    <h3 style="font-weight: 500; margin-bottom: 10px;">Referral Rules:</h3>
-                    <ul style="list-style-position: inside; padding-left: 5px; margin-bottom: 25px; color: var(--text-secondary);">
-                        <li>Your friend must sign up.</li>
-                        <li>Bonus is credited after they apply the code.</li>
-                    </ul>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button class="btn" id="copyReferralLinkBtn" style="background-color: var(--button-bg-secondary); color: var(--button-text-secondary); flex: 1;">
-                            <i class="fas fa-copy"></i> Copy Link
-                        </button>
-                        <button class="btn" id="shareReferralLinkBtn" style="background-color: var(--accent-color); color: #333333; font-weight: 700; flex: 1;">
-                            <i class="fas fa-share-alt"></i> Share Code
-                        </button>
+                </div>
+
+                <!-- NEW: Referral Link and Share Section -->
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-link" style="margin-right: 8px;"></i>Your Referral Link</h2>
+                    <div class="referral-input-group">
+                        <input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly>
+                        <button class="btn" id="copyReferralLinkBtn" style="width: auto; padding: 0 15px;">Copy</button>
+                    </div>
+                    <button class="btn btn-primary" id="shareOnTelegramBtn" style="margin-top: 15px; background-color: #0088cc;">
+                        <i class="fab fa-telegram-plane" style="margin-right: 8px;"></i>Share on Telegram
+                    </button>
+                </div>
+
+                <!-- NEW: Your Stats Section -->
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-chart-bar" style="margin-right: 8px;"></i>Your Stats</h2>
+                    <div class="stats-display" style="gap: 15px;">
+                        <div class="stat-item">
+                            <div class="stat-value">${refCount}</div>
+                            <div class="stat-label">Total Referrals</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${earnedFromReferrals}</div>
+                            <div class="stat-label">Points Earned</div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Existing "Have a code?" Box -->
                 <div class="task-card">
-                    <h2 class="section-title" style="justify-content: center; font-size: 1.2rem; margin-bottom: 15px;">Have a code? Enter it here.</h2>
-                    <div class="referral-input-group">
-                        <input type="text" id="apply-code-input" placeholder="Enter code here" class="input-field">
-                    </div>
+                    <h2 class="section-title" style="justify-content: center; font-size: 1.2rem;">Have a code?</h2>
+                    <input type="text" id="apply-code-input" placeholder="Enter code here" class="input-field">
                     <button id="apply-code-btn" class="btn btn-primary" style="margin-top: 10px;">Apply Code</button>
                 </div>
+
+                <!-- NEW: Referral Leaderboard Section -->
                 <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
-                    <div class="stats-display" style="gap: 15px;">
-                        <div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>
-                        <div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div>
-                    </div>
-                </div>
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
+                    <h2 class="section-title"><i class="fas fa-trophy" style="margin-right: 8px;"></i>Referral Leaderboard</h2>
                     <div id="ref-leaderboard-list"></div>
                 </div>
             `;
             mainContent.innerHTML = pageHTML;
 
-            // NEW EVENT LISTENER
-            document.getElementById('referralAdBtn').addEventListener('click', handleReferralAd);
+            // Add event listeners for the new buttons
+            document.getElementById('copyReferralLinkBtn').addEventListener('click', () => {
+                navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!'));
+            });
 
-            document.getElementById('shareReferralLinkBtn').addEventListener('click', () => { tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join and earn rewards!")}`); });
-            document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!'), () => showToast('Failed to copy link.')); });
+            document.getElementById('shareOnTelegramBtn').addEventListener('click', () => {
+                const shareText = encodeURIComponent('Join me on Task Networks and earn rewards!');
+                const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
+                tg.openTelegramLink(shareUrl);
+            });
+            
             document.getElementById('apply-code-btn').addEventListener('click', handleApplyReferralCode);
+
+            // Load the leaderboard data
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
+        // --- END: UPDATED RENDER REFERRAL PAGE FUNCTION ---
 
-        // NEW FUNCTION
-        function handleReferralAd() {
-            const reward = appSettings.settings?.referralAdReward || 5;
-            openAdModal('Referral Ad');
-            // This timeout simulates watching an ad. Replace with your actual ad SDK logic if needed.
-            setTimeout(() => {
-                closeAdModal();
-                const updates = {};
-                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward);
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward);
-                database.ref().update(updates);
-                showToast(`+${reward} Points! Ad bonus claimed.`);
-            }, 3000); // 3-second ad simulation
-        }
 
         async function handleApplyReferralCode() {
             const inputElement = document.getElementById('apply-code-input');
@@ -358,12 +361,12 @@
             if (!referrerSnap.exists()) { return showToast("Invalid referral code. Please check and try again."); }
             try {
                 const referrerId = Object.keys(referrerSnap.val())[0];
-                const bonuses = appSettings.referralBonus || { referee: 100, referrer: 100 };
+                const bonuses = appSettings.referralBonus || { referee: 100, referrer: 200 };
                 const updates = {};
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
                 updates[`/users/${currentUser.id}/referredBy`] = codeToApply;
                 updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                updates[`/users/${referrerId}/referrals/${currentUser.id}`] = true;
+                updates[`/users/${referrerId}/referrals/${currentUser.id}`] = true; // This tracks the referred users
                 updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
                 updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(bonuses.referee);
                 updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
