@@ -230,7 +230,6 @@
             document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${currentUser.points || 0} Points`;
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             document.getElementById('total-points').textContent = currentUser.points || 0;
-            // The 'referrals' object might not exist for new users, so we check for it.
             const refCount = currentUser.referrals ? Object.keys(currentUser.referrals).length : 0;
             document.getElementById('ref-count').textContent = refCount;
         }
@@ -277,24 +276,12 @@
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
 
             const pageHTML = `
-                <!-- Existing Code Box -->
-                <div class="task-card">
-                    <h2 class="section-title" style="justify-content: center; font-size: 1.4rem;">Refer & Earn</h2>
-                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">
-                        Invite friends to earn ${referrerBonus} points for each referral!
-                    </p>
-                    <label style="text-align: center; display: block; margin-bottom: 8px; color: var(--text-secondary);">Your Referral Code</label>
-                    <div style="background-color: var(--input-bg); padding: 15px; border-radius: var(--border-radius-sm); text-align: center; font-size: 1.5rem; font-weight: 700; letter-spacing: 2px; border: 1px solid var(--border-color);">
-                        ${currentUser.referralCode}
-                    </div>
-                </div>
-
                 <!-- NEW: Referral Link and Share Section -->
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-link" style="margin-right: 8px;"></i>Your Referral Link</h2>
                     <div class="referral-input-group">
                         <input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly>
-                        <button class="btn" id="copyReferralLinkBtn" style="width: auto; padding: 0 15px;">Copy</button>
+                        <button class="btn" id="copyReferralLinkBtn" style="width: auto; padding: 0 15px; background-color: var(--button-bg-secondary); color: var(--button-text-secondary);">Copy</button>
                     </div>
                     <button class="btn btn-primary" id="shareOnTelegramBtn" style="margin-top: 15px; background-color: #0088cc;">
                         <i class="fab fa-telegram-plane" style="margin-right: 8px;"></i>Share on Telegram
@@ -316,13 +303,6 @@
                     </div>
                 </div>
 
-                <!-- Existing "Have a code?" Box -->
-                <div class="task-card">
-                    <h2 class="section-title" style="justify-content: center; font-size: 1.2rem;">Have a code?</h2>
-                    <input type="text" id="apply-code-input" placeholder="Enter code here" class="input-field">
-                    <button id="apply-code-btn" class="btn btn-primary" style="margin-top: 10px;">Apply Code</button>
-                </div>
-
                 <!-- NEW: Referral Leaderboard Section -->
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-trophy" style="margin-right: 8px;"></i>Referral Leaderboard</h2>
@@ -342,8 +322,6 @@
                 tg.openTelegramLink(shareUrl);
             });
             
-            document.getElementById('apply-code-btn').addEventListener('click', handleApplyReferralCode);
-
             // Load the leaderboard data
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
@@ -366,7 +344,7 @@
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
                 updates[`/users/${currentUser.id}/referredBy`] = codeToApply;
                 updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                updates[`/users/${referrerId}/referrals/${currentUser.id}`] = true; // This tracks the referred users
+                updates[`/users/${referrerId}/referrals/${currentUser.id}`] = true; 
                 updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
                 updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(bonuses.referee);
                 updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
