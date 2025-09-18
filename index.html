@@ -64,32 +64,38 @@
         <p>Loading App...</p>
     </div>
     <div class="app-container" style="display: none;">
-        <div class="header">
-            <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
-            <h1 class="header-title">Earn Zone</h1>
+        <div id="penalty-screen" style="display: none; padding: 20px; text-align: center;">
+            <h2>Account Penalized</h2>
+            <p id="penalty-message"></p>
         </div>
-        <div class="profile-section">
-            <div class="profile-card">
-                <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
-                <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
-                <div class="points-display" id="userPointsDisplay"><i class="fas fa-coins"></i> 0 Points</div>
-                <div class="stats-display">
-                    <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
-                    <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
-                    <div class="stat-item"><div class="stat-value" id="total-points">0</div><div class="stat-label">Total Points</div></div>
+        <div id="main-app">
+            <div class="header">
+                <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
+                <h1 class="header-title">Earn Zone</h1>
+            </div>
+            <div class="profile-section">
+                <div class="profile-card">
+                    <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
+                    <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
+                    <div class="points-display" id="userPointsDisplay"><i class="fas fa-coins"></i> 0 Points</div>
+                    <div class="stats-display">
+                        <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
+                        <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
+                        <div class="stat-item"><div class="stat-value" id="total-points">0</div><div class="stat-label">Total Points</div></div>
+                    </div>
                 </div>
             </div>
+            <div class="content-section" id="mainContent"></div>
+            <div class="bottom-nav disabled" id="bottomNav">
+                <a href="#" class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
+                <a href="#" class="nav-item" data-page="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></a>
+                <a href="#" class="nav-item" data-page="bonus"><i class="fas fa-gift"></i><span>Bonus</span></a>
+                <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
+                <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
+            </div>
+            <div class="ad-modal-overlay" id="adModal"><div class="ad-modal"><h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3><div class="spinner"></div></div></div>
+            <div class="toast" id="toast"></div>
         </div>
-        <div class="content-section" id="mainContent"></div>
-        <div class="bottom-nav disabled" id="bottomNav">
-            <a href="#" class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
-            <a href="#" class="nav-item" data-page="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></a>
-            <a href="#" class="nav-item" data-page="bonus"><i class="fas fa-gift"></i><span>Bonus</span></a>
-            <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
-            <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
-        </div>
-        <div class="ad-modal-overlay" id="adModal"><div class="ad-modal"><h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3><div class="spinner"></div></div></div>
-        <div class="toast" id="toast"></div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -156,7 +162,8 @@
                         name: currentTgName, photoUrl: currentTgPhoto,
                         points: 0, referralCode: ownReferralCode,
                         taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
-                        claimedBonuses: []
+                        claimedBonuses: [],
+                        penalty: { is_penalized: false, type: 'none', expiry_timestamp: 0 }
                     };
                     if (referrerCode && referrerCode !== ownReferralCode) {
                         const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
@@ -184,10 +191,11 @@
                 
                 document.getElementById('loader').style.display = 'none';
                 document.querySelector('.app-container').style.display = 'block';
-                document.getElementById('bottomNav').classList.remove('disabled');
 
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
+                    if (checkPenalty()) return;
+                    document.getElementById('bottomNav').classList.remove('disabled');
                     const today = new Date().toISOString().split('T')[0];
                     if (currentUser.taskStats?.lastResetDate !== today) {
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
@@ -200,6 +208,30 @@
                 console.error("Initialization Error:", error);
                 document.getElementById('loader').innerHTML = `<p>CRITICAL ERROR: ${error.message}</p><p>Please check your Firebase Rules and ensure the database is not empty.</p>`;
             }
+        }
+
+        function checkPenalty() {
+            const penalty = currentUser.penalty;
+            if (penalty && penalty.is_penalized) {
+                if (penalty.expiry_timestamp === -1 || penalty.expiry_timestamp > Date.now()) {
+                    const penaltyScreen = document.getElementById('penalty-screen');
+                    const mainApp = document.getElementById('main-app');
+                    const penaltyMessage = document.getElementById('penalty-message');
+                    
+                    penaltyScreen.style.display = 'block';
+                    mainApp.style.display = 'none';
+
+                    let message = `Your account has been penalized with a ${penalty.type.replace('_', ' ')}.`;
+                    if (penalty.expiry_timestamp > 0) {
+                        message += ` The penalty will be lifted on ${new Date(penalty.expiry_timestamp).toLocaleString()}.`;
+                    }
+                    penaltyMessage.textContent = message;
+                    return true;
+                } else {
+                    database.ref(`users/${currentUser.id}/penalty`).set({ is_penalized: false, type: 'none', expiry_timestamp: 0 });
+                }
+            }
+            return false;
         }
 
         function navigateTo(page, forceRender = false) {
