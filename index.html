@@ -150,9 +150,12 @@
                 const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
                 const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
 
+                const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
                 if (!userData) {
+                    // New user registration
                     const referrerCode = tg.initDataUnsafe.start_param;
-                    const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                    const ownReferralCode = generateReferralCode();
                     userData = {
                         name: currentTgName, photoUrl: currentTgPhoto,
                         points: 0, referralCode: ownReferralCode,
@@ -178,8 +181,18 @@
                     }
                     await userRef.set(userData);
                 } else {
+                    // Existing user check
+                    const updates = {};
                     if (userData.name !== currentTgName || userData.photoUrl !== currentTgPhoto) {
-                        await userRef.update({ name: currentTgName, photoUrl: currentTgPhoto });
+                        updates.name = currentTgName;
+                        updates.photoUrl = currentTgPhoto;
+                    }
+                    // FIX: Ensure existing users have a referral code
+                    if (!userData.referralCode) {
+                        updates.referralCode = generateReferralCode();
+                    }
+                    if (Object.keys(updates).length > 0) {
+                        await userRef.update(updates);
                     }
                 }
                 
