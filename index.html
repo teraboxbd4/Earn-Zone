@@ -31,7 +31,7 @@
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
-        .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); overflow-wrap: break-word; /* Fix for long usernames */ }
+        .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); overflow-wrap: break-word; }
         .points-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; margin-top: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; }
         .stats-display { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; }
@@ -131,12 +131,10 @@
             });
         });
 
-        // --- START: ROBUST INITIALIZATION LOGIC TO FIX LOADING BUG ---
         async function loadInitialData(tgUser) {
             try {
                 const userId = tgUser.id;
                 
-                // STEP 1: Fetch admin settings first
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
                 if (!adminData) { throw new Error("'/admin' data not found. Please import the database JSON file."); }
@@ -145,7 +143,6 @@
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
 
-                // STEP 2: Perform a one-time setup/check for the user
                 const userRef = database.ref('users/' + userId);
                 const snapshot = await userRef.once('value');
                 let userData = snapshot.val();
@@ -189,7 +186,6 @@
                 document.getElementById('loader').style.display = 'none';
                 document.querySelector('.app-container').style.display = 'block';
 
-                // STEP 3: Attach the real-time listener for live updates
                 let isFirstDataReceived = false;
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
@@ -199,17 +195,13 @@
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
                     }
                     
-                    updateUI(); // Always update the header profile card
+                    updateUI();
 
-                    // The logic that guarantees the fix:
                     if (!isFirstDataReceived) {
-                        // For the very first data payload, render the home page.
                         navigateTo('home', true);
-                        // And NOW, it is safe to enable navigation.
                         document.getElementById('bottomNav').classList.remove('disabled');
                         isFirstDataReceived = true;
                     } else {
-                        // For all subsequent updates, just refresh the content of the current page.
                         const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
                         navigateTo(currentPage, true);
                     }
@@ -219,7 +211,6 @@
                 document.getElementById('loader').innerHTML = `<p>CRITICAL ERROR: ${error.message}</p><p>Please check your Firebase Rules and ensure the database is not empty.</p>`;
             }
         }
-        // --- END: ROBUST INITIALIZATION LOGIC ---
 
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
@@ -280,8 +271,16 @@
             const refCount = currentUser.referrals ? Object.keys(currentUser.referrals).length : 0;
             const earnedFromReferrals = refCount * (appSettings.referralBonus?.referrer || 0);
             const bonusAmount = (appSettings.referralBonus?.referee || 100);
+            const adReward = appSettings.settings?.referralAdReward || 5;
 
             const pageHTML = `
+                <!-- NEW SECTION ADDED -->
+                <div class="task-card">
+                    <h2 class="section-title" style="justify-content: center;"><i class="fas fa-video" style="margin-right: 8px;"></i>Refer Ad</h2>
+                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 15px;">Watch a short ad to earn ${adReward} points.</p>
+                    <button class="btn btn-primary" id="referralAdBtn">Watch Ad & Earn</button>
+                </div>
+
                 <div class="task-card">
                     <h2 class="section-title" style="justify-content: center; font-size: 1.4rem; margin-bottom: 10px;">Refer & Earn</h2>
                     <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">Refer a friend and you both get ${bonusAmount} coins!</p>
@@ -324,10 +323,28 @@
             `;
             mainContent.innerHTML = pageHTML;
 
+            // NEW EVENT LISTENER
+            document.getElementById('referralAdBtn').addEventListener('click', handleReferralAd);
+
             document.getElementById('shareReferralLinkBtn').addEventListener('click', () => { tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join and earn rewards!")}`); });
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!'), () => showToast('Failed to copy link.')); });
             document.getElementById('apply-code-btn').addEventListener('click', handleApplyReferralCode);
             loadLeaderboard('referrals', '#ref-leaderboard-list');
+        }
+
+        // NEW FUNCTION
+        function handleReferralAd() {
+            const reward = appSettings.settings?.referralAdReward || 5;
+            openAdModal('Referral Ad');
+            // This timeout simulates watching an ad. Replace with your actual ad SDK logic if needed.
+            setTimeout(() => {
+                closeAdModal();
+                const updates = {};
+                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward);
+                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward);
+                database.ref().update(updates);
+                showToast(`+${reward} Points! Ad bonus claimed.`);
+            }, 3000); // 3-second ad simulation
         }
 
         async function handleApplyReferralCode() {
