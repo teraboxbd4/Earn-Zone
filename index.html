@@ -25,7 +25,8 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
-        .app-container { max-width: 480px; margin: 0 auto; position: relative; }
+        .app-container { max-width: 480px; margin: 0 auto; position: relative; display: none; /* Hidden by default */ }
+        .loader-container { display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Inter', sans-serif; color: #888; }
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
@@ -51,7 +52,6 @@
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
         .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); } .history-item:last-child { border-bottom: none; } .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
-        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
         .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
         .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
         .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
@@ -60,7 +60,10 @@
     </style>
 </head>
 <body>
-    <div class="app-container">
+    <div class="loader-container" id="loader">
+        <p>Connecting...</p>
+    </div>
+    <div class="app-container" id="appContainer">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
             <h1 class="header-title">Earn Zone</h1>
@@ -95,6 +98,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
+        // --- START: CORRECTED SCRIPT LOGIC ---
+
         const firebaseConfig = {
             apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
             authDomain: "earn-zone-a6dce.firebaseapp.com",
@@ -108,52 +113,62 @@
         
         const auth = firebase.auth();
         const database = firebase.database();
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                initializeAppLogic();
-            } else {
-                auth.signInAnonymously().catch(error => {
-                    console.error("Anonymous sign-in failed:", error);
-                    document.body.innerHTML = `<p style="text-align:center; padding: 20px; color: red;">CRITICAL ERROR: Could not connect. Please try again later.</p>`;
-                });
-            }
-        });
+        const tg = window.Telegram.WebApp;
 
         let currentUser = {};
         let appSettings = {};
         let tasks = {};
         let bonusChannels = {};
-        const tg = window.Telegram.WebApp;
 
+        // 1. AUTHENTICATION LISTENER IS THE ENTRY POINT
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // User is signed in. NOW we can start the app.
+                console.log("Authenticated successfully. UID:", user.uid);
+                initializeAppLogic(); 
+            } else {
+                // User is not signed in. Attempt anonymous sign-in.
+                auth.signInAnonymously().catch(error => {
+                    console.error("Anonymous sign-in failed:", error);
+                    document.getElementById('loader').innerHTML = `<p style="color:red;">Auth Error. Please refresh.</p>`;
+                });
+            }
+        });
+
+        // 2. ALL APP LOGIC IS WRAPPED IN THIS FUNCTION
         function initializeAppLogic() {
             tg.ready();
             tg.expand();
-            applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
-            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
-                document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>";
+                document.getElementById('loader').innerHTML = "<p>Error: Must be run inside Telegram.</p>";
                 return;
             }
-            loadInitialData(tgUser);
+
+            // Setup UI listeners AFTER we know the app is ready
+            applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
+
+            // This function now runs only AFTER authentication is confirmed.
+            loadInitialData(tgUser);
         }
 
         async function loadInitialData(tgUser) {
             try {
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) { throw new Error("'/admin' data not found."); }
+                if (!adminData) { throw new Error("Critical: Admin config not found."); }
 
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
                 
-                const userId = tgUser.id;
+                const userId = tgUser.id.toString(); // Ensure userId is a string
                 const userRef = database.ref('users/' + userId);
                 const snapshot = await userRef.once('value');
                 let userData = snapshot.val();
@@ -164,6 +179,7 @@
                 const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 if (!userData) {
+                    // This write operation is now guaranteed to be performed by an authenticated user.
                     userData = {
                         name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
                     };
@@ -178,6 +194,11 @@
                     if (Object.keys(updates).length > 0) { await userRef.update(updates); }
                 }
                 
+                // Show the app container and hide the loader
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+
+                // Attach the real-time listener
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
                     if (currentUser.isBanned) {
@@ -192,11 +213,14 @@
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
                     navigateTo(currentPage, true);
                 });
+
             } catch (error) {
                 console.error("Initialization Error:", error);
-                document.body.innerHTML = `<p style="color: red; font-weight: bold; text-align:center; padding:20px;">${error.message}</p>`;
+                document.getElementById('loader').innerHTML = `<p style="color: red; font-weight: bold;">${error.message}</p>`;
             }
         }
+        
+        // --- ALL OTHER FUNCTIONS (navigateTo, updateUI, etc.) REMAIN UNCHANGED ---
 
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
@@ -309,20 +333,17 @@
                 const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
                 
                 const updates = {};
-                // Update new user (referee)
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
                 updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(bonuses.referee);
                 updates[`/users/${currentUser.id}/referredBy`] = enteredCode;
-                updates[`/users/${currentUser.id}/referralApplied`] = true; // Mark as applied
+                updates[`/users/${currentUser.id}/referralApplied`] = true;
                 
-                // Update old user (referrer)
                 updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
                 updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
                 updates[`/users/${referrerId}/referrals/list/${currentUser.id}`] = true;
                 updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
                 
-                // Update leaderboards
                 updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
                 updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
                 updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(bonuses.referee);
@@ -330,7 +351,7 @@
                 await database.ref().update(updates);
                 
                 showToast(`Success! You received ${bonuses.referee} bonus points!`);
-                document.getElementById('referralVerifyBox').style.display = 'none'; // Hide the box after success
+                document.getElementById('referralVerifyBox').style.display = 'none';
 
             } catch (error) {
                 console.error("Referral verification error:", error);
@@ -343,12 +364,13 @@
         function handleDailyBonus() { if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); const reward = appSettings.dailyBonus?.reward || 50; openAdModal('Daily Bonus Ad'); setTimeout(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} Points! Bonus claimed.`); }, 3000); }
         function handleTaskClick(taskId) { const task = tasks[taskId]; const clickCounterRule = appSettings.clickCounterRule || 10; const clicksToday = currentUser.taskStats?.clicksToday || 0; if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); openAdModal(`${task.network} Ad Playing...`); let adPromise; try { switch(task.network) { case 'Monetag': adPromise = window.show_9797628(); break; case 'Gigapub': adPromise = window.showGiga(); break; case 'AdeExora': adPromise = window.showAdexora(); break; case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break; default: adPromise = Promise.reject('Unknown network'); } } catch (e) { adPromise = Promise.reject('SDK error'); } adPromise.then(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward); updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward); database.ref().update(updates); showToast(`+${task.reward} Points!`); }).catch(err => { closeAdModal(); showToast("Ad failed. Please try again."); }); }
         function handleBonusClaim(channelId, reward, link) { showToast("Verifying, please wait...", 5000); tg.openTelegramLink(link); setTimeout(() => { const claimedBonuses = currentUser.claimedBonuses || []; if (!claimedBonuses.includes(channelId)) { claimedBonuses.push(channelId); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} bonus points claimed!`); } }, 5000); }
-        async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
+        async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); if(!historyEl) return; historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
         function handleSubmitWithdrawal() { const method = document.getElementById('withdraw-method').value; const amount = parseInt(document.getElementById('withdraw-amount').value); const account = document.getElementById('withdraw-account').value.trim(); const minWithdraw = appSettings.minWithdraw || 5000; if (!method || !amount || !account) return showToast("Please fill all fields."); if (amount < minWithdraw) return showToast(`Minimum withdrawal is ${minWithdraw} points.`); if (amount <= 0 || amount > (currentUser.points || currentUser.wallet)) return showToast("You do not have enough points."); const requestData = { userId: currentUser.id, userName: currentUser.name, amount: amount, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP }; database.ref('withdrawRequests').push(requestData).then(() => { const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(-amount); updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(-amount); database.ref().update(updates); showToast("Withdrawal request submitted!"); navigateTo('withdraw'); }).catch(err => showToast("Error: Could not submit request.")); }
         async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
         function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
         function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
+
     </script>
 </body>
 </html>
