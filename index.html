@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Earn Zone</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -23,8 +25,7 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
-        #loader { text-align: center; padding: 50px; font-family: 'Inter', sans-serif; }
-        .app-container { max-width: 480px; margin: 0 auto; position: relative; display: none; }
+        .app-container { max-width: 480px; margin: 0 auto; position: relative; }
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
@@ -45,13 +46,12 @@
         .btn-primary { background: var(--primary-color); color: white; }
         .btn:disabled { background: #ccc; color: #888; cursor: not-allowed; }
         .input-field, .select-field { width: 100%; padding: 10px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); font-size: 0.95rem; margin-bottom: 10px; }
-        .channel-list { list-style: none; padding: 0; }
-        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; } .channel-item .btn { width: auto; padding: 5px 10px; font-size: 0.8rem; }
+        .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+        .channel-list { list-style: none; }
+        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
         .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); } .history-item:last-child { border-bottom: none; } .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
-        .referral-input-group { display: flex; } .referral-input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
-        .bottom-nav.disabled { pointer-events: none; opacity: 0.5; }
         .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
         .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
         .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
@@ -60,9 +60,6 @@
     </style>
 </head>
 <body>
-    <div id="loader">
-        <p>Connecting to service...</p>
-    </div>
     <div class="app-container">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
@@ -81,7 +78,7 @@
             </div>
         </div>
         <div class="content-section" id="mainContent"></div>
-        <div class="bottom-nav disabled" id="bottomNav">
+        <div class="bottom-nav" id="bottomNav">
             <a href="#" class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
             <a href="#" class="nav-item" data-page="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></a>
             <a href="#" class="nav-item" data-page="bonus"><i class="fas fa-gift"></i><span>Bonus</span></a>
@@ -107,45 +104,39 @@
             messagingSenderId: "470563695372",
             appId: "1:470563695372:web:323d2941c316cef0a4b729"
         };
-        
         firebase.initializeApp(firebaseConfig);
+        
         const auth = firebase.auth();
         const database = firebase.database();
-        
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                initializeAppLogic();
+            } else {
+                auth.signInAnonymously().catch(error => {
+                    console.error("Anonymous sign-in failed:", error);
+                    document.body.innerHTML = `<p style="text-align:center; padding: 20px; color: red;">CRITICAL ERROR: Could not connect. Please try again later.</p>`;
+                });
+            }
+        });
+
         let currentUser = {};
         let appSettings = {};
         let tasks = {};
         let bonusChannels = {};
         const tg = window.Telegram.WebApp;
-        const BOT_USERNAME = "earn_zone_user_bot"; // IMPORTANT: Replace with your bot username
 
-        document.addEventListener('DOMContentLoaded', () => {
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    initializeAppLogic(user);
-                } else {
-                    auth.signInAnonymously().catch(error => {
-                        console.error("Authentication Error:", error);
-                        document.getElementById('loader').innerHTML = `<p style="color:red; font-weight:bold;">AUTH FAILED</p><p>Please ask the admin to enable Anonymous Auth in Firebase.</p>`;
-                    });
-                }
-            });
-        });
-
-        function initializeAppLogic(user) {
+        function initializeAppLogic() {
             tg.ready();
             tg.expand();
             applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
-            
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
-                document.getElementById('loader').innerHTML = "<p>Error: Not running inside Telegram.</p>";
+                document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>";
                 return;
             }
-
             loadInitialData(tgUser);
-
-            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
@@ -153,108 +144,57 @@
 
         async function loadInitialData(tgUser) {
             try {
-                const userId = tgUser.id.toString();
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) { throw new Error("'/admin' data not found. Please check your Firebase Rules and ensure data exists."); }
-                
+                if (!adminData) { throw new Error("'/admin' data not found."); }
+
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
-
-                const userRef = database.ref('users/' + userId);
                 
-                // --- RACE CONDITION FIX ---
-                // This 'on' listener waits for the user's data to exist before loading the app.
-                userRef.on('value', async (snap) => {
-                    // Prevent this from running multiple times after the app is already loaded
-                    if (document.querySelector('.app-container').style.display === 'block') {
-                        currentUser = { id: userId, ...snap.val() };
-                        updateUI();
-                        // Re-render the current page to reflect any data changes (like after a referral)
-                        const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                        navigateTo(currentPage, true);
-                        return;
-                    }
+                const userId = tgUser.id;
+                const userRef = database.ref('users/' + userId);
+                const snapshot = await userRef.once('value');
+                let userData = snapshot.val();
+                
+                const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
+                const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
 
-                    // This block runs ONLY for a brand new user
-                    if (!snap.exists()) {
-                        const referrerCode = tg.initDataUnsafe.start_param;
-                        const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                        
-                        let newUser = {
-                            name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User ${userId}`,
-                            photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
-                            points: 0, wallet: 0,
-                            referralCode: ownReferralCode,
-                            isBanned: false,
-                            joinedAt: new Date().toISOString(),
-                            lastActive: new Date().toISOString(),
-                            referrals: { count: 0, income: 0, list: {} },
-                            taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
-                            claimedBonuses: []
-                        };
-                        
-                        const updates = {};
-                        updates[`/referralCodes/${ownReferralCode}`] = userId;
+                const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
-                        if (referrerCode && referrerCode !== ownReferralCode) {
-                            const referrerIdSnap = await database.ref(`referralCodes/${referrerCode}`).once('value');
-                            if (referrerIdSnap.exists()) {
-                                const referrerId = referrerIdSnap.val();
-                                const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
-                                newUser.points += bonuses.referee;
-                                newUser.wallet += bonuses.referee;
-                                newUser.referredBy = referrerCode;
-                                
-                                updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                                updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                                updates[`/users/${referrerId}/referrals/list/${userId}`] = true;
-                                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
-                                updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                                updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
-                                updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                                
-                                showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
-                            }
-                        }
-                        
-                        updates[`/users/${userId}`] = newUser;
-                        await database.ref().update(updates);
-                        // The 'on' listener will fire again with the new user's data, which will then load the app.
-                        return;
+                if (!userData) {
+                    userData = {
+                        name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
+                    };
+                    await userRef.set(userData);
+                } else {
+                    const updates = {};
+                    if (userData.name !== currentTgName || userData.photoUrl !== currentTgPhoto) {
+                        updates.name = currentTgName; updates.photoUrl = currentTgPhoto;
                     }
-                    
-                    // This block runs for existing users, or for new users on the second fire of the listener.
+                    if (!userData.referralCode) { updates.referralCode = generateReferralCode(); }
+                    updates.lastActive = new Date().toISOString();
+                    if (Object.keys(updates).length > 0) { await userRef.update(updates); }
+                }
+                
+                userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
-
                     if (currentUser.isBanned) {
                         document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
                         return;
                     }
-                    
                     const today = new Date().toISOString().split('T')[0];
                     if (currentUser.taskStats?.lastResetDate !== today) {
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
                     }
-                    
-                    document.getElementById('loader').style.display = 'none';
-                    document.querySelector('.app-container').style.display = 'block';
-                    document.getElementById('bottomNav').classList.remove('disabled');
-                    
                     updateUI();
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
                     navigateTo(currentPage, true);
                 });
-
             } catch (error) {
                 console.error("Initialization Error:", error);
-                let errorMessage = `<p style="color:red; font-weight:bold;">CRITICAL ERROR</p><p>${error.message}</p>`;
-                if (error.message.includes("PERMISSION_DENIED")) {
-                     errorMessage += `<p style="margin-top:10px;"><b>FIX:</b> Please check your Firebase Database Rules.</p>`;
-                }
-                document.getElementById('loader').innerHTML = errorMessage;
+                document.body.innerHTML = `<p style="color: red; font-weight: bold; text-align:center; padding:20px;">${error.message}</p>`;
             }
         }
 
@@ -276,49 +216,43 @@
             document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${totalPoints} Points`;
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             document.getElementById('total-points').textContent = totalPoints;
-            document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
+            const refCount = currentUser.referrals?.count || 0;
+            document.getElementById('ref-count').textContent = refCount;
         }
 
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
-        
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
-        function renderTasksPage() { let tasksHtml = Object.keys(tasks).map(taskId => { const task = tasks[taskId]; return task.enabled ? `<div class="task-card"><h3>${task.name || task.network} Task (Reward: ${task.reward})</h3><div id="${task.zoneId}"></div><button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:10px;">Start Task</button></div>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || ''}</p></div>${tasksHtml || '<p>No tasks available.</p>'}`; }
+        function renderTasksPage() { let tasksHtml = Object.keys(tasks).map(taskId => { const task = tasks[taskId]; return task.enabled ? `<div class="task-card"><h3>${task.network} Task (Reward: ${task.reward})</h3><div id="${task.zoneId}"></div><button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:10px;">Start Task</button></div>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || ''}</p></div>${tasksHtml || '<p>No tasks available.</p>'}`; }
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2>Bonus Rewards</h2><ul class="channel-list">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
         function renderReferralPage() {
-            const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode || ''}`;
             const refCount = currentUser.referrals?.count || 0;
             const earnedFromReferrals = currentUser.referrals?.income || 0;
+            const referralBox = `
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-share-alt"></i> Your Referral Code</h2>
+                    <p style="margin-bottom: 15px;">Share this code with your friends.</p>
+                    <div class="input-group">
+                        <input type="text" id="referralCodeDisplay" class="input-field" value="${currentUser.referralCode || 'Generating...'}" readonly>
+                        <button class="btn" id="copyReferralCodeBtn" style="width: auto; padding: 0 15px;">Copy</button>
+                    </div>
+                </div>`;
             
-            const verificationBoxHtml = !currentUser.referredBy
-                ? `<div class="task-card">
-                       <h2 class="section-title"><i class="fas fa-user-plus"></i> Enter Referral Code</h2>
-                       <div class="referral-input-group">
-                           <input type="text" id="referral-code-input" class="input-field" placeholder="Enter inviter's code">
-                           <button class="btn btn-primary" onclick="handleReferralCodeVerification()">Apply Code</button>
-                       </div>
-                   </div>`
-                : '';
+            const verifyBox = `
+                <div class="task-card" id="referralVerifyBox">
+                    <h2 class="section-title">Referral Verify Box</h2>
+                    <p style="margin-bottom: 15px;">Entered a friend's referral code? Verify it here.</p>
+                    <div class="input-group">
+                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Referral Code">
+                        <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
+                    </div>
+                </div>`;
 
             mainContent.innerHTML = `
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Code & Link</h2>
-                    <label>Your Referral Code</label>
-                    <div class="referral-input-group">
-                        <input type="text" class="input-field" value="${currentUser.referralCode || 'Loading...'}" readonly>
-                        <button class="btn" onclick="navigator.clipboard.writeText('${currentUser.referralCode || ''}').then(() => showToast('Code copied!'))">Copy</button>
-                    </div>
-                    <label style="margin-top: 15px;">Your Referral Link</label>
-                    <div class="referral-input-group">
-                        <input type="text" class="input-field" value="${referralLink}" readonly>
-                        <button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button>
-                    </div>
-                </div>
-
-                ${verificationBoxHtml}
-
+                ${referralBox}
+                ${currentUser.referralApplied ? '' : verifyBox}
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
                     <div class="stats-display">
@@ -331,131 +265,89 @@
                     <div id="ref-leaderboard-list"></div>
                 </div>`;
             
+            document.getElementById('copyReferralCodeBtn').addEventListener('click', () => { 
+                navigator.clipboard.writeText(currentUser.referralCode).then(() => showToast('Code copied!')); 
+            });
+
+            if (!currentUser.referralApplied) {
+                document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
+            }
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
-        async function handleReferralCodeVerification() {
-            const codeInput = document.getElementById('referral-code-input');
-            const codeToVerify = codeInput.value.trim().toUpperCase();
-
-            if (!codeToVerify) return showToast("Please enter a code.");
-            if (currentUser.referredBy) return showToast("You have already been referred.");
-            if (codeToVerify === currentUser.referralCode) return showToast("You cannot enter your own code.");
-
-            const referrerIdSnap = await database.ref(`referralCodes/${codeToVerify}`).once('value');
-            if (!referrerIdSnap.exists()) return showToast("Invalid referral code.");
-
-            const referrerId = referrerIdSnap.val();
-            const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
-            const currentUserId = currentUser.id;
-
-            const updates = {};
-            updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
-            updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
-            updates[`/users/${referrerId}/referrals/list/${currentUserId}`] = true;
-            updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
-            updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
-            updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
-            updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
-            updates[`/users/${currentUserId}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
-            updates[`/users/${currentUserId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referee);
-            updates[`/users/${currentUserId}/referredBy`] = codeToVerify;
-
-            try {
-                await database.ref().update(updates);
-                showToast(`Success! You received ${bonuses.referee} bonus points!`);
-            } catch (error) {
-                console.error("Referral verification failed:", error);
-                showToast("An error occurred. Please try again.");
-            }
-        }
-        
-        async function checkVPNandLocation() {
-            if (!appSettings.vpnRequired) return { success: true };
-            showToast("Verifying connection...", 2000);
-            try {
-                const response = await fetch('https://ipapi.co/json/');
-                if (!response.ok) throw new Error('IP check service failed.');
-                const data = await response.json();
-                const allowedCountries = (appSettings.allowedCountries || '').split(',');
-                const userCountry = data.country_code;
-                if (allowedCountries.length > 0 && !allowedCountries.includes(userCountry)) {
-                    return { success: false, message: appSettings.vpnNotice || 'You must be in an approved country.' };
-                }
-                return { success: true };
-            } catch (error) {
-                console.error('VPN Check Error:', error);
-                return { success: false, message: 'Could not verify your connection.' };
-            }
-        }
-
-        function handleDailyBonus() { if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); const reward = appSettings.dailyBonus?.reward || 50; openAdModal('Daily Bonus Ad'); setTimeout(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} Points! Bonus claimed.`); }, 3000); }
-        
-        async function handleTaskClick(taskId) { 
-            const vpnCheck = await checkVPNandLocation();
-            if (!vpnCheck.success) {
-                tg.showAlert(vpnCheck.message);
+        async function handleReferralVerification() {
+            const verifyBtn = document.getElementById('verifyReferralBtn');
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+            
+            const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
+            if (!enteredCode) {
+                showToast("Please enter a code.");
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify';
                 return;
             }
-            const task = tasks[taskId]; 
-            if(!task) return; 
-            const clickCounterRule = appSettings.clickCounterRule || 10; 
-            const clicksToday = currentUser.taskStats?.clicksToday || 0; 
-            if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); 
-            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); 
-            openAdModal(`${task.network} Ad Playing...`); 
-            let adPromise; 
-            try { 
-                switch(task.network) { 
-                    case 'Monetag': adPromise = window.show_9797628 ? window.show_9797628() : Promise.resolve(); break; 
-                    case 'Gigapub': adPromise = window.showGiga ? window.showGiga() : Promise.resolve(); break; 
-                    case 'Adexora': adPromise = window.showAdexora ? window.showAdexora() : Promise.resolve(); break; 
-                    default: adPromise = new Promise(resolve => setTimeout(resolve, 3000)); break; 
-                } 
-            } catch (e) { console.error("Ad SDK Error:", e); adPromise = Promise.reject('SDK error'); } 
-            
-            adPromise.then(() => { 
-                closeAdModal(); 
-                const updates = {}; 
-                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward); 
-                updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(task.reward);
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward); 
-                database.ref().update(updates); 
-                showToast(`+${task.reward} Points!`); 
-            }).catch(err => { 
-                console.error("Ad Promise Error:", err); 
-                closeAdModal(); 
-                showToast("Ad failed. Please try again."); 
-            }); 
-        }
-        
-        function handleBonusClaim(channelId, reward, link) { tg.openTelegramLink(link); showToast("Verifying, please wait...", 5000); setTimeout(() => { const claimedBonuses = currentUser.claimedBonuses || []; if (!claimedBonuses.includes(channelId)) { claimedBonuses.push(channelId); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} bonus points claimed!`); } }, 5000); }
-        async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); if(!historyEl) return; historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
-        
-        function handleSubmitWithdrawal() { 
-            const method = document.getElementById('withdraw-method').value; 
-            const amount = parseInt(document.getElementById('withdraw-amount').value); 
-            const account = document.getElementById('withdraw-account').value.trim(); 
-            const minWithdraw = appSettings.minWithdraw || 5000; 
+            if (enteredCode === currentUser.referralCode) {
+                showToast("You cannot use your own code.");
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify';
+                return;
+            }
 
-            if (!method || !amount || !account) return showToast("Please fill all fields."); 
-            if (amount < minWithdraw) return showToast(`Minimum withdrawal is ${minWithdraw} points.`); 
-            if (isNaN(amount) || amount <= 0 || amount > (currentUser.points || currentUser.wallet)) return showToast("You do not have enough points."); 
-            
-            const requestData = { userId: currentUser.id, userName: currentUser.name, amount: amount, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP }; 
-            database.ref('withdrawRequests').push(requestData).then(() => { 
-                const updates = {}; 
-                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(-amount); 
-                updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(-amount); 
-                database.ref().update(updates); 
-                showToast("Withdrawal request submitted!"); 
-                navigateTo('withdraw', true); 
-            }).catch(err => showToast("Error: Could not submit request.")); 
+            try {
+                const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(enteredCode).limitToFirst(1);
+                const referrerSnap = await referrerQuery.once('value');
+
+                if (!referrerSnap.exists()) {
+                    showToast("Invalid referral code.");
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Verify';
+                    return;
+                }
+
+                const referrerId = Object.keys(referrerSnap.val())[0];
+                const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
+                
+                const updates = {};
+                // Update new user (referee)
+                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
+                updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(bonuses.referee);
+                updates[`/users/${currentUser.id}/referredBy`] = enteredCode;
+                updates[`/users/${currentUser.id}/referralApplied`] = true; // Mark as applied
+                
+                // Update old user (referrer)
+                updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                updates[`/users/${referrerId}/referrals/list/${currentUser.id}`] = true;
+                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                
+                // Update leaderboards
+                updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
+                updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(bonuses.referee);
+                
+                await database.ref().update(updates);
+                
+                showToast(`Success! You received ${bonuses.referee} bonus points!`);
+                document.getElementById('referralVerifyBox').style.display = 'none'; // Hide the box after success
+
+            } catch (error) {
+                console.error("Referral verification error:", error);
+                showToast("An error occurred. Please try again.");
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify';
+            }
         }
-        
-        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}`).once('value').then(snap => ({ name: snap.val()?.name || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
-        function openAdModal(title) { const modal = document.getElementById('adModal'); if (modal) { document.getElementById('adModalTitle').textContent = title; modal.classList.add('show'); } }
-        function closeAdModal() { const modal = document.getElementById('adModal'); if (modal) { modal.classList.remove('show'); } }
+
+        function handleDailyBonus() { if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); const reward = appSettings.dailyBonus?.reward || 50; openAdModal('Daily Bonus Ad'); setTimeout(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} Points! Bonus claimed.`); }, 3000); }
+        function handleTaskClick(taskId) { const task = tasks[taskId]; const clickCounterRule = appSettings.clickCounterRule || 10; const clicksToday = currentUser.taskStats?.clicksToday || 0; if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); openAdModal(`${task.network} Ad Playing...`); let adPromise; try { switch(task.network) { case 'Monetag': adPromise = window.show_9797628(); break; case 'Gigapub': adPromise = window.showGiga(); break; case 'AdeExora': adPromise = window.showAdexora(); break; case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break; default: adPromise = Promise.reject('Unknown network'); } } catch (e) { adPromise = Promise.reject('SDK error'); } adPromise.then(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward); updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward); database.ref().update(updates); showToast(`+${task.reward} Points!`); }).catch(err => { closeAdModal(); showToast("Ad failed. Please try again."); }); }
+        function handleBonusClaim(channelId, reward, link) { showToast("Verifying, please wait...", 5000); tg.openTelegramLink(link); setTimeout(() => { const claimedBonuses = currentUser.claimedBonuses || []; if (!claimedBonuses.includes(channelId)) { claimedBonuses.push(channelId); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} bonus points claimed!`); } }, 5000); }
+        async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
+        function handleSubmitWithdrawal() { const method = document.getElementById('withdraw-method').value; const amount = parseInt(document.getElementById('withdraw-amount').value); const account = document.getElementById('withdraw-account').value.trim(); const minWithdraw = appSettings.minWithdraw || 5000; if (!method || !amount || !account) return showToast("Please fill all fields."); if (amount < minWithdraw) return showToast(`Minimum withdrawal is ${minWithdraw} points.`); if (amount <= 0 || amount > (currentUser.points || currentUser.wallet)) return showToast("You do not have enough points."); const requestData = { userId: currentUser.id, userName: currentUser.name, amount: amount, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP }; database.ref('withdrawRequests').push(requestData).then(() => { const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(-amount); updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(-amount); database.ref().update(updates); showToast("Withdrawal request submitted!"); navigateTo('withdraw'); }).catch(err => showToast("Error: Could not submit request.")); }
+        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
+        function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
+        function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
     </script>
 </body>
