@@ -165,9 +165,7 @@
 
                 const userRef = database.ref('users/' + userId);
                 
-                // This listener solves the race condition for new and existing users.
                 userRef.on('value', async (snap) => {
-                    // Stop the listener from re-running the setup logic after the app is already displayed.
                     if (document.querySelector('.app-container').style.display === 'block') {
                         currentUser = { id: userId, ...snap.val() };
                         updateUI();
@@ -176,7 +174,6 @@
                         return;
                     }
 
-                    // This block runs ONLY for a new user, the first time the listener fires.
                     if (!snap.exists()) {
                         const referrerCode = tg.initDataUnsafe.start_param;
                         const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -220,11 +217,9 @@
                         
                         updates[`/users/${userId}`] = newUser;
                         await database.ref().update(updates);
-                        // The 'on' listener will automatically fire again with the new user data, triggering the 'else' block below.
                         return;
                     }
                     
-                    // This block runs for existing users, or for new users on the second listener fire.
                     currentUser = { id: userId, ...snap.val() };
 
                     if (currentUser.isBanned) {
@@ -451,7 +446,31 @@
             }).catch(err => showToast("Error: Could not submit request.")); 
         }
         
-        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}`).once('value').then(snap => ({ name: snap.val()?.name || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
+        async function loadLeaderboard(type, elementId) { 
+            const listEl = document.querySelector(elementId); 
+            if (!listEl) return; 
+            listEl.innerHTML = "<p>Loading...</p>"; 
+            try {
+                const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); 
+                const data = snapshot.val(); 
+                if (!data) { 
+                    listEl.innerHTML = '<p>No data available.</p>'; 
+                    return; 
+                } 
+                // SECURE FIX: Now we can read the name and photoUrl because of the new rules.
+                const promises = Object.entries(data).map(([id, score]) => 
+                    database.ref(`users/${id}`).once('value').then(snap => {
+                        const userData = snap.val();
+                        return { name: userData?.name || `User ${id}`, photoUrl: userData?.photoUrl, score };
+                    })
+                ); 
+                const users = await Promise.all(promises); 
+                listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); 
+            } catch (error) {
+                console.error(`Leaderboard Error (${type}):`, error);
+                listEl.innerHTML = `<p style="color:red;">Could not load leaderboard. Check Firebase Rules.</p>`;
+            }
+        }
         function openAdModal(title) { const modal = document.getElementById('adModal'); if (modal) { document.getElementById('adModalTitle').textContent = title; modal.classList.add('show'); } }
         function closeAdModal() { const modal = document.getElementById('adModal'); if (modal) { modal.classList.remove('show'); } }
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
