@@ -156,7 +156,7 @@
                 const userId = tgUser.id.toString();
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) { throw new Error("'/admin' data not found. Please import the database JSON file."); }
+                if (!adminData) { throw new Error("'/admin' data not found. Please check your Firebase Rules and ensure data exists."); }
                 
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
@@ -165,15 +165,20 @@
 
                 const userRef = database.ref('users/' + userId);
                 
+                // --- RACE CONDITION FIX ---
+                // This 'on' listener waits for the user's data to exist before loading the app.
                 userRef.on('value', async (snap) => {
+                    // Prevent this from running multiple times after the app is already loaded
                     if (document.querySelector('.app-container').style.display === 'block') {
                         currentUser = { id: userId, ...snap.val() };
                         updateUI();
+                        // Re-render the current page to reflect any data changes (like after a referral)
                         const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
                         navigateTo(currentPage, true);
                         return;
                     }
 
+                    // This block runs ONLY for a brand new user
                     if (!snap.exists()) {
                         const referrerCode = tg.initDataUnsafe.start_param;
                         const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -217,9 +222,11 @@
                         
                         updates[`/users/${userId}`] = newUser;
                         await database.ref().update(updates);
+                        // The 'on' listener will fire again with the new user's data, which will then load the app.
                         return;
                     }
                     
+                    // This block runs for existing users, or for new users on the second fire of the listener.
                     currentUser = { id: userId, ...snap.val() };
 
                     if (currentUser.isBanned) {
@@ -281,7 +288,7 @@
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
         function renderReferralPage() {
-            const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
+            const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode || ''}`;
             const refCount = currentUser.referrals?.count || 0;
             const earnedFromReferrals = currentUser.referrals?.income || 0;
             
@@ -300,7 +307,7 @@
                     <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Code & Link</h2>
                     <label>Your Referral Code</label>
                     <div class="referral-input-group">
-                        <input type="text" class="input-field" value="${currentUser.referralCode || ''}" readonly>
+                        <input type="text" class="input-field" value="${currentUser.referralCode || 'Loading...'}" readonly>
                         <button class="btn" onclick="navigator.clipboard.writeText('${currentUser.referralCode || ''}').then(() => showToast('Code copied!'))">Copy</button>
                     </div>
                     <label style="margin-top: 15px;">Your Referral Link</label>
@@ -446,31 +453,7 @@
             }).catch(err => showToast("Error: Could not submit request.")); 
         }
         
-        async function loadLeaderboard(type, elementId) { 
-            const listEl = document.querySelector(elementId); 
-            if (!listEl) return; 
-            listEl.innerHTML = "<p>Loading...</p>"; 
-            try {
-                const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); 
-                const data = snapshot.val(); 
-                if (!data) { 
-                    listEl.innerHTML = '<p>No data available.</p>'; 
-                    return; 
-                } 
-                // SECURE FIX: Now we can read the name and photoUrl because of the new rules.
-                const promises = Object.entries(data).map(([id, score]) => 
-                    database.ref(`users/${id}`).once('value').then(snap => {
-                        const userData = snap.val();
-                        return { name: userData?.name || `User ${id}`, photoUrl: userData?.photoUrl, score };
-                    })
-                ); 
-                const users = await Promise.all(promises); 
-                listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); 
-            } catch (error) {
-                console.error(`Leaderboard Error (${type}):`, error);
-                listEl.innerHTML = `<p style="color:red;">Could not load leaderboard. Check Firebase Rules.</p>`;
-            }
-        }
+        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}`).once('value').then(snap => ({ name: snap.val()?.name || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
         function openAdModal(title) { const modal = document.getElementById('adModal'); if (modal) { document.getElementById('adModalTitle').textContent = title; modal.classList.add('show'); } }
         function closeAdModal() { const modal = document.getElementById('adModal'); if (modal) { modal.classList.remove('show'); } }
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
