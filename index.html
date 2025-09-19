@@ -165,25 +165,24 @@
 
                 const userRef = database.ref('users/' + userId);
                 
-                // This is the main fix for the race condition.
-                // It listens for the data, and only when it's confirmed to exist does the app load.
+                // This listener solves the race condition for new and existing users.
                 userRef.on('value', async (snap) => {
-                    // Stop the listener from running in a loop after the first load
+                    // Stop the listener from re-running the setup logic after the app is already displayed.
                     if (document.querySelector('.app-container').style.display === 'block') {
                         currentUser = { id: userId, ...snap.val() };
                         updateUI();
                         const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                        navigateTo(currentPage, true); // Re-render the current page to show any changes
+                        navigateTo(currentPage, true);
                         return;
                     }
 
+                    // This block runs ONLY for a new user, the first time the listener fires.
                     if (!snap.exists()) {
-                        // This block now only runs ONCE for a new user
                         const referrerCode = tg.initDataUnsafe.start_param;
                         const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                         
                         let newUser = {
-                            name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username,
+                            name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User ${userId}`,
                             photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
                             points: 0, wallet: 0,
                             referralCode: ownReferralCode,
@@ -221,10 +220,11 @@
                         
                         updates[`/users/${userId}`] = newUser;
                         await database.ref().update(updates);
-                        // The 'on' listener will automatically fire again with the new data, loading the app.
+                        // The 'on' listener will automatically fire again with the new user data, triggering the 'else' block below.
                         return;
                     }
                     
+                    // This block runs for existing users, or for new users on the second listener fire.
                     currentUser = { id: userId, ...snap.val() };
 
                     if (currentUser.isBanned) {
