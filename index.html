@@ -183,18 +183,22 @@
                         claimedBonuses: []
                     };
                     
-                    if (referrerCode && referrerCode !== ownReferralCode) {
-                        const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
-                        const referrerSnap = await referrerQuery.once('value');
+                    const updates = {};
+                    // SECURE FIX: Create a public record for the referral code
+                    updates[`/referralCodes/${ownReferralCode}`] = userId;
 
-                        if (referrerSnap.exists()) {
-                            const referrerId = Object.keys(referrerSnap.val())[0];
+                    if (referrerCode && referrerCode !== ownReferralCode) {
+                        // SECURE FIX: This is a direct, safe lookup, not a query
+                        const referrerIdSnap = await database.ref(`referralCodes/${referrerCode}`).once('value');
+
+                        if (referrerIdSnap.exists()) {
+                            const referrerId = referrerIdSnap.val();
                             const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
+                            
                             newUser.points += bonuses.referee;
                             newUser.wallet += bonuses.referee;
                             newUser.referredBy = referrerCode;
                             
-                            const updates = {};
                             updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
                             updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
                             updates[`/users/${referrerId}/referrals/list/${userId}`] = true;
@@ -203,11 +207,13 @@
                             updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
                             updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
                             
-                            await database.ref().update(updates);
                             showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
                         }
                     }
-                    await userRef.set(newUser);
+                    
+                    updates[`/users/${userId}`] = newUser;
+                    await database.ref().update(updates);
+
                 }
                 
                 document.getElementById('loader').style.display = 'none';
@@ -267,13 +273,11 @@
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2>Bonus Rewards</h2><ul class="channel-list">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
-        // --- REFERRAL PAGE UPGRADE ---
         function renderReferralPage() {
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
             const refCount = currentUser.referrals?.count || 0;
             const earnedFromReferrals = currentUser.referrals?.income || 0;
             
-            // The verification box will only be shown if the user was NOT referred by a link
             const verificationBoxHtml = !currentUser.referredBy
                 ? `<div class="task-card">
                        <h2 class="section-title"><i class="fas fa-user-plus"></i> Enter Referral Code</h2>
@@ -290,12 +294,12 @@
                     <label>Your Referral Code</label>
                     <div class="referral-input-group">
                         <input type="text" class="input-field" value="${currentUser.referralCode || ''}" readonly>
-                        <button class="btn" onclick="navigator.clipboard.writeText('${currentUser.referralCode}')">Copy</button>
+                        <button class="btn" onclick="navigator.clipboard.writeText('${currentUser.referralCode || ''}').then(() => showToast('Code copied!'))">Copy</button>
                     </div>
                     <label style="margin-top: 15px;">Your Referral Link</label>
                     <div class="referral-input-group">
                         <input type="text" class="input-field" value="${referralLink}" readonly>
-                        <button class="btn" onclick="navigator.clipboard.writeText('${referralLink}')">Copy</button>
+                        <button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button>
                     </div>
                 </div>
 
@@ -316,34 +320,23 @@
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
-        // --- NEW FUNCTION FOR REFERRAL VERIFICATION ---
         async function handleReferralCodeVerification() {
             const codeInput = document.getElementById('referral-code-input');
             const codeToVerify = codeInput.value.trim().toUpperCase();
 
-            if (!codeToVerify) {
-                return showToast("Please enter a code.");
-            }
-            if (currentUser.referredBy) {
-                return showToast("You have already been referred.");
-            }
-            if (codeToVerify === currentUser.referralCode) {
-                return showToast("You cannot enter your own referral code.");
-            }
+            if (!codeToVerify) return showToast("Please enter a code.");
+            if (currentUser.referredBy) return showToast("You have already been referred.");
+            if (codeToVerify === currentUser.referralCode) return showToast("You cannot enter your own code.");
 
-            const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(codeToVerify).limitToFirst(1);
-            const referrerSnap = await referrerQuery.once('value');
+            // SECURE FIX: Direct lookup instead of insecure query
+            const referrerIdSnap = await database.ref(`referralCodes/${codeToVerify}`).once('value');
+            if (!referrerIdSnap.exists()) return showToast("Invalid referral code.");
 
-            if (!referrerSnap.exists()) {
-                return showToast("Invalid referral code.");
-            }
-
-            const referrerId = Object.keys(referrerSnap.val())[0];
+            const referrerId = referrerIdSnap.val();
             const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
             const currentUserId = currentUser.id;
 
             const updates = {};
-            // Updates for the referrer
             updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
             updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
             updates[`/users/${referrerId}/referrals/list/${currentUserId}`] = true;
@@ -351,16 +344,13 @@
             updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
             updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
             updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
-
-            // Updates for the current user (referee)
             updates[`/users/${currentUserId}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
             updates[`/users/${currentUserId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referee);
-            updates[`/users/${currentUserId}/referredBy`] = codeToVerify; // Lock it in
+            updates[`/users/${currentUserId}/referredBy`] = codeToVerify;
 
             try {
                 await database.ref().update(updates);
                 showToast(`Success! You received ${bonuses.referee} bonus points!`);
-                // The page will auto-refresh via the 'on.value' listener and hide the box
             } catch (error) {
                 console.error("Referral verification failed:", error);
                 showToast("An error occurred. Please try again.");
