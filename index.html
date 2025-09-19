@@ -61,7 +61,7 @@
 </head>
 <body>
     <div id="loader">
-        <p>Loading App...</p>
+        <p>Connecting to service...</p>
     </div>
     <div class="app-container">
         <div class="header">
@@ -154,6 +154,7 @@
         async function loadInitialData(tgUser) {
             try {
                 const userId = tgUser.id.toString();
+                // This is now safe to read due to the updated rules
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
                 if (!adminData) { throw new Error("'/admin' data not found. Please import the database JSON file."); }
@@ -164,76 +165,85 @@
                 bonusChannels = adminData.bonusChannels || {};
 
                 const userRef = database.ref('users/' + userId);
-                const snapshot = await userRef.once('value');
                 
-                if (!snapshot.exists()) {
-                    const referrerCode = tg.initDataUnsafe.start_param;
-                    const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    
-                    let newUser = {
-                        name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username,
-                        photoUrl: tgUser.photo_url || '',
-                        points: 0, wallet: 0,
-                        referralCode: ownReferralCode,
-                        isBanned: false,
-                        joinedAt: new Date().toISOString(),
-                        lastActive: new Date().toISOString(),
-                        referrals: { count: 0, income: 0, list: {} },
-                        taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
-                        claimedBonuses: []
-                    };
-                    
-                    const updates = {};
-                    // SECURE FIX: Create a public record for the referral code
-                    updates[`/referralCodes/${ownReferralCode}`] = userId;
+                // FIX: Instead of reading first, we now listen for changes.
+                // This solves the race condition where data might not exist yet.
+                userRef.on('value', async (snap) => {
+                    // Stop listening after the first successful data load to prevent loops
+                    if (document.querySelector('.app-container').style.display === 'block') {
+                        currentUser = { id: userId, ...snap.val() };
+                        updateUI(); // Keep UI in sync with any point changes
+                        return;
+                    }
 
-                    if (referrerCode && referrerCode !== ownReferralCode) {
-                        // SECURE FIX: This is a direct, safe lookup, not a query
-                        const referrerIdSnap = await database.ref(`referralCodes/${referrerCode}`).once('value');
+                    if (!snap.exists()) {
+                        const referrerCode = tg.initDataUnsafe.start_param;
+                        const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                        
+                        let newUser = {
+                            name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username,
+                            photoUrl: tgUser.photo_url || '',
+                            points: 0, wallet: 0,
+                            referralCode: ownReferralCode,
+                            isBanned: false,
+                            joinedAt: new Date().toISOString(),
+                            lastActive: new Date().toISOString(),
+                            referrals: { count: 0, income: 0, list: {} },
+                            taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false },
+                            claimedBonuses: []
+                        };
+                        
+                        const updates = {};
+                        updates[`/referralCodes/${ownReferralCode}`] = userId;
 
-                        if (referrerIdSnap.exists()) {
-                            const referrerId = referrerIdSnap.val();
-                            const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
-                            
-                            newUser.points += bonuses.referee;
-                            newUser.wallet += bonuses.referee;
-                            newUser.referredBy = referrerCode;
-                            
-                            updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                            updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                            updates[`/users/${referrerId}/referrals/list/${userId}`] = true;
-                            updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
-                            updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                            updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
-                            updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                            
-                            showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
+                        if (referrerCode && referrerCode !== ownReferralCode) {
+                            const referrerIdSnap = await database.ref(`referralCodes/${referrerCode}`).once('value');
+                            if (referrerIdSnap.exists()) {
+                                const referrerId = referrerIdSnap.val();
+                                const bonuses = appSettings.referralBonus || { referee: 200, referrer: 500 };
+                                newUser.points += bonuses.referee;
+                                newUser.wallet += bonuses.referee;
+                                newUser.referredBy = referrerCode;
+                                
+                                updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                                updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                                updates[`/users/${referrerId}/referrals/list/${userId}`] = true;
+                                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                                updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                                updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
+                                updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                                
+                                showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
+                            }
                         }
+                        
+                        updates[`/users/${userId}`] = newUser;
+                        await database.ref().update(updates);
+                        // The 'on' listener will fire again with the new data, and the app will load.
+                        return;
                     }
                     
-                    updates[`/users/${userId}`] = newUser;
-                    await database.ref().update(updates);
-
-                }
-                
-                document.getElementById('loader').style.display = 'none';
-                document.querySelector('.app-container').style.display = 'block';
-                document.getElementById('bottomNav').classList.remove('disabled');
-
-                userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
+
                     if (currentUser.isBanned) {
                         document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
                         return;
                     }
+                    
                     const today = new Date().toISOString().split('T')[0];
                     if (currentUser.taskStats?.lastResetDate !== today) {
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
                     }
+                    
+                    document.getElementById('loader').style.display = 'none';
+                    document.querySelector('.app-container').style.display = 'block';
+                    document.getElementById('bottomNav').classList.remove('disabled');
+                    
                     updateUI();
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
                     navigateTo(currentPage, true);
                 });
+
             } catch (error) {
                 console.error("Initialization Error:", error);
                 let errorMessage = `<p style="color:red; font-weight:bold;">CRITICAL ERROR</p><p>${error.message}</p>`;
@@ -328,7 +338,6 @@
             if (currentUser.referredBy) return showToast("You have already been referred.");
             if (codeToVerify === currentUser.referralCode) return showToast("You cannot enter your own code.");
 
-            // SECURE FIX: Direct lookup instead of insecure query
             const referrerIdSnap = await database.ref(`referralCodes/${codeToVerify}`).once('value');
             if (!referrerIdSnap.exists()) return showToast("Invalid referral code.");
 
