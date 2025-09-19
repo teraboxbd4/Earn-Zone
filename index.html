@@ -165,22 +165,26 @@
 
                 const userRef = database.ref('users/' + userId);
                 
+                // This is the main fix for the race condition.
+                // It listens for the data, and only when it's confirmed to exist does the app load.
                 userRef.on('value', async (snap) => {
+                    // Stop the listener from running in a loop after the first load
                     if (document.querySelector('.app-container').style.display === 'block') {
                         currentUser = { id: userId, ...snap.val() };
                         updateUI();
                         const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                        navigateTo(currentPage, true);
+                        navigateTo(currentPage, true); // Re-render the current page to show any changes
                         return;
                     }
 
                     if (!snap.exists()) {
+                        // This block now only runs ONCE for a new user
                         const referrerCode = tg.initDataUnsafe.start_param;
                         const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                         
                         let newUser = {
                             name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username,
-                            photoUrl: tgUser.photo_url || '',
+                            photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
                             points: 0, wallet: 0,
                             referralCode: ownReferralCode,
                             isBanned: false,
@@ -217,6 +221,7 @@
                         
                         updates[`/users/${userId}`] = newUser;
                         await database.ref().update(updates);
+                        // The 'on' listener will automatically fire again with the new data, loading the app.
                         return;
                     }
                     
@@ -446,7 +451,7 @@
             }).catch(err => showToast("Error: Could not submit request.")); 
         }
         
-        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
+        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}`).once('value').then(snap => ({ name: snap.val()?.name || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
         function openAdModal(title) { const modal = document.getElementById('adModal'); if (modal) { document.getElementById('adModalTitle').textContent = title; modal.classList.add('show'); } }
         function closeAdModal() { const modal = document.getElementById('adModal'); if (modal) { modal.classList.remove('show'); } }
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
