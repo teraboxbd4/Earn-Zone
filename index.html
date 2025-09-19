@@ -14,6 +14,7 @@
         body:not(.dark-mode) { background-color: var(--bg-light); color: var(--text-dark); --card-bg: var(--card-bg-light); --text-primary: var(--text-dark); --text-secondary: #666666; --border-color: var(--border-color-light); }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; }
+        #loader { text-align: center; padding: 50px; font-family: 'Inter', sans-serif; }
         .app-container { max-width: 480px; margin: 0 auto; display: none; }
         .header { height: 180px; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); position: relative; display: flex; align-items: center; justify-content: center; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); }
         .theme-toggle { position: absolute; top: 20px; right: 20px; font-size: 1.2rem; cursor: pointer; z-index: 10;}
@@ -28,7 +29,6 @@
         .stat-value { font-weight: 600; color: var(--text-primary); }
         .stat-label { font-size: 0.7rem; color: var(--text-secondary); }
         .content-section { padding: 20px; margin-bottom: 80px; }
-        .section-title { margin-bottom: 18px; font-size: 1.2rem; font-weight: 600; color: var(--text-primary); }
         .task-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); border: 1px solid var(--border-color); }
         .btn { display: block; width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; text-align: center; text-decoration: none; }
         .btn-primary { background: var(--primary-color); color: white; }
@@ -41,7 +41,9 @@
     </style>
 </head>
 <body>
-    <div id="loader" style="text-align: center; padding: 50px; font-family: 'Inter', sans-serif;">Connecting to service...</div>
+    <div id="loader">
+        <p>Connecting to service...</p>
+    </div>
     <div class="app-container">
         <div class="header">
             <div class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></div>
@@ -72,22 +74,18 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V
-        // CRITICAL FIX: REPLACE THIS ENTIRE BLOCK WITH YOUR FIREBASE CONFIG
-        // This is the cause of the "Could not connect to the auth service" error.
-        // Go to your Firebase Project Settings -> General -> Your apps -> SDK setup and configuration -> Config
+        // --- CORRECT FIREBASE CONFIGURATION ---
+        // This is your project's unique configuration.
         const firebaseConfig = {
-            const firebaseConfig = {
-  apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
-  authDomain: "earn-zone-a6dce.firebaseapp.com",
-  databaseURL: "https://earn-zone-a6dce-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "earn-zone-a6dce",
-  storageBucket: "earn-zone-a6dce.firebasestorage.app",
-  messagingSenderId: "470563695372",
-  appId: "1:470563695372:web:323d2941c316cef0a4b729"
-};
-        // ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^
-
+            apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
+            authDomain: "earn-zone-a6dce.firebaseapp.com",
+            databaseURL: "https://earn-zone-a6dce-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "earn-zone-a6dce",
+            storageBucket: "earn-zone-a6dce.appspot.com", // Corrected URL format
+            messagingSenderId: "470563695372",
+            appId: "1:470563695372:web:323d2941c316cef0a4b729"
+        };
+        
         firebase.initializeApp(firebaseConfig);
         
         const auth = firebase.auth();
@@ -97,17 +95,25 @@
         let currentUser = {};
         let appSettings = {};
         let tasks = {};
-        const BOT_USERNAME = "YOUR_BOT_USERNAME_HERE"; // IMPORTANT: Replace with your bot's username
+        // IMPORTANT: Replace with your bot's username for referral links to work!
+        const BOT_USERNAME = "YOUR_BOT_USERNAME_HERE"; 
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                initializeAppLogic();
-            } else {
-                auth.signInAnonymously().catch(error => {
-                    console.error("Anonymous sign-in failed:", error);
-                    document.getElementById('loader').innerHTML = `<p style="color: red; padding: 20px;">CRITICAL ERROR: Could not connect to the auth service. Please ensure the Firebase config is correct.</p>`;
-                });
-            }
+        // Main entry point for the application
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    // User is signed in (anonymously), proceed to load the app
+                    initializeAppLogic();
+                } else {
+                    // No user is signed in, attempt to sign in anonymously
+                    auth.signInAnonymously().catch(error => {
+                        console.error("Anonymous sign-in failed:", error);
+                        const loader = document.getElementById('loader');
+                        loader.innerHTML = `<p style="color: red; padding: 20px; font-weight: bold;">AUTHENTICATION FAILED</p>
+                                          <p>This app requires Anonymous Authentication. Please ask the administrator to enable it in the Firebase Console (Authentication -> Sign-in method).</p>`;
+                    });
+                }
+            });
         });
 
         function initializeAppLogic() {
@@ -126,14 +132,18 @@
 
         async function loadInitialData(tgUser) {
             try {
+                // Step 1: Fetch admin settings. This is where it was getting stuck.
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) throw new Error("Admin configuration is not available. Please contact support.");
+                if (!adminData) {
+                    throw new Error("Could not load admin configuration from the database. The '/admin' path might be empty.");
+                }
                 
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
 
+                // Step 2: Fetch or create user data
                 const userId = tgUser.id;
                 const userRef = database.ref('users/' + userId);
                 const snapshot = await userRef.once('value');
@@ -146,6 +156,7 @@
                     await userRef.set(userData);
                 }
                 
+                // Step 3: Show the app and set up listeners
                 document.getElementById('loader').style.display = 'none';
                 document.querySelector('.app-container').style.display = 'block';
 
@@ -168,7 +179,12 @@
 
             } catch (error) {
                 console.error("Initialization Error:", error);
-                document.getElementById('loader').innerHTML = `<p style="color: red; padding: 20px;">${error.message}</p>`;
+                const loader = document.getElementById('loader');
+                let errorMessage = `<p style="color: red; padding: 20px; font-weight: bold;">INITIALIZATION FAILED</p><p>${error.message}</p>`;
+                if (error.message.includes("PERMISSION_DENIED")) {
+                    errorMessage += `<p style="margin-top: 10px;"><b>Suggestion:</b> This is likely a Firebase Database Rules issue. Please ensure your rules allow authenticated users to read the '/admin' path.</p>`;
+                }
+                loader.innerHTML = errorMessage;
             }
         }
 
@@ -216,23 +232,19 @@
 
         function copyReferralLink() {
             const linkInput = document.getElementById('refLink');
-            linkInput.select();
-            linkInput.setSelectionRange(0, 99999); // For mobile devices
-            try {
-                navigator.clipboard.writeText(linkInput.value);
+            navigator.clipboard.writeText(linkInput.value).then(() => {
                 showToast('Referral link copied!');
-            } catch (err) {
+            }, () => {
                 showToast('Failed to copy link.');
-            }
+            });
         }
 
         async function checkVPNandLocation() {
-            if (!appSettings.vpnRequired) {
-                return { success: true };
-            }
+            if (!appSettings.vpnRequired) { return { success: true }; }
             showToast("Verifying connection...", 2000);
             try {
-                const response = await fetch('https://ipinfo.io/json?token=YOUR_IPINFO_TOKEN'); // IMPORTANT: Use a real token for production
+                // For production, get a free token from ipinfo.io for better reliability
+                const response = await fetch('https://ipinfo.io/json'); 
                 if (!response.ok) throw new Error('IP check service failed.');
                 const data = await response.json();
                 
@@ -253,26 +265,13 @@
                 tg.showAlert(vpnCheck.message);
                 return;
             }
-
             const task = tasks[taskId];
-            const clickCounterRule = appSettings.clickCounterRule || 10;
-            const clicksToday = currentUser.taskStats?.clicksToday || 0;
-            if (clicksToday > 0 && clicksToday % clickCounterRule === 0) {
-                tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad to ensure you get rewarded.`);
-            }
-            
-            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerVAlue.increment(1));
-            
-            showToast(`${task.network} ad is loading...`);
-            
-            // This is a placeholder for your actual ad network SDK calls.
-            // You would call window.show_adextra(), etc., here.
+            showToast(`${task.name || 'Task'} is starting...`);
+            // Placeholder for your actual ad network SDK calls.
             setTimeout(() => {
-                const updates = {};
-                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward);
-                database.ref().update(updates);
+                database.ref(`/users/${currentUser.id}/points`).set(firebase.database.ServerValue.increment(task.reward));
                 showToast(`+${task.reward} Points! Task completed.`);
-            }, 3500); // Simulate ad watching time
+            }, 3500);
         }
         
         function handleSubmitWithdrawal() {
