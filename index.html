@@ -166,19 +166,15 @@
                 const userRef = database.ref('users/' + userId);
                 
                 userRef.on('value', async (snap) => {
-                    // This listener solves the race condition.
-                    // It will fire once with the initial data (or null), and then again if the data changes.
-
                     if (document.querySelector('.app-container').style.display === 'block') {
                         currentUser = { id: userId, ...snap.val() };
-                        updateUI(); // Keep UI in sync with any point changes
+                        updateUI();
                         const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                        navigateTo(currentPage, true); // Force re-render to update referral box
+                        navigateTo(currentPage, true);
                         return;
                     }
 
                     if (!snap.exists()) {
-                        // This block runs ONLY for a new user, the first time the listener fires.
                         const referrerCode = tg.initDataUnsafe.start_param;
                         const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                         
@@ -221,7 +217,6 @@
                         
                         updates[`/users/${userId}`] = newUser;
                         await database.ref().update(updates);
-                        // The 'on' listener will now fire again with the new data, and the app will load in the next block.
                         return;
                     }
                     
