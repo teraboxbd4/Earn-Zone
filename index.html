@@ -290,11 +290,7 @@
                         <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
                     </div>
                 </div>`;
-            mainContent.innerHTML = `
-                ${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}
-                ${referralLinkBox}
-                ${referralCodeBox}
-                ${currentUser.referralApplied ? '' : verifyBox}
+            const statsBox = `
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
                     <div class="stats-display">
@@ -302,11 +298,26 @@
                         <div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div>
                     </div>
                 </div>`;
+            const leaderboardBox = `
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
+                    <div id="ref-leaderboard-list"></div>
+                </div>`;
+
+            mainContent.innerHTML = `
+                ${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}
+                ${referralLinkBox}
+                ${referralCodeBox}
+                ${currentUser.referralApplied ? '' : verifyBox}
+                ${statsBox}
+                ${leaderboardBox}`;
+            
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')));
             document.getElementById('copyReferralCodeBtn').addEventListener('click', () => navigator.clipboard.writeText(referralCode).then(() => showToast('Code copied!')));
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
+            loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
         async function handleReferralVerification() {
