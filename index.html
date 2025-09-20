@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FIX: Restored Font Awesome stylesheet for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
@@ -25,7 +26,7 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
-        .app-container { max-width: 480px; margin: 0 auto; position: relative; } /* REMOVED display:none */
+        .app-container { max-width: 480px; margin: 0 auto; position: relative; }
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
@@ -51,6 +52,7 @@
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
         .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); } .history-item:last-child { border-bottom: none; } .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
         .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
         .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
         .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
@@ -59,7 +61,7 @@
     </style>
 </head>
 <body>
-    <div class="app-container" id="appContainer">
+    <div class="app-container">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
             <h1 class="header-title">Earn Zone</h1>
@@ -167,7 +169,7 @@
 
                 if (!userData) {
                     userData = {
-                        name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
+                        name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: newtoISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
                     };
                     await userRef.set(userData);
                 } else {
@@ -226,10 +228,11 @@
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
-        function renderTasksPage() { let tasksHtml = Object.keys(tasks).map(taskId => { const task = tasks[taskId]; return task.enabled ? `<div class="task-card"><h3>${task.network} Task (Reward: ${task.reward})</h3><div id="${task.zoneId}"></div><button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:10px;">Start Task</button></div>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || ''}</p></div>${tasksHtml || '<p>No tasks available.</p>'}`; }
-        function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2>Bonus Rewards</h2><ul class="channel-list">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
+        function renderTasksPage() { let tasksHtml = Object.keys(tasks).map(taskId => { const task = tasks[taskId]; return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.network} Task</h3><p>Complete this task to earn ${task.reward} points!</p><div id="${task.zoneId}"></div><button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button></div>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn more points.'}</p></div>${tasksHtml || '<p style="text-align:center; margin-top:20px;">No tasks available right now. Please check back later!</p>'}`; }
+        function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
+        // FIX: RENDER REFERRAL PAGE UPDATED WITH SHARE BUTTON
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
             const earnedFromReferrals = currentUser.referrals?.income || 0;
@@ -238,9 +241,10 @@
                     <h2 class="section-title"><i class="fas fa-share-alt"></i> Your Referral Code</h2>
                     <p style="margin-bottom: 15px;">${appSettings.notices?.referral || 'Share this code with your friends.'}</p>
                     <div class="input-group">
-                        <input type="text" id="referralCodeDisplay" class="input-field" value="${currentUser.referralCode || 'Generating...'}" readonly style="text-align:center; font-weight: bold; letter-spacing: 1px;">
+                        <input type="text" id="referralCodeDisplay" class="input-field" value="${currentUser.referralCode || 'Generating...'}" readonly>
                         <button class="btn" id="copyReferralCodeBtn" style="width: auto; padding: 0 15px;">Copy</button>
                     </div>
+                    <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share Your Code</button>
                 </div>`;
             
             const verifyBox = `
@@ -272,10 +276,25 @@
                 navigator.clipboard.writeText(currentUser.referralCode).then(() => showToast('Code copied!')); 
             });
 
+            // Add event listener for the new share button
+            document.getElementById('shareReferralBtn').addEventListener('click', handleShareReferral);
+
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
             loadLeaderboard('referrals', '#ref-leaderboard-list');
+        }
+
+        // FIX: NEW FUNCTION TO HANDLE SHARING
+        function handleShareReferral() {
+            const referralCode = currentUser.referralCode;
+            if (!referralCode) {
+                showToast("Your referral code is not available yet.");
+                return;
+            }
+            const message = `Hey! Join Earn Zone and use my referral code to get a bonus: ${referralCode}`;
+            const shareUrl = `https://t.me/share/url?text=${encodeURIComponent(message)}`;
+            tg.openTelegramLink(shareUrl);
         }
 
         async function handleReferralVerification() {
