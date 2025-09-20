@@ -263,16 +263,83 @@
             const earnedFromReferrals = currentUser.referrals?.income || 0;
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
-            const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link with your friends.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div></div>`;
-            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2 class="section-title">Enter Referral Code</h2><p style="margin-bottom: 15px;">If a friend gave you a code, enter it here.</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.referral || ''}</p></div>${referralLinkBox}${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div><div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div></div></div>`;
+            const referralLinkBox = `
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
+                    <p style="margin-bottom: 15px;">Share this link directly with your friends for automatic rewards.</p>
+                    <div class="input-group">
+                        <input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly>
+                        <button class="btn" id="copyReferralLinkBtn">Copy</button>
+                    </div>
+                </div>`;
+            const referralCodeBox = `
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2>
+                    <p style="margin-bottom: 15px;">Or, have friends enter this code manually in the verify box.</p>
+                    <div class="input-group">
+                        <input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold; letter-spacing: 2px; font-size: 1.1rem;">
+                        <button class="btn" id="copyReferralCodeBtn">Copy</button>
+                    </div>
+                </div>`;
+            const verifyBox = `
+                <div class="task-card" id="referralVerifyBox">
+                    <h2 class="section-title">Referral Verify Box</h2>
+                    <p style="margin-bottom: 15px;">If a friend gave you a code, enter it here to get bonus points!</p>
+                    <div class="input-group">
+                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
+                        <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
+                    </div>
+                </div>`;
+            mainContent.innerHTML = `
+                ${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}
+                ${referralLinkBox}
+                ${referralCodeBox}
+                ${currentUser.referralApplied ? '' : verifyBox}
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
+                    <div class="stats-display">
+                        <div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>
+                        <div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div>
+                    </div>
+                </div>`;
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')));
+            document.getElementById('copyReferralCodeBtn').addEventListener('click', () => navigator.clipboard.writeText(referralCode).then(() => showToast('Code copied!')));
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
         }
 
-        async function handleReferralVerification() { /* ... (Unchanged) ... */ }
+        async function handleReferralVerification() {
+            const verifyBtn = document.getElementById('verifyReferralBtn');
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+            const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
+            if (!enteredCode) { showToast("Please enter a code."); verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; return; }
+            if (enteredCode === currentUser.referralCode) { showToast("You cannot use your own code."); verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; return; }
+            try {
+                const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(enteredCode).limitToFirst(1);
+                const referrerSnap = await referrerQuery.once('value');
+                if (!referrerSnap.exists()) { showToast("Invalid referral code."); verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; return; }
+                const referrerId = Object.keys(referrerSnap.val())[0];
+                const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
+                const updates = {};
+                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
+                updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(bonuses.referee);
+                updates[`/users/${currentUser.id}/referredBy`] = enteredCode;
+                updates[`/users/${currentUser.id}/referralApplied`] = true;
+                updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                await database.ref().update(updates);
+                showToast(`Success! You received ${bonuses.referee} bonus points!`);
+                document.getElementById('referralVerifyBox').style.display = 'none';
+            } catch (error) {
+                console.error("Referral verification error:", error);
+                showToast("An error occurred. Please try again.");
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+            }
+        }
+
         function handleDailyBonus() { const reward = appSettings.dailyBonus?.reward || 50; if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); openAdModal('Daily Bonus Ad'); setTimeout(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; database.ref().update(updates); showToast(`+${reward} Points!`); }, 3000); }
         function handleBonusClaim(channelId, reward, link) { tg.openTelegramLink(link); setTimeout(() => { const claimed = currentUser.claimedBonuses || []; if (!claimed.includes(channelId)) { claimed.push(channelId); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/claimedBonuses`] = claimed; database.ref().update(updates); showToast(`+${reward} bonus points claimed!`); } }, 5000); }
         async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); if(!historyEl) return; historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
