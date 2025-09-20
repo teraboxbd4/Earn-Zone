@@ -25,8 +25,7 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
-        .app-container { max-width: 480px; margin: 0 auto; position: relative; display: none; /* Hidden by default */ }
-        .loader-container { display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Inter', sans-serif; color: #888; }
+        .app-container { max-width: 480px; margin: 0 auto; position: relative; } /* REMOVED display:none */
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
@@ -60,9 +59,6 @@
     </style>
 </head>
 <body>
-    <div class="loader-container" id="loader">
-        <p>Connecting...</p>
-    </div>
     <div class="app-container" id="appContainer">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
@@ -98,8 +94,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // --- START: CORRECTED SCRIPT LOGIC ---
-
         const firebaseConfig = {
             apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
             authDomain: "earn-zone-a6dce.firebaseapp.com",
@@ -120,40 +114,33 @@
         let tasks = {};
         let bonusChannels = {};
 
-        // 1. AUTHENTICATION LISTENER IS THE ENTRY POINT
         auth.onAuthStateChanged(user => {
             if (user) {
-                // User is signed in. NOW we can start the app.
-                console.log("Authenticated successfully. UID:", user.uid);
                 initializeAppLogic(); 
             } else {
-                // User is not signed in. Attempt anonymous sign-in.
                 auth.signInAnonymously().catch(error => {
                     console.error("Anonymous sign-in failed:", error);
-                    document.getElementById('loader').innerHTML = `<p style="color:red;">Auth Error. Please refresh.</p>`;
+                    document.body.innerHTML = `<p style="text-align:center; padding: 20px; color: red;">CRITICAL ERROR: Could not connect.</p>`;
                 });
             }
         });
 
-        // 2. ALL APP LOGIC IS WRAPPED IN THIS FUNCTION
         function initializeAppLogic() {
             tg.ready();
             tg.expand();
             
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
-                document.getElementById('loader').innerHTML = "<p>Error: Must be run inside Telegram.</p>";
+                document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>";
                 return;
             }
 
-            // Setup UI listeners AFTER we know the app is ready
             applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
 
-            // This function now runs only AFTER authentication is confirmed.
             loadInitialData(tgUser);
         }
 
@@ -161,14 +148,14 @@
             try {
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) { throw new Error("Critical: Admin config not found."); }
+                if (!adminData) { throw new Error("Admin config not found."); }
 
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
                 
-                const userId = tgUser.id.toString(); // Ensure userId is a string
+                const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
                 const snapshot = await userRef.once('value');
                 let userData = snapshot.val();
@@ -179,7 +166,6 @@
                 const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 if (!userData) {
-                    // This write operation is now guaranteed to be performed by an authenticated user.
                     userData = {
                         name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
                     };
@@ -194,11 +180,6 @@
                     if (Object.keys(updates).length > 0) { await userRef.update(updates); }
                 }
                 
-                // Show the app container and hide the loader
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-
-                // Attach the real-time listener
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
                     if (currentUser.isBanned) {
@@ -216,12 +197,10 @@
 
             } catch (error) {
                 console.error("Initialization Error:", error);
-                document.getElementById('loader').innerHTML = `<p style="color: red; font-weight: bold;">${error.message}</p>`;
+                document.body.innerHTML = `<p style="color: red; font-weight: bold; text-align:center; padding:20px;">${error.message}</p>`;
             }
         }
         
-        // --- ALL OTHER FUNCTIONS (navigateTo, updateUI, etc.) REMAIN UNCHANGED ---
-
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
             if (!forceRender && currentActive && currentActive.dataset.page === page) return;
@@ -257,9 +236,9 @@
             const referralBox = `
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-share-alt"></i> Your Referral Code</h2>
-                    <p style="margin-bottom: 15px;">Share this code with your friends.</p>
+                    <p style="margin-bottom: 15px;">${appSettings.notices?.referral || 'Share this code with your friends.'}</p>
                     <div class="input-group">
-                        <input type="text" id="referralCodeDisplay" class="input-field" value="${currentUser.referralCode || 'Generating...'}" readonly>
+                        <input type="text" id="referralCodeDisplay" class="input-field" value="${currentUser.referralCode || 'Generating...'}" readonly style="text-align:center; font-weight: bold; letter-spacing: 1px;">
                         <button class="btn" id="copyReferralCodeBtn" style="width: auto; padding: 0 15px;">Copy</button>
                     </div>
                 </div>`;
@@ -267,9 +246,9 @@
             const verifyBox = `
                 <div class="task-card" id="referralVerifyBox">
                     <h2 class="section-title">Referral Verify Box</h2>
-                    <p style="margin-bottom: 15px;">Entered a friend's referral code? Verify it here.</p>
+                    <p style="margin-bottom: 15px;">Entered a friend's referral code? Verify it here to get bonus points!</p>
                     <div class="input-group">
-                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Referral Code">
+                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
                         <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
                     </div>
                 </div>`;
@@ -307,14 +286,12 @@
             const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
             if (!enteredCode) {
                 showToast("Please enter a code.");
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = 'Verify';
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
                 return;
             }
             if (enteredCode === currentUser.referralCode) {
                 showToast("You cannot use your own code.");
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = 'Verify';
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
                 return;
             }
 
@@ -324,8 +301,7 @@
 
                 if (!referrerSnap.exists()) {
                     showToast("Invalid referral code.");
-                    verifyBtn.disabled = false;
-                    verifyBtn.textContent = 'Verify';
+                    verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
                     return;
                 }
 
@@ -356,8 +332,7 @@
             } catch (error) {
                 console.error("Referral verification error:", error);
                 showToast("An error occurred. Please try again.");
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = 'Verify';
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
             }
         }
 
