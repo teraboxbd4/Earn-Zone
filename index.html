@@ -258,6 +258,7 @@
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
+        // +++ ফিক্স: সম্পূর্ণ রেফারেল পেজ (লিডারবোর্ড সহ) +++
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
             const earnedFromReferrals = currentUser.referrals?.income || 0;
@@ -341,6 +342,7 @@
                 updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
                 updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
                 await database.ref().update(updates);
                 showToast(`Success! You received ${bonuses.referee} bonus points!`);
                 document.getElementById('referralVerifyBox').style.display = 'none';
@@ -355,7 +357,18 @@
         function handleBonusClaim(channelId, reward, link) { tg.openTelegramLink(link); setTimeout(() => { const claimed = currentUser.claimedBonuses || []; if (!claimed.includes(channelId)) { claimed.push(channelId); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/claimedBonuses`] = claimed; database.ref().update(updates); showToast(`+${reward} bonus points claimed!`); } }, 5000); }
         async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); if(!historyEl) return; historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
         function handleSubmitWithdrawal() { const method = document.getElementById('withdraw-method').value; const amount = parseInt(document.getElementById('withdraw-amount').value); const account = document.getElementById('withdraw-account').value.trim(); const minWithdraw = appSettings.minWithdraw || 5000; if (!method || !amount || !account) return showToast("Please fill all fields."); if (amount < minWithdraw) return showToast(`Minimum withdrawal is ${minWithdraw} points.`); if (amount <= 0 || amount > currentUser.points) return showToast("You do not have enough points."); const requestData = { userId: currentUser.id, userName: currentUser.name, amount: amount, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP }; database.ref('withdrawRequests').push(requestData).then(() => { database.ref(`users/${currentUser.id}/points`).set(firebase.database.ServerValue.increment(-amount)); showToast("Withdrawal request submitted!"); navigateTo('withdraw'); }).catch(err => showToast("Error: Could not submit request.")); }
-        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
+        
+        async function loadLeaderboard(type, elementId) { 
+            const listEl = document.querySelector(elementId); 
+            if (!listEl) return; 
+            listEl.innerHTML = "<p>Loading...</p>"; 
+            const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); 
+            const data = snapshot.val(); 
+            if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
+            const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); 
+            const users = await Promise.all(promises); 
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); 
+        }
         
         function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
         function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
