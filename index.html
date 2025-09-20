@@ -106,6 +106,7 @@
         const BOT_USERNAME = "earn_zone_user_bot";
 
         let currentUser = {}, appSettings = {}, tasks = {}, bonusChannels = {};
+        let countdownIntervals = {};
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -147,16 +148,30 @@
                 
                 const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
+                
+                userRef.on('value', (snap) => {
+                    currentUser = { id: userId, ...snap.val() };
+                    if (currentUser.isBanned) {
+                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
+                        return;
+                    }
+                    const today = new Date().toISOString().split('T')[0];
+                    if (currentUser.taskStats?.lastResetDate !== today) {
+                        database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, clicksToday: 0 });
+                    }
+                    updateUI();
+                    const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
+                    navigateTo(currentPage, true);
+                });
+                
                 const snapshot = await userRef.once('value');
                 let userData = snapshot.val();
-                
-                const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
-                const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
-
                 if (!userData) {
+                    const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
+                    const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
                     const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                     const referrerCode = tg.initDataUnsafe.start_param;
-                    userData = { name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: [] };
+                    userData = { name: currentTgName, photoUrl: currentTgPhoto, points: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: [] };
                     if (referrerCode && referrerCode !== ownReferralCode) {
                         const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
                         const referrerSnap = await referrerQuery.once('value');
@@ -164,7 +179,6 @@
                             const referrerId = Object.keys(referrerSnap.val())[0];
                             const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
                             userData.points += bonuses.referee;
-                            userData.wallet += bonuses.referee;
                             userData.referredBy = referrerCode;
                             userData.referralApplied = true;
                             const updates = {};
@@ -176,35 +190,7 @@
                         }
                     }
                     await userRef.set(userData);
-                } else {
-                    const updates = {};
-                    if (userData.name !== currentTgName || userData.photoUrl !== currentTgPhoto) {
-                        updates.name = currentTgName;
-                        updates.photoUrl = currentTgPhoto;
-                    }
-                    if (!userData.referralCode) {
-                        updates.referralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    }
-                    updates.lastActive = new Date().toISOString();
-                    if (Object.keys(updates).length > 0) {
-                        await userRef.update(updates);
-                    }
                 }
-                
-                userRef.on('value', (snap) => {
-                    currentUser = { id: userId, ...snap.val() };
-                    if (currentUser.isBanned) {
-                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
-                        return;
-                    }
-                    const today = new Date().toISOString().split('T')[0];
-                    if (currentUser.taskStats?.lastResetDate !== today) {
-                        database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
-                    }
-                    updateUI();
-                    const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                    navigateTo(currentPage, true);
-                });
 
             } catch (error) {
                 console.error("Initialization Error:", error);
@@ -246,7 +232,8 @@
             document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
             document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${totalPoints} Points`;
-            document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
+            const today = new Date().toISOString().slice(0, 10);
+            document.getElementById('clicksToday').textContent = currentUser.globalTaskHistory?.daily?.[today] || 0;
             document.getElementById('total-points').textContent = totalPoints;
             document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
         }
@@ -258,60 +245,18 @@
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
-        // +++ ফিক্স: সম্পূর্ণ রেফারেল পেজ (লিডারবোর্ড সহ) +++
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
             const earnedFromReferrals = currentUser.referrals?.income || 0;
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
-            const referralLinkBox = `
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
-                    <p style="margin-bottom: 15px;">Share this link directly with your friends for automatic rewards.</p>
-                    <div class="input-group">
-                        <input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly>
-                        <button class="btn" id="copyReferralLinkBtn">Copy</button>
-                    </div>
-                </div>`;
-            const referralCodeBox = `
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2>
-                    <p style="margin-bottom: 15px;">Or, have friends enter this code manually in the verify box.</p>
-                    <div class="input-group">
-                        <input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold; letter-spacing: 2px; font-size: 1.1rem;">
-                        <button class="btn" id="copyReferralCodeBtn">Copy</button>
-                    </div>
-                </div>`;
-            const verifyBox = `
-                <div class="task-card" id="referralVerifyBox">
-                    <h2 class="section-title">Referral Verify Box</h2>
-                    <p style="margin-bottom: 15px;">If a friend gave you a code, enter it here to get bonus points!</p>
-                    <div class="input-group">
-                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
-                        <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
-                    </div>
-                </div>`;
-            const statsBox = `
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
-                    <div class="stats-display">
-                        <div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>
-                        <div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div>
-                    </div>
-                </div>`;
-            const leaderboardBox = `
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
-                    <div id="ref-leaderboard-list"></div>
-                </div>`;
+            const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link directly with friends.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div></div>`;
+            const referralCodeBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2><p style="margin-bottom: 15px;">Or, have friends enter this code manually.</p><div class="input-group"><input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold; letter-spacing: 2px;"><button class="btn" id="copyReferralCodeBtn">Copy</button></div></div>`;
+            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2 class="section-title">Referral Verify Box</h2><p style="margin-bottom: 15px;">Enter a friend's code to get bonus points!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
+            const statsBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div><div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div></div></div>`;
+            const leaderboardBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
 
-            mainContent.innerHTML = `
-                ${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}
-                ${referralLinkBox}
-                ${referralCodeBox}
-                ${currentUser.referralApplied ? '' : verifyBox}
-                ${statsBox}
-                ${leaderboardBox}`;
+            mainContent.innerHTML = `${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}${referralLinkBox}${referralCodeBox}${currentUser.referralApplied ? '' : verifyBox}${statsBox}${leaderboardBox}`;
             
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')));
             document.getElementById('copyReferralCodeBtn').addEventListener('click', () => navigator.clipboard.writeText(referralCode).then(() => showToast('Code copied!')));
@@ -323,8 +268,7 @@
 
         async function handleReferralVerification() {
             const verifyBtn = document.getElementById('verifyReferralBtn');
-            verifyBtn.disabled = true;
-            verifyBtn.textContent = 'Verifying...';
+            verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying...';
             const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
             if (!enteredCode) { showToast("Please enter a code."); verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; return; }
             if (enteredCode === currentUser.referralCode) { showToast("You cannot use your own code."); verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; return; }
@@ -336,7 +280,6 @@
                 const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
                 const updates = {};
                 updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
-                updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(bonuses.referee);
                 updates[`/users/${currentUser.id}/referredBy`] = enteredCode;
                 updates[`/users/${currentUser.id}/referralApplied`] = true;
                 updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
@@ -345,10 +288,9 @@
                 updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
                 await database.ref().update(updates);
                 showToast(`Success! You received ${bonuses.referee} bonus points!`);
-                document.getElementById('referralVerifyBox').style.display = 'none';
             } catch (error) {
                 console.error("Referral verification error:", error);
-                showToast("An error occurred. Please try again.");
+                showToast("An error occurred.");
                 verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
             }
         }
@@ -375,48 +317,108 @@
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
 
         function renderTasksPage() {
-            const taskRulesNotice = appSettings.notices?.taskRules 
-                ? `<div class="task-card" style="border-left: 4px solid var(--accent-color);"><h2 class="section-title" style="margin-bottom: 10px;"><i class="fas fa-scroll"></i> Important Rules</h2><p>${appSettings.notices.taskRules.replace(/\n/g, '<br>')}</p></div>`
-                : '';
-            let tasksHtml = Object.keys(tasks).map(taskId => { 
-                const task = tasks[taskId]; 
-                return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${task.reward} points!</p><button class="btn btn-primary" style="margin-top:15px;" onclick="handleTaskClick('${taskId}')">Start Task</button></div>` : ''; 
-            }).join(''); 
-            mainContent.innerHTML = `${taskRulesNotice}${tasksHtml || '<p style="text-align:center; margin-top:20px;">No tasks available right now.</p>'}`; 
+            const mainContent = document.getElementById('mainContent');
+            if (!mainContent) return;
+            let tasksHtml = Object.keys(tasks).map(taskId => {
+                const task = tasks[taskId];
+                if (!task.enabled) return '';
+                return createTaskCardHTML(taskId, task);
+            }).join('');
+            mainContent.innerHTML = tasksHtml || '<p style="text-align:center; padding:20px;">No tasks available right now.</p>';
+            updateAllTaskTimers();
+        }
+
+        function createTaskCardHTML(taskId, task) {
+            return `<div class="task-card" id="task-card-${taskId}">
+                <h3><i class="fas fa-rocket"></i> ${task.name}</h3>
+                <p>Complete this task to earn ${task.reward} points!</p>
+                <p><small>Cooldown: ${task.timer || 0}s | Daily Limit: ${task.limit > 0 ? task.limit : 'Unlimited'}</small></p>
+                <button class="btn btn-primary" id="task-btn-${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>
+            </div>`;
+        }
+
+        function updateAllTaskTimers() {
+            Object.keys(tasks).forEach(taskId => {
+                const task = tasks[taskId];
+                const button = document.getElementById(`task-btn-${taskId}`);
+                if (!button) return;
+                
+                const taskHistory = currentUser.taskHistory?.[taskId] || {};
+                const now = Date.now();
+                const today = new Date().toISOString().slice(0, 10);
+
+                const taskClickCount = taskHistory.daily?.[today] || 0;
+                if (task.limit > 0 && taskClickCount >= task.limit) {
+                    button.textContent = `Limit Reached (${taskClickCount}/${task.limit})`;
+                    button.disabled = true;
+                    if(countdownIntervals[taskId]) clearInterval(countdownIntervals[taskId]);
+                    return;
+                }
+                
+                const lastClickedTime = taskHistory.lastClicked || 0;
+                const cooldownEndTime = lastClickedTime + ((task.timer || 0) * 1000);
+                if (now < cooldownEndTime) {
+                    button.disabled = true;
+                    if (countdownIntervals[taskId]) clearInterval(countdownIntervals[taskId]);
+                    countdownIntervals[taskId] = setInterval(() => {
+                        const remaining = Math.ceil((cooldownEndTime - Date.now()) / 1000);
+                        if (remaining > 0) {
+                            button.textContent = `Wait ${remaining}s`;
+                        } else {
+                            clearInterval(countdownIntervals[taskId]);
+                            button.textContent = 'Start Task';
+                            button.disabled = false;
+                        }
+                    }, 1000);
+                } else {
+                     button.textContent = 'Start Task';
+                     button.disabled = false;
+                }
+            });
         }
 
         async function handleTaskClick(taskId) {
-            const isCompliant = await checkVpnCompliance();
-            if (!isCompliant) return;
+            const taskButton = document.getElementById(`task-btn-${taskId}`);
+            if(taskButton && taskButton.disabled) return;
+            
+            const now = Date.now();
+            const today = new Date().toISOString().slice(0, 10);
+            const currentHour = new Date(now).toISOString().slice(0, 13);
+            
+            const globalHistory = currentUser.globalTaskHistory || {};
+            const dailyClicks = globalHistory.daily?.[today] || 0;
+            const hourlyClicks = globalHistory.hourly?.[currentHour] || 0;
+
+            if (appSettings.globalDailyLimit > 0 && dailyClicks >= appSettings.globalDailyLimit) {
+                return showToast('You have reached your daily click limit for all tasks.');
+            }
+
+            if (appSettings.globalHourlyLimit > 0 && hourlyClicks >= appSettings.globalHourlyLimit) {
+                return showToast('You have reached your hourly click limit for all tasks.');
+            }
 
             const task = tasks[taskId];
-            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
+            taskButton.disabled = true;
+            
             openAdModal(`${task.name} Ad Playing...`);
             
-            let adPromise;
-            try {
-                switch(task.network) {
-                    case 'Monetag': adPromise = window.show_9797628(); break;
-                    case 'Gigapub': adPromise = window.showGiga(); break;
-                    case 'Adexora': adPromise = window.showAdexora(); break;
-                    case 'Adeextra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
-                    default: adPromise = Promise.reject('Unknown network');
-                }
-            } catch (e) { adPromise = Promise.reject('SDK error'); }
-            
-            adPromise.then(() => {
+            setTimeout(() => {
                 closeAdModal();
-                const updates = {
-                    [`/users/${currentUser.id}/points`]: firebase.database.ServerValue.increment(task.reward),
-                    [`/leaderboards/points/${currentUser.id}`]: firebase.database.ServerValue.increment(task.reward)
-                };
-                database.ref().update(updates);
-                showToast(`+${task.reward} Points!`);
-            }).catch(err => {
-                closeAdModal();
-                showToast("Ad failed. Please try again.");
-            });
+                const updates = {};
+                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward);
+                updates[`/users/${currentUser.id}/taskHistory/${taskId}/daily/${today}`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${currentUser.id}/taskHistory/${taskId}/lastClicked`] = firebase.database.ServerValue.TIMESTAMP;
+                updates[`/users/${currentUser.id}/globalTaskHistory/daily/${today}`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${currentUser.id}/globalTaskHistory/hourly/${currentHour}`] = firebase.database.ServerValue.increment(1);
+
+                database.ref().update(updates).then(() => {
+                     showToast(`+${task.reward} Points!`);
+                });
+            }, 3000);
         }
     </script>
+</body>
+</html>
+
 </body>
 </html>
