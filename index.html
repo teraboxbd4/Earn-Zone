@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FIX: Restored Font Awesome stylesheet for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
@@ -110,6 +109,7 @@
         const auth = firebase.auth();
         const database = firebase.database();
         const tg = window.Telegram.WebApp;
+        const BOT_USERNAME = "earn_zone_user_bot"; // Your bot's username
 
         let currentUser = {};
         let appSettings = {};
@@ -168,10 +168,36 @@
                 const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 if (!userData) {
+                    const ownReferralCode = generateReferralCode();
+                    const referrerCode = tg.initDataUnsafe.start_param;
+
                     userData = {
-                        name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: newtoISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
+                        name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
                     };
+                    
+                    // FIX: Automatic referral application for users who click a link
+                    if (referrerCode && referrerCode !== ownReferralCode) {
+                        const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
+                        const referrerSnap = await referrerQuery.once('value');
+                        if (referrerSnap.exists()) {
+                            const referrerId = Object.keys(referrerSnap.val())[0];
+                            const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
+                            
+                            userData.points += bonuses.referee;
+                            userData.wallet += bonuses.referee;
+                            userData.referredBy = referrerCode;
+                            userData.referralApplied = true; // Mark as applied so the box doesn't show
+
+                            const updates = {};
+                            updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                            updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                            updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                            await database.ref().update(updates);
+                            showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
+                        }
+                    }
                     await userRef.set(userData);
+
                 } else {
                     const updates = {};
                     if (userData.name !== currentTgName || userData.photoUrl !== currentTgPhoto) {
@@ -232,25 +258,27 @@
         function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
         async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
-        // FIX: RENDER REFERRAL PAGE UPDATED WITH SHARE BUTTON
+        // FIX: RENDER REFERRAL PAGE RESTORES THE LINK
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
             const earnedFromReferrals = currentUser.referrals?.income || 0;
+            const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
+
             const referralBox = `
                 <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-share-alt"></i> Your Referral Code</h2>
-                    <p style="margin-bottom: 15px;">${appSettings.notices?.referral || 'Share this code with your friends.'}</p>
+                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
+                     <p style="margin-bottom: 15px;">${appSettings.notices?.referral || 'Share this link with your friends.'}</p>
                     <div class="input-group">
-                        <input type="text" id="referralCodeDisplay" class="input-field" value="${currentUser.referralCode || 'Generating...'}" readonly>
-                        <button class="btn" id="copyReferralCodeBtn" style="width: auto; padding: 0 15px;">Copy</button>
+                        <input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly>
+                        <button class="btn" id="copyReferralLinkBtn" style="width: auto; padding: 0 15px;">Copy</button>
                     </div>
-                    <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share Your Code</button>
+                    <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button>
                 </div>`;
             
             const verifyBox = `
                 <div class="task-card" id="referralVerifyBox">
                     <h2 class="section-title">Referral Verify Box</h2>
-                    <p style="margin-bottom: 15px;">Entered a friend's referral code? Verify it here to get bonus points!</p>
+                    <p style="margin-bottom: 15px;">Or, if a friend gave you a code, enter it here to get bonus points!</p>
                     <div class="input-group">
                         <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
                         <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
@@ -272,29 +300,18 @@
                     <div id="ref-leaderboard-list"></div>
                 </div>`;
             
-            document.getElementById('copyReferralCodeBtn').addEventListener('click', () => { 
-                navigator.clipboard.writeText(currentUser.referralCode).then(() => showToast('Code copied!')); 
+            document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { 
+                navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')); 
             });
 
-            // Add event listener for the new share button
-            document.getElementById('shareReferralBtn').addEventListener('click', handleShareReferral);
+            document.getElementById('shareReferralBtn').addEventListener('click', () => {
+                 tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}`);
+            });
 
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
             loadLeaderboard('referrals', '#ref-leaderboard-list');
-        }
-
-        // FIX: NEW FUNCTION TO HANDLE SHARING
-        function handleShareReferral() {
-            const referralCode = currentUser.referralCode;
-            if (!referralCode) {
-                showToast("Your referral code is not available yet.");
-                return;
-            }
-            const message = `Hey! Join Earn Zone and use my referral code to get a bonus: ${referralCode}`;
-            const shareUrl = `https://t.me/share/url?text=${encodeURIComponent(message)}`;
-            tg.openTelegramLink(shareUrl);
         }
 
         async function handleReferralVerification() {
@@ -334,8 +351,6 @@
                 updates[`/users/${currentUser.id}/referralApplied`] = true;
                 
                 updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                updates[`/users/${referrerId}/wallet`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                updates[`/users/${referrerId}/referrals/list/${currentUser.id}`] = true;
                 updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
                 
