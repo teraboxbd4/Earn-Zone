@@ -115,6 +115,7 @@
         .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
         .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
         .spinner { width: 45px; height: 45px; border: 3px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; margin: 15px auto; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+        .ad-timer-display { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); margin-top: 10px; } /* Timer style */
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 30px; z-index: 1000; opacity: 0; transition: all 0.3s ease; } .toast.show { opacity: 1; bottom: 90px; }
         /* Verification checkmark style */
         .verified-icon { color: #28a745; margin-left: 5px; font-size: 0.8em; }
@@ -154,7 +155,13 @@
             <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
             <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
         </div>
-        <div class="ad-modal-overlay" id="adModal"><div class="ad-modal"><h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3><div class="spinner"></div></div></div>
+        <div class="ad-modal-overlay" id="adModal">
+            <div class="ad-modal">
+                <h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3>
+                <div class="spinner"></div>
+                <div class="ad-timer-display" id="adTimerDisplay"></div>
+            </div>
+        </div>
         <div class="toast" id="toast"></div>
     </div>
 
@@ -184,6 +191,7 @@
         let appSettings = {};
         let tasks = {};
         let bonusChannels = {};
+        let taskTimerInterval = null; // To hold the timer interval
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -694,7 +702,39 @@
             const clicksToday = currentUser.taskStats?.clicksToday || 0; 
             if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); 
             database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); 
-            openAdModal(`${task.network} Ad Playing...`); 
+            
+            // Start the timer
+            let timerSeconds = task.timer || 0;
+            if (timerSeconds > 0) {
+                openAdModal(`${task.network} Ad Playing...`);
+                document.getElementById('adTimerDisplay').style.display = 'block';
+                document.getElementById('adTimerDisplay').textContent = `${timerSeconds}s`;
+
+                taskTimerInterval = setInterval(() => {
+                    timerSeconds--;
+                    if (timerSeconds >= 0) {
+                        document.getElementById('adTimerDisplay').textContent = `${timerSeconds}s`;
+                    } else {
+                        clearInterval(taskTimerInterval);
+                        document.getElementById('adTimerDisplay').style.display = 'none';
+                        closeAdModal();
+                        
+                        const updates = {}; 
+                        const rewardBTD = task.rewardBTD || 0;
+                        const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                        const rewardUSD = rewardBTD * btdToUsdRate;
+
+                        updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                        updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                        updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                        database.ref().update(updates); 
+                        showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`); 
+                    }
+                }, 1000);
+            } else {
+                openAdModal(`${task.network} Ad Playing...`);
+            }
+
             let adPromise; 
             try { 
                 switch(task.network) { 
@@ -706,20 +746,10 @@
                 } 
             } catch (e) { adPromise = Promise.reject('SDK error'); } 
             
-            adPromise.then(() => { 
+            adPromise.catch(err => { 
                 closeAdModal(); 
-                const updates = {}; 
-                const rewardBTD = task.rewardBTD || 0;
-                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                const rewardUSD = rewardBTD * btdToUsdRate;
-
-                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
-                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
-                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
-                database.ref().update(updates); 
-                showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`); 
-            }).catch(err => { 
-                closeAdModal(); 
+                if (taskTimerInterval) clearInterval(taskTimerInterval);
+                document.getElementById('adTimerDisplay').style.display = 'none';
                 showToast("Ad failed. Please try again."); 
             }); 
         }
@@ -864,9 +894,19 @@
             }).join(''); 
         }
 
-        function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
-        function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
-        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
+        function openAdModal(title) { 
+            document.getElementById('adModalTitle').textContent = title; 
+            document.getElementById('adModal').classList.add('show'); 
+        }
+        function closeAdModal() { 
+            document.getElementById('adModal').classList.remove('show'); 
+        }
+        function showToast(message, duration = 3000) { 
+            const toast = document.getElementById('toast'); 
+            toast.textContent = message; 
+            toast.classList.add('show'); 
+            setTimeout(() => toast.classList.remove('show'), duration); 
+        }
 
     </script>
 </body>
