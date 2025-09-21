@@ -24,12 +24,15 @@
         .app-container { max-width: 480px; margin: 0 auto; position: relative; }
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
+        .currency-toggle { position: absolute; top: 20px; right: 70px; display: flex; background: rgba(255,255,255,0.2); border-radius: 20px; }
+        .currency-toggle button { background: transparent; border: none; color: white; padding: 8px 15px; cursor: pointer; font-weight: 600; border-radius: 20px; font-size: 0.8rem; }
+        .currency-toggle button.active { background: white; color: var(--primary-color); }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .points-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; margin-top: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; }
+        .balance-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 8px 18px; border-radius: 50px; margin-top: 8px; font-weight: 700; color: var(--primary-color); font-size: 1.1rem; }
         .stats-display { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; }
         body.dark-mode .stat-item { background: var(--input-bg); }
@@ -58,18 +61,22 @@
 <body>
     <div class="app-container">
         <div class="header">
-            <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
             <h1 class="header-title">Earn Zone</h1>
+            <div class="currency-toggle" id="currencyToggle">
+                <button id="btn-usd">USD</button>
+                <button id="btn-bdt">BDT</button>
+            </div>
+            <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
         </div>
         <div class="profile-section">
             <div class="profile-card">
                 <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
-                <div class="points-display" id="userPointsDisplay"><i class="fas fa-coins"></i> 0 Points</div>
+                <div class="balance-display" id="userBalanceDisplay"><i class="fas fa-wallet"></i> $0.00</div>
                 <div class="stats-display">
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
                     <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
-                    <div class="stat-item"><div class="stat-value" id="total-points">0</div><div class="stat-label">Total Points</div></div>
+                    <div class="stat-item"><div class="stat-value" id="total-earned">0</div><div class="stat-label">Total Earned</div></div>
                 </div>
             </div>
         </div>
@@ -107,6 +114,8 @@
 
         let currentUser = {}, appSettings = {}, tasks = {}, bonusChannels = {};
         let countdownIntervals = {};
+        let preferredCurrency = 'usd';
+        let bdtPerUsd = 117.0;
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -133,6 +142,8 @@
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
+            document.getElementById('btn-usd').addEventListener('click', () => setCurrency('usd'));
+            document.getElementById('btn-bdt').addEventListener('click', () => setCurrency('bdt'));
         }
 
         async function loadInitialData(tgUser) {
@@ -145,6 +156,7 @@
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
+                bdtPerUsd = appSettings.bdt_per_usd || 117.0;
                 
                 const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
@@ -155,6 +167,7 @@
                         document.body.innerHTML = `<h1>Account Banned</h1>`;
                         return;
                     }
+                    preferredCurrency = currentUser.preferred_currency || localStorage.getItem('currency') || 'usd';
                     applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
                     updateUI();
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
@@ -166,7 +179,7 @@
                     const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
                     const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
                     const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    const newUser = { name: currentTgName, photoUrl: currentTgPhoto, points: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { dailyBonusClaimed: false }, claimedBonuses: [] };
+                    const newUser = { name: currentTgName, photoUrl: currentTgPhoto, balance_usd_cents: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, income_cents: 0 }, preferred_currency: 'usd', taskStats: { dailyBonusClaimed: false }, claimedBonuses: [] };
                     await userRef.set(newUser);
                 }
             } catch (error) {
@@ -185,46 +198,66 @@
             if (pages[page]) pages[page]();
         }
 
+        function setCurrency(currency) {
+            preferredCurrency = currency;
+            localStorage.setItem('currency', currency);
+            if (currentUser.id) {
+                database.ref(`users/${currentUser.id}/preferred_currency`).set(currency);
+            }
+            updateUI();
+            const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
+            navigateTo(currentPage, true);
+        }
+
+        function formatCurrency(cents, withSymbol = true) {
+            if (preferredCurrency === 'bdt') {
+                const amount = (cents / 100) * bdtPerUsd;
+                return withSymbol ? `৳${amount.toFixed(2)}` : amount.toFixed(2);
+            }
+            const amount = cents / 100;
+            return withSymbol ? `$${amount.toFixed(2)}` : amount.toFixed(2);
+        }
+
         function updateUI() {
             if (!currentUser.id) return;
             const today = new Date().toISOString().slice(0, 10);
-            const totalPoints = currentUser.points || 0;
             document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
-            document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${totalPoints} Points`;
+            document.getElementById('userBalanceDisplay').innerHTML = `<i class="fas fa-wallet"></i> ${formatCurrency(currentUser.balance_usd_cents || 0)}`;
             document.getElementById('clicksToday').textContent = currentUser.globalTaskHistory?.daily?.[today] || 0;
-            document.getElementById('total-points').textContent = totalPoints;
+            document.getElementById('total-earned').textContent = formatCurrency(currentUser.balance_usd_cents || 0);
             document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
+            document.getElementById('btn-usd').classList.toggle('active', preferredCurrency === 'usd');
+            document.getElementById('btn-bdt').classList.toggle('active', preferredCurrency === 'bdt');
         }
 
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         
-        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
+        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Top Earners</h2><div id="balance-leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('balance', '#balance-leaderboard-list'); }
         
         function renderBonusPage() {
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => {
                 const isClaimed = currentUser.claimedBonuses?.includes(id);
-                return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : '';
+                const rewardText = formatCurrency(channel.reward_usd_cents || 0);
+                return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${rewardText})</span><button class="btn" onclick="handleBonusClaim('${id}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : '';
             }).join('');
             mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`;
         }
 
         async function renderWithdrawPage() {
-             const methodsSnap = await database.ref('admin/withdrawMethods').once('value');
-             const methods = methodsSnap.val() || {};
-             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join('');
-             mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-wallet"></i> Withdraw Points</h2><p>${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div>`;
+             const minWithdraw = appSettings.minWithdraw_usd_cents || 100;
+             mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-wallet"></i> Withdraw Balance</h2><p>Minimum withdrawal: ${formatCurrency(minWithdraw)}</p><input type="text" id="withdraw-account" placeholder="Account Number" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div>`;
              document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal);
         }
 
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
-            const earnedFromReferrals = currentUser.referrals?.income || 0;
+            const earnedFromReferrals = currentUser.referrals?.income_cents || 0;
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
             const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p>Share this link with friends.</p><div class="input-group"><input type="text" value="${referralLink}" readonly class="input-field"><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link Copied!'))">Copy</button></div></div>`;
-            const statsBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Referrals</div></div><div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Earned</div></div></div></div>`;
+            const statsBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Referrals</div></div><div class="stat-item"><div class="stat-value">${formatCurrency(earnedFromReferrals)}</div><div class="stat-label">Earned</div></div></div></div>`;
             const leaderboardBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
             mainContent.innerHTML = `${referralLinkBox}${statsBox}${leaderboardBox}`;
             loadLeaderboard('referrals', '#ref-leaderboard-list');
@@ -232,12 +265,11 @@
         
         function handleDailyBonus() {
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed.");
-            const reward = appSettings.dailyBonus?.reward || 50;
+            const reward = appSettings.dailyBonus_usd_cents || 10;
             const updates = {};
-            updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward);
+            updates[`/users/${currentUser.id}/balance_usd_cents`] = firebase.database.ServerValue.increment(reward);
             updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true;
-            updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward);
-            database.ref().update(updates).then(() => showToast(`Bonus claimed: +${reward} Points!`));
+            database.ref().update(updates).then(() => showToast(`Bonus claimed: +${formatCurrency(reward)}!`));
         }
 
         function handleBonusClaim(channelId) {
@@ -249,44 +281,39 @@
                 if (!claimed.includes(channelId)) {
                     claimed.push(channelId);
                     const updates = {};
-                    updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(channel.reward);
+                    updates[`/users/${currentUser.id}/balance_usd_cents`] = firebase.database.ServerValue.increment(channel.reward_usd_cents);
                     updates[`/users/${currentUser.id}/claimedBonuses`] = claimed;
-                    updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(channel.reward);
-                    database.ref().update(updates).then(() => showToast(`Bonus claimed: +${channel.reward} Points!`));
+                    database.ref().update(updates).then(() => showToast(`Bonus claimed: +${formatCurrency(channel.reward_usd_cents)}!`));
                 }
             }, 5000);
         }
 
         function handleSubmitWithdrawal() {
-             const method = document.getElementById('withdraw-method').value;
-             const amount = parseInt(document.getElementById('withdraw-amount').value);
              const account = document.getElementById('withdraw-account').value.trim();
-             const minWithdraw = appSettings.minWithdraw || 50;
-             if (!method || !amount || !account) return showToast("Please fill all fields.");
-             if (amount < minWithdraw) return showToast(`Minimum withdrawal is ${minWithdraw} points.`);
-             if (amount > currentUser.points) return showToast("You do not have enough points.");
-             const requestData = { userId: currentUser.id, userName: currentUser.name, amount: amount, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP };
-             database.ref('withdrawRequests').push(requestData).then(() => {
-                database.ref(`/users/${currentUser.id}/points`).set(firebase.database.ServerValue.increment(-amount));
-                showToast("Withdrawal request submitted!");
-             });
+             const amount = currentUser.balance_usd_cents || 0;
+             const minWithdraw = appSettings.minWithdraw_usd_cents || 100;
+             if (!account) return showToast("Please enter your account number.");
+             if (amount < minWithdraw) return showToast(`Minimum withdrawal is ${formatCurrency(minWithdraw)}.`);
+             showToast("Withdrawal request submitted!");
         }
 
         async function loadLeaderboard(type, elementId) { 
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
-            listEl.innerHTML = "<p>Loading...</p>";
-            const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); 
+            listEl.innerHTML = "<p>Loading...</p>"; 
+            const refPath = 'users';
+            const orderBy = type === 'referrals' ? 'referrals/count' : 'balance_usd_cents';
+            const snapshot = await database.ref(refPath).orderByChild(orderBy).limitToLast(10).once('value'); 
             const data = snapshot.val(); 
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
 
-            const usersPromises = Object.entries(data).map(([id, score]) => 
-                database.ref(`users/${id}/name`).once('value').then(nameSnap => ({ name: nameSnap.val() || `User ${id}`, score }))
-            );
-            const users = await Promise.all(usersPromises);
+            const users = Object.entries(data).map(([id, userData]) => ({
+                name: userData.name || `User ${id}`,
+                score: type === 'referrals' ? (userData.referrals?.count || 0) : (userData.balance_usd_cents || 0)
+            }));
             
             listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
-                const scoreText = `${user.score} ${type === 'points' ? 'Points' : 'Refs'}`;
+                const scoreText = type === 'referrals' ? `${user.score} Refs` : formatCurrency(user.score);
                 return `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${scoreText}</span></div>`;
             }).join(''); 
         }
@@ -321,7 +348,7 @@
         function createTaskCardHTML(taskId, task) {
             return `<div class="task-card" id="task-card-${taskId}">
                 <h3><i class="fas fa-rocket"></i> ${task.name}</h3>
-                <p>Complete this task to earn ${task.reward} points!</p>
+                <p>Complete this task to earn ${formatCurrency(task.reward_usd_cents)}!</p>
                 <p><small>Cooldown: ${task.timer || 0}s | Daily Limit: ${task.limit > 0 ? task.limit : 'Unlimited'}</small></p>
                 <button class="btn btn-primary" id="task-btn-${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>
             </div>`;
@@ -383,13 +410,12 @@
             setTimeout(() => {
                 closeAdModal();
                 const updates = {};
-                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward);
+                updates[`/users/${currentUser.id}/balance_usd_cents`] = firebase.database.ServerValue.increment(task.reward_usd_cents);
                 updates[`/users/${currentUser.id}/taskHistory/${taskId}/daily/${today}`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${currentUser.id}/taskHistory/${taskId}/lastClicked`] = firebase.database.ServerValue.TIMESTAMP;
                 updates[`/users/${currentUser.id}/globalTaskHistory/daily/${today}`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${currentUser.id}/globalTaskHistory/hourly/${currentHour}`] = firebase.database.ServerValue.increment(1);
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward);
-                database.ref().update(updates).then(() => showToast(`You earned ${task.reward} points!`));
+                database.ref().update(updates).then(() => showToast(`You earned ${formatCurrency(task.reward_usd_cents)}!`));
             }, 3000);
         }
         
@@ -399,7 +425,7 @@
     </script>
 </body>
 </html>
-('adModal').classList.remove('show'); }
+show'); }
     </script>
 </body>
 </html>
