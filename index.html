@@ -301,21 +301,21 @@
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
             listEl.innerHTML = "<p>Loading...</p>"; 
-            const refPath = type === 'referrals' ? 'users' : `leaderboards/${type}`;
-            const orderBy = type === 'referrals' ? 'referrals/count' : '.value';
-
+            const refPath = 'users';
+            const orderBy = type === 'referrals' ? 'referrals/count' : 'balance_usd_cents';
             const snapshot = await database.ref(refPath).orderByChild(orderBy).limitToLast(10).once('value'); 
             const data = snapshot.val(); 
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
 
-            const users = Object.entries(data).map(([id, userData]) => {
-                return {
-                    name: userData.name || `User ${id}`,
-                    score: type === 'referrals' ? (userData.referrals?.count || 0) : userData
-                };
-            });
+            const users = Object.entries(data).map(([id, userData]) => ({
+                name: userData.name || `User ${id}`,
+                score: type === 'referrals' ? (userData.referrals?.count || 0) : (userData.balance_usd_cents || 0)
+            }));
             
-            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); 
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
+                const scoreText = type === 'referrals' ? `${user.score} Refs` : formatCurrency(user.score);
+                return `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${scoreText}</span></div>`;
+            }).join(''); 
         }
 
         async function checkVpnCompliance() {
@@ -422,10 +422,6 @@
         function showToast(message, duration = 3000) { const el = document.getElementById('toast'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), duration); }
         function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
         function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
-    </script>
-</body>
-</html>
-classList.remove('show'); }
     </script>
 </body>
 </html>
