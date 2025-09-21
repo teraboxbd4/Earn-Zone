@@ -29,34 +29,9 @@
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
-        .currency-selector {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            display: flex;
-            background: var(--toggle-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 50px;
-            overflow: hidden;
-            z-index: 10;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: var(--transition);
-        }
-        .currency-selector .btn {
-            padding: 5px 12px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            border: none;
-            background: none;
-            color: var(--text-primary);
-            transition: var(--transition);
-            line-height: 1;
-        }
-        .currency-selector .btn.active {
-            background: var(--primary-color);
-            color: white !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset;
-        }
+        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
+        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
+        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
         .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
         body.dark-mode .currency-selector .btn { color: var(--text-light); }
         body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
@@ -64,17 +39,7 @@
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .main-balance-display {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(74, 144, 226, 0.1);
-            padding: 6px 15px;
-            border-radius: 50px;
-            font-weight: 600;
-            color: var(--primary-color);
-            font-size: 0.9rem;
-            margin-top: 8px;
-        }
+        .main-balance-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin-top: 8px; }
         .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
         body.dark-mode .stat-item { background: var(--input-bg); }
@@ -90,15 +55,7 @@
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .channel-list { list-style: none; }
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
-        .history-item { 
-            display: flex; justify-content: space-between; align-items: center; padding: 8px 0; 
-            border-bottom: 1px solid var(--border-color); 
-            background: var(--bg-light);
-            border-radius: var(--border-radius-sm);
-            margin-bottom: 5px;
-            padding: 10px 15px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        } 
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; padding: 10px 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
         .history-item:last-child { border-bottom: none; } 
         .history-item span:first-child { font-weight: 500; }
         .history-item b { color: var(--primary-color); margin-right: 5px; }
@@ -222,6 +179,7 @@
                 if (!adminData) { throw new Error("Admin config not found."); }
 
                 appSettings = adminData.settings || {};
+                appSettings.notices = adminData.notices || {}; // Make sure notices are loaded here
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
                 
@@ -453,11 +411,11 @@
 
         function handleBonusClaim(channelId) {
             const claimedBonuses = currentUser.claimedBonuses || [];
-            if(claimedBonuses.some(item => item === channelId)) {
+            if(claimedBonuses.includes(channelId)) {
                 showToast("Already claimed!");
                 return;
             }
-            const rewardBTD = bonusChannels[channelId]?.rewardBTD || 0;
+            const rewardBTD = bonusChannels[channelId].rewardBTD || 0;
             database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
             claimedBonuses.push(channelId);
             database.ref(`users/${currentUser.id}/claimedBonuses`).set(claimedBonuses);
@@ -536,9 +494,9 @@
                 return `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
-
+        
         async function handleReferralVerification() {
-            // Your original referral verification logic
+            // Your original referral verification logic can be pasted here
         }
 
         function handleDailyBonus() { 
