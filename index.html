@@ -403,7 +403,7 @@
                 
                 return task.enabled ? 
                     `<div class="task-card">
-                        <h3><i class="fas fa-rocket"></i> ${task.name} (${task.network})</h3>
+                        <h3><i class="fas fa-rocket"></i> ${task.name}</h3>
                         <p>Complete this task to earn ${rewardDisplay}!</p>
                         <!-- Removed div id="${task.zoneId}" as it was not used and caused confusion -->
                         <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
@@ -550,12 +550,12 @@
             const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
             if (!enteredCode) {
                 showToast("Please enter a code.");
-                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+                verifyBtn.disabled = false; VerifyBtn.textContent = 'Verify';
                 return;
             }
             if (enteredCode === currentUser.referralCode) {
                 showToast("You cannot use your own code.");
-                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+                verifyBtn.disabled = false; VerifyBtn.textContent = 'Verify';
                 return;
             }
 
@@ -599,7 +599,7 @@
             } catch (error) {
                 console.error("Referral verification error:", error);
                 showToast("An error occurred. Please try again.");
-                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+                verifyBtn.disabled = false; VerifyBtn.textContent = 'Verify';
             }
         }
 
