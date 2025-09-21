@@ -59,9 +59,8 @@
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
         .history-item:last-child { border-bottom: none; } 
         .history-item span:first-child { font-weight: 500; display: flex; align-items: center; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .history-item b { color: var(--primary-color); margin-right: 8px; }
         .leaderboard-badge { font-size: 1.2rem; margin-right: 8px; width: 25px; text-align: center;}
-        .leaderboard-pic { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
+        .leaderboard-header { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 10px; padding: 0 15px; color: var(--text-secondary); font-size: 0.8rem; }
         .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
@@ -167,6 +166,7 @@
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
 
+            // Set default currency to USD if it's not already set
             if (!localStorage.getItem('preferredCurrency')) {
                 localStorage.setItem('preferredCurrency', 'USD');
             }
@@ -496,17 +496,20 @@
             
             const users = Object.values(data).map(user => ({
                 name: user.name,
-                photoUrl: user.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                photoUrl: user.photoUrl,
                 score: type === 'btd' ? (user.btdBalance || 0) : (user.referrals?.count || 0)
             }));
-            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
-                let displayScore = type === 'btd' ? `${user.score.toFixed(2)} BTD` : user.score;
+            
+            let headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'BALANCE' : 'REFERRALS'}</span></div>`;
+
+            listEl.innerHTML = headerHtml + users.sort((a, b) => b.score - a.score).map((user, i) => {
+                let displayScore = type === 'btd' ? `${user.score.toFixed(2)} BTD` : `${user.score} Referrals`;
                 let rankDisplay;
                 if (i === 0) { rankDisplay = '<span class="leaderboard-badge">🏆</span>'; } 
                 else if (i === 1) { rankDisplay = '<span class="leaderboard-badge">🥈</span>'; } 
                 else if (i === 2) { rankDisplay = '<span class="leaderboard-badge">🥉</span>'; } 
-                else { rankDisplay = `<b>#${i + 1}</b>`; }
-                return `<div class="history-item"><span>${rankDisplay} <img src="${user.photoUrl}" class="leaderboard-pic"> ${user.name}</span><span>${displayScore}</span></div>`;
+                else { rankDisplay = `<b style="width: 25px; text-align: center; margin-right: 8px;">#${i + 1}</b>`; }
+                return `<div class="history-item"><span>${rankDisplay} ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
         
