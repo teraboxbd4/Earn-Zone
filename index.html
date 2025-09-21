@@ -686,77 +686,79 @@
             }, 3000); 
         }
 
-        function handleTaskClick(taskId) { 
-            if (!checkVpnRequirement()) return; // VPN Check
+        function handleTaskClick(taskId) {
+            if (!checkVpnRequirement()) return;
 
-            const task = tasks[taskId]; 
+            const task = tasks[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
-            if (taskButton.disabled) return; // Prevent clicking if timer is active
+            if (taskButton.disabled) return;
 
-            // Disable button
             taskButton.disabled = true;
 
-            const clickCounterRule = appSettings.clickCounterRule || 10; 
-            const clicksToday = currentUser.taskStats?.clicksToday || 0; 
-            if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); 
-            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); 
-            
-            // Start the timer on the button itself
-            let timerSeconds = task.timer || 0;
-            if (timerSeconds > 0) {
-                let currentTimer = timerSeconds;
-                taskButton.textContent = `Wait ${currentTimer}s`;
-
-                taskTimers[taskId] = setInterval(() => {
-                    currentTimer--;
-                    if (currentTimer > 0) {
-                        taskButton.textContent = `Wait ${currentTimer}s`;
-                    } else {
-                        clearInterval(taskTimers[taskId]);
-                        taskButton.disabled = false;
-                        taskButton.textContent = 'Start Task';
-                        delete taskTimers[taskId];
-                    }
-                }, 1000);
-            } else {
-                taskButton.disabled = false; // Re-enable immediately if no timer
+            const clickCounterRule = appSettings.clickCounterRule || 10;
+            const clicksToday = currentUser.taskStats?.clicksToday || 0;
+            if (clicksToday > 0 && clicksToday % clickCounterRule === 0) {
+                tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`);
             }
+            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
 
-            let adPromise; 
-            try { 
-                switch(task.network) { 
-                    case 'Monetag': adPromise = window.show_9797628(); break; 
-                    case 'Gigapub': adPromise = window.showGiga(); break; 
-                    case 'Adexora': adPromise = window.showAdexora(); break; 
-                    case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break; 
-                    default: adPromise = Promise.reject('Unknown network'); 
-                } 
-            } catch (e) { adPromise = Promise.reject('SDK error'); } 
-            
+            let adPromise;
+            try {
+                switch(task.network) {
+                    case 'Monetag': adPromise = window.show_9797628(); break;
+                    case 'Gigapub': adPromise = window.showGiga(); break;
+                    case 'Adexora': adPromise = window.showAdexora(); break;
+                    case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
+                    default: adPromise = Promise.reject('Unknown network');
+                }
+            } catch (e) { adPromise = Promise.reject('SDK error'); }
+
             adPromise.then(() => {
                 const rewardBTD = task.rewardBTD || 0;
-                if (rewardBTD > 0) { // Only reward if ad was successful
+                if (rewardBTD > 0) {
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                     const rewardUSD = rewardBTD * btdToUsdRate;
 
-                    const updates = {}; 
-                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
-                    updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
-                    updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
-                    database.ref().update(updates); 
+                    const updates = {};
+                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
+                    updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD);
+                    updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD);
+                    database.ref().update(updates);
                     showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`);
                 }
-            }).catch(err => { 
-                showToast("Ad failed. Please try again."); 
+
+                // Start timer AFTER successful ad view and reward
+                let timerSeconds = task.timer || 0;
+                if (timerSeconds > 0) {
+                    let currentTimer = timerSeconds;
+                    taskButton.textContent = `Wait ${currentTimer}s`;
+
+                    taskTimers[taskId] = setInterval(() => {
+                        currentTimer--;
+                        if (currentTimer > 0) {
+                            taskButton.textContent = `Wait ${currentTimer}s`;
+                        } else {
+                            clearInterval(taskTimers[taskId]);
+                            taskButton.disabled = false;
+                            taskButton.textContent = 'Start Task';
+                            delete taskTimers[taskId];
+                        }
+                    }, 1000);
+                } else {
+                    taskButton.disabled = false;
+                }
+            }).catch(err => {
+                showToast("Ad failed. Please try again.");
                 // If ad fails, we should also clear the timer and re-enable the button
                 if (taskTimers[taskId]) {
                     clearInterval(taskTimers[taskId]);
-                    taskButton.disabled = false;
-                    taskButton.textContent = 'Start Task';
-                    delete taskTimers[taskId];
                 }
-            }); 
+                taskButton.disabled = false;
+                taskButton.textContent = 'Start Task';
+                delete taskTimers[taskId];
+            });
         }
+
 
         function handleBonusClaim(channelId, rewardBTD, link) { 
             if (!checkVpnRequirement()) return; // VPN Check
