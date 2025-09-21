@@ -33,9 +33,11 @@
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .points-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; margin-top: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; }
-        .stats-display { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
-        .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; }
+        /* .points-display removed as per requirement */
+        .currency-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; margin-top: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin: 0 5px; }
+
+        .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+        .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
         body.dark-mode .stat-item { background: var(--input-bg); }
         .stat-value { font-weight: 600; color: var(--text-primary); font-size: 1rem; }
         .stat-label { font-size: 0.7rem; color: var(--text-secondary); }
@@ -69,11 +71,13 @@
             <div class="profile-card">
                 <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
-                <div class="points-display" id="userPointsDisplay"><i class="fas fa-coins"></i> 0 Points</div>
+                <div style="display: flex; justify-content: center; margin-top: 10px;">
+                    <div class="currency-display" id="btdBalanceDisplay"><i class="fas fa-coins"></i> 0 BTD</div>
+                    <div class="currency-display" id="usdBalanceDisplay"><i class="fas fa-dollar-sign"></i> 0 USD</div>
+                </div>
                 <div class="stats-display">
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
                     <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
-                    <div class="stat-item"><div class="stat-value" id="total-points">0</div><div class="stat-label">Total Points</div></div>
                 </div>
             </div>
         </div>
@@ -172,7 +176,7 @@
                     const referrerCode = tg.initDataUnsafe.start_param;
 
                     userData = {
-                        name: currentTgName, photoUrl: currentTgPhoto, points: 0, wallet: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, income: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
+                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, usdBalance: 0, btdWallet: 0, usdWallet: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0, incomeUSD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
                     };
                     
                     if (referrerCode && referrerCode !== ownReferralCode) {
@@ -180,19 +184,24 @@
                         const referrerSnap = await referrerQuery.once('value');
                         if (referrerSnap.exists()) {
                             const referrerId = Object.keys(referrerSnap.val())[0];
-                            const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
+                            const bonuses = appSettings.referralBonus || { refereeBTD: 0, refereeUSD: 0, referrerBTD: 0, referrerUSD: 0 };
                             
-                            userData.points += bonuses.referee;
-                            userData.wallet += bonuses.referee;
+                            userData.btdBalance += bonuses.refereeBTD;
+                            userData.usdBalance += bonuses.refereeUSD;
+                            userData.btdWallet += bonuses.refereeBTD;
+                            userData.usdWallet += bonuses.refereeUSD;
                             userData.referredBy = referrerCode;
                             userData.referralApplied = true;
 
                             const updates = {};
-                            updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                            updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                            updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
                             updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
-                            updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                            updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                            updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
+
                             await database.ref().update(updates);
-                            showToast(`Welcome! You received ${bonuses.referee} bonus points!`);
+                            showToast(`Welcome! You received ${bonuses.refereeBTD.toFixed(2)} BTD & ${bonuses.refereeUSD.toFixed(3)} USD bonus!`);
                         }
                     }
                     await userRef.set(userData);
@@ -204,6 +213,14 @@
                     }
                     if (!userData.referralCode) { updates.referralCode = generateReferralCode(); }
                     updates.lastActive = new Date().toISOString();
+                    // Ensure new currency fields are initialized for old users if they don't exist
+                    if (userData.btdBalance === undefined) updates.btdBalance = 0;
+                    if (userData.usdBalance === undefined) updates.usdBalance = 0;
+                    if (userData.btdWallet === undefined) updates.btdWallet = 0;
+                    if (userData.usdWallet === undefined) updates.usdWallet = 0;
+                    if (userData.referrals?.incomeBTD === undefined) updates['referrals/incomeBTD'] = 0;
+                    if (userData.referrals?.incomeUSD === undefined) updates['referrals/incomeUSD'] = 0;
+
                     if (Object.keys(updates).length > 0) { await userRef.update(updates); }
                 }
                 
@@ -240,27 +257,87 @@
         
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
-            const totalPoints = currentUser.points || currentUser.wallet || 0;
+            
             document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
-            document.getElementById('userPointsDisplay').innerHTML = `<i class="fas fa-coins"></i> ${totalPoints} Points`;
+
+            document.getElementById('btdBalanceDisplay').innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
+            document.getElementById('usdBalanceDisplay').innerHTML = `<i class="fas fa-dollar-sign"></i> ${ (currentUser.usdBalance || 0).toFixed(3) } USD`;
+            
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
-            document.getElementById('total-points').textContent = totalPoints;
             const refCount = currentUser.referrals?.count || 0;
             document.getElementById('ref-count').textContent = refCount;
         }
 
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
-        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
-        function renderTasksPage() { let tasksHtml = Object.keys(tasks).map(taskId => { const task = tasks[taskId]; return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.network} Task</h3><p>Complete this task to earn ${task.reward} points!</p><div id="${task.zoneId}"></div><button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button></div>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn more points.'}</p></div>${tasksHtml || '<p style="text-align:center; margin-top:20px;">No tasks available right now. Please check back later!</p>'}`; }
-        function renderBonusPage() { let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { const isClaimed = currentUser.claimedBonuses?.includes(id); return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${channel.reward})</span><button class="btn" onclick="handleBonusClaim('${id}', ${channel.reward}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Claimed' : 'Claim'}</button></li>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; }
-        async function renderWithdrawPage() { const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); const methods = methodsSnap.val() || {}; const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Points</h2><p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"></div></div>`; document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); loadWithdrawHistory(); }
         
-        // FIX: RENDER REFERRAL PAGE UPDATED WITH BOTH LINK AND CODE BOXES
+        function renderHomePage() { 
+            mainContent.innerHTML = `
+                <div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div>
+                <div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>
+                <div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; 
+            document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); 
+            loadLeaderboard('btd', '#leaderboard-list'); // Changed to track BTD
+        }
+
+        function renderTasksPage() { 
+            let tasksHtml = Object.keys(tasks).map(taskId => { 
+                const task = tasks[taskId]; 
+                return task.enabled ? 
+                    `<div class="task-card">
+                        <h3><i class="fas fa-rocket"></i> ${task.network} Task</h3>
+                        <p>Complete this task to earn ${ (task.rewardBTD || 0).toFixed(2) } BTD & ${ (task.rewardUSD || 0).toFixed(3) } USD!</p>
+                        <div id="${task.zoneId}"></div>
+                        <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
+                    </div>` : ''; 
+            }).join(''); 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn more currency.'}</p></div>${tasksHtml || '<p style="text-align:center; margin-top:20px;">No tasks available right now. Please check back later!</p>'}`; 
+        }
+
+        function renderBonusPage() { 
+            let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
+                const isClaimed = currentUser.claimedBonuses?.includes(id); 
+                return channel.enabled ? 
+                    `<li class="channel-item">
+                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${ (channel.rewardBTD || 0).toFixed(2) } BTD)</span>
+                        <button class="btn" onclick="handleBonusClaim('${id}', ${channel.rewardBTD || 0}, ${channel.rewardUSD || 0}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
+                            ${isClaimed ? 'Claimed' : 'Claim'}
+                        </button>
+                    </li>` : ''; 
+            }).join(''); 
+            mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; 
+        }
+
+        async function renderWithdrawPage() { 
+            const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); 
+            const methods = methodsSnap.val() || {}; 
+            const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
+            mainContent.innerHTML = `
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Currency</h2>
+                    <p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p>
+                    <select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select>
+                    <select id="withdraw-currency" class="select-field">
+                        <option value="BTD">BTD</option>
+                        <option value="USD">USD</option>
+                    </select>
+                    <input type="number" id="withdraw-amount" placeholder="Amount" class="input-field" step="0.01">
+                    <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
+                    <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
+                </div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2>
+                    <div id="withdraw-history"></div>
+                </div>`; 
+            document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
+            loadWithdrawHistory(); 
+        }
+        
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
-            const earnedFromReferrals = currentUser.referrals?.income || 0;
+            const earnedBTDFromReferrals = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
+            const earnedUSDFromReferrals = (currentUser.referrals?.incomeUSD || 0).toFixed(3);
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
 
@@ -288,7 +365,7 @@
             const verifyBox = `
                 <div class="task-card" id="referralVerifyBox">
                     <h2 class="section-title">Referral Verify Box</h2>
-                    <p style="margin-bottom: 15px;">If a friend gave you a code, enter it here to get bonus points!</p>
+                    <p style="margin-bottom: 15px;">If a friend gave you a code, enter it here to get bonus currency!</p>
                     <div class="input-group">
                         <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
                         <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
@@ -304,7 +381,8 @@
                     <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
                     <div class="stats-display">
                         <div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>
-                        <div class="stat-item"><div class="stat-value">${earnedFromReferrals}</div><div class="stat-label">Points Earned</div></div>
+                        <div class="stat-item"><div class="stat-value">${earnedBTDFromReferrals} BTD</div><div class="stat-label">BTD Earned</div></div>
+                        <div class="stat-item"><div class="stat-value">${earnedUSDFromReferrals} USD</div><div class="stat-label">USD Earned</div></div>
                     </div>
                 </div>
                 <div class="task-card">
@@ -358,25 +436,29 @@
                 }
 
                 const referrerId = Object.keys(referrerSnap.val())[0];
-                const bonuses = appSettings.referralBonus || { referee: 50, referrer: 100 };
+                const bonuses = appSettings.referralBonus || { refereeBTD: 0, refereeUSD: 0, referrerBTD: 0, referrerUSD: 0 };
                 
                 const updates = {};
-                updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(bonuses.referee);
-                updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(bonuses.referee);
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.refereeBTD);
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.refereeUSD);
+                updates[`/users/${currentUser.id}/btdWallet`] = firebase.database.ServerValue.increment(bonuses.refereeBTD);
+                updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(bonuses.refereeUSD);
                 updates[`/users/${currentUser.id}/referredBy`] = enteredCode;
                 updates[`/users/${currentUser.id}/referralApplied`] = true;
                 
-                updates[`/users/${referrerId}/points`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
                 updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
-                updates[`/users/${referrerId}/referrals/income`] = firebase.database.ServerValue.increment(bonuses.referrer);
+                updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
                 
                 updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
-                updates[`/leaderboards/points/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrer);
-                updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(bonuses.referee);
+                updates[`/leaderboards/btd/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrerBTD); // Update BTD leaderboard
+                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(bonuses.refereeBTD); // Update BTD leaderboard
                 
                 await database.ref().update(updates);
                 
-                showToast(`Success! You received ${bonuses.referee} bonus points!`);
+                showToast(`Success! You received ${bonuses.refereeBTD.toFixed(2)} BTD & ${bonuses.refereeUSD.toFixed(3)} USD bonus!`);
                 document.getElementById('referralVerifyBox').style.display = 'none';
 
             } catch (error) {
@@ -386,12 +468,163 @@
             }
         }
 
-        function handleDailyBonus() { if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); const reward = appSettings.dailyBonus?.reward || 50; openAdModal('Daily Bonus Ad'); setTimeout(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} Points! Bonus claimed.`); }, 3000); }
-        function handleTaskClick(taskId) { const task = tasks[taskId]; const clickCounterRule = appSettings.clickCounterRule || 10; const clicksToday = currentUser.taskStats?.clicksToday || 0; if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); openAdModal(`${task.network} Ad Playing...`); let adPromise; try { switch(task.network) { case 'Monetag': adPromise = window.show_9797628(); break; case 'Gigapub': adPromise = window.showGiga(); break; case 'AdeExora': adPromise = window.showAdexora(); break; case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break; default: adPromise = Promise.reject('Unknown network'); } } catch (e) { adPromise = Promise.reject('SDK error'); } adPromise.then(() => { closeAdModal(); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(task.reward); updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(task.reward); database.ref().update(updates); showToast(`+${task.reward} Points!`); }).catch(err => { closeAdModal(); showToast("Ad failed. Please try again."); }); }
-        function handleBonusClaim(channelId, reward, link) { showToast("Verifying, please wait...", 5000); tg.openTelegramLink(link); setTimeout(() => { const claimedBonuses = currentUser.claimedBonuses || []; if (!claimedBonuses.includes(channelId)) { claimedBonuses.push(channelId); const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(reward); updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; updates[`/leaderboards/points/${currentUser.id}`] = firebase.database.ServerValue.increment(reward); database.ref().update(updates); showToast(`+${reward} bonus points claimed!`); } }, 5000); }
-        async function loadWithdrawHistory() { const historyEl = document.getElementById('withdraw-history'); if(!historyEl) return; historyEl.innerHTML = '<p>Loading...</p>'; const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); const snapshot = await historyRef.once('value'); const historyData = snapshot.val(); if (!historyData) { historyEl.innerHTML = '<p>No history found.</p>'; return; } historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="history-item"><span>${req.amount} pts - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`).join(''); }
-        function handleSubmitWithdrawal() { const method = document.getElementById('withdraw-method').value; const amount = parseInt(document.getElementById('withdraw-amount').value); const account = document.getElementById('withdraw-account').value.trim(); const minWithdraw = appSettings.minWithdraw || 5000; if (!method || !amount || !account) return showToast("Please fill all fields."); if (amount < minWithdraw) return showToast(`Minimum withdrawal is ${minWithdraw} points.`); if (amount <= 0 || amount > (currentUser.points || currentUser.wallet)) return showToast("You do not have enough points."); const requestData = { userId: currentUser.id, userName: currentUser.name, amount: amount, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP }; database.ref('withdrawRequests').push(requestData).then(() => { const updates = {}; updates[`/users/${currentUser.id}/points`] = firebase.database.ServerValue.increment(-amount); updates[`/users/${currentUser.id}/wallet`] = firebase.database.ServerValue.increment(-amount); database.ref().update(updates); showToast("Withdrawal request submitted!"); navigateTo('withdraw'); }).catch(err => showToast("Error: Could not submit request.")); }
-        async function loadLeaderboard(type, elementId) { const listEl = document.querySelector(elementId); if (!listEl) return; listEl.innerHTML = "<p>Loading...</p>"; const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); const data = snapshot.val(); if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); const users = await Promise.all(promises); listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${user.score} ${type === 'points' ? 'Points' : 'Refs'}</span></div>`).join(''); }
+        function handleDailyBonus() { 
+            if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); 
+            const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
+            const rewardUSD = appSettings.dailyBonus?.rewardUSD || 0;
+            openAdModal('Daily Bonus Ad'); 
+            setTimeout(() => { 
+                closeAdModal(); 
+                const updates = {}; 
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; 
+                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                database.ref().update(updates); 
+                showToast(`+${rewardBTD.toFixed(2)} BTD & +${rewardUSD.toFixed(3)} USD! Bonus claimed.`); 
+            }, 3000); 
+        }
+
+        function handleTaskClick(taskId) { 
+            const task = tasks[taskId]; 
+            const clickCounterRule = appSettings.clickCounterRule || 10; 
+            const clicksToday = currentUser.taskStats?.clicksToday || 0; 
+            if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); 
+            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); 
+            openAdModal(`${task.network} Ad Playing...`); 
+            let adPromise; 
+            try { 
+                switch(task.network) { 
+                    case 'Monetag': adPromise = window.show_9797628(); break; 
+                    case 'Gigapub': adPromise = window.showGiga(); break; 
+                    case 'Adexora': adPromise = window.showAdexora(); break; 
+                    case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break; 
+                    default: adPromise = Promise.reject('Unknown network'); 
+                } 
+            } catch (e) { adPromise = Promise.reject('SDK error'); } 
+            
+            adPromise.then(() => { 
+                closeAdModal(); 
+                const updates = {}; 
+                const rewardBTD = task.rewardBTD || 0;
+                const rewardUSD = task.rewardUSD || 0;
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                database.ref().update(updates); 
+                showToast(`+${rewardBTD.toFixed(2)} BTD & +${rewardUSD.toFixed(3)} USD!`); 
+            }).catch(err => { 
+                closeAdModal(); 
+                showToast("Ad failed. Please try again."); 
+            }); 
+        }
+
+        function handleBonusClaim(channelId, rewardBTD, rewardUSD, link) { 
+            showToast("Verifying, please wait...", 5000); 
+            tg.openTelegramLink(link); 
+            setTimeout(() => { 
+                const claimedBonuses = currentUser.claimedBonuses || []; 
+                if (!claimedBonuses.includes(channelId)) { 
+                    claimedBonuses.push(channelId); 
+                    const updates = {}; 
+                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                    updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                    updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; 
+                    updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                    database.ref().update(updates); 
+                    showToast(`+${rewardBTD.toFixed(2)} BTD & +${rewardUSD.toFixed(3)} USD bonus claimed!`); 
+                } 
+            }, 5000); 
+        }
+
+        async function loadWithdrawHistory() { 
+            const historyEl = document.getElementById('withdraw-history'); 
+            if(!historyEl) return; 
+            historyEl.innerHTML = '<p>Loading...</p>'; 
+            const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); 
+            const snapshot = await historyRef.once('value'); 
+            const historyData = snapshot.val(); 
+            if (!historyData) { 
+                historyEl.innerHTML = '<p>No history found.</p>'; 
+                return; 
+            } 
+            historyEl.innerHTML = Object.values(historyData).reverse().map(req => 
+                `<div class="history-item">
+                    <span>${(req.amount || 0).toFixed(req.currency === 'USD' ? 3 : 2)} ${req.currency} - ${req.method}</span>
+                    <span class="status-${req.status}">${req.status}</span>
+                </div>`).join(''); 
+        }
+
+        function handleSubmitWithdrawal() { 
+            const method = document.getElementById('withdraw-method').value; 
+            const currency = document.getElementById('withdraw-currency').value;
+            const amount = parseFloat(document.getElementById('withdraw-amount').value); 
+            const account = document.getElementById('withdraw-account').value.trim(); 
+            
+            const minWithdrawBTD = appSettings.minWithdrawBTD || 0;
+            const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
+            let currentBalance, minWithdrawAmount;
+
+            if (currency === 'BTD') {
+                currentBalance = currentUser.btdBalance || 0;
+                minWithdrawAmount = minWithdrawBTD;
+            } else { // USD
+                currentBalance = currentUser.usdBalance || 0;
+                minWithdrawAmount = minWithdrawUSD;
+            }
+
+            if (!method || isNaN(amount) || amount <= 0 || !account) return showToast("Please fill all fields and enter a valid amount."); 
+            if (amount < minWithdrawAmount) return showToast(`Minimum withdrawal for ${currency} is ${minWithdrawAmount.toFixed(currency === 'USD' ? 3 : 2)} ${currency}.`); 
+            if (amount > currentBalance) return showToast("You do not have enough funds in your selected currency."); 
+
+            const requestData = { 
+                userId: currentUser.id, 
+                userName: currentUser.name, 
+                amount: amount, 
+                currency: currency,
+                method: method, 
+                account: account, 
+                status: 'pending', 
+                timestamp: firebase.database.ServerValue.TIMESTAMP 
+            }; 
+            
+            database.ref('withdrawRequests').push(requestData).then(() => { 
+                const updates = {}; 
+                if (currency === 'BTD') {
+                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(-amount); 
+                    updates[`/users/${currentUser.id}/btdWallet`] = firebase.database.ServerValue.increment(-amount); 
+                } else { // USD
+                    updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(-amount); 
+                    updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(-amount); 
+                }
+                database.ref().update(updates); 
+                showToast("Withdrawal request submitted!"); 
+                navigateTo('withdraw'); 
+            }).catch(err => {
+                console.error("Error submitting withdrawal:", err);
+                showToast("Error: Could not submit request.");
+            }); 
+        }
+
+        async function loadLeaderboard(type, elementId) { 
+            const listEl = document.querySelector(elementId); 
+            if (!listEl) return; 
+            listEl.innerHTML = "<p>Loading...</p>"; 
+            const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); 
+            const data = snapshot.val(); 
+            if (!data) { 
+                listEl.innerHTML = '<p>No data available.</p>'; 
+                return; 
+            } 
+            const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); 
+            const users = await Promise.all(promises); 
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => 
+                `<div class="history-item">
+                    <span><b>#${i + 1}</b> ${user.name}</span>
+                    <span>${(user.score || 0).toFixed(2)} ${type === 'btd' ? 'BTD' : 'Refs'}</span>
+                </div>`).join(''); 
+        }
+
         function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
         function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
