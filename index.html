@@ -197,11 +197,11 @@
                 updateUI();
                 navigateTo('home', true);
 
-                const balanceRef = database.ref(`users/${userId}/btdBalance`);
-                balanceRef.on('value', (snap) => {
-                    currentUser.btdBalance = snap.val() || 0;
+                // This listener now only updates data in the background without re-rendering the page
+                userRef.on('value', (snap) => {
+                    currentUser = { id: userId, ...snap.val() };
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                    currentUser.usdBalance = currentUser.btdBalance * btdToUsdRate;
+                    currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
                     updateUI();
                 });
 
@@ -264,46 +264,22 @@
                 const task = tasks[taskId]; 
                 let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`;
                 
-                const now = Date.now();
-                const endTime = taskTimers[taskId];
-                let buttonHtml;
-
-                if (endTime && endTime > now) {
-                    const secondsLeft = Math.ceil((endTime - now) / 1000);
-                    buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" disabled>Wait ${secondsLeft}s</button>`;
-                } else {
-                    buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
-                }
+                let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
 
                 return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>` : ''; 
             }).join(''); 
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`; 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`;
+            updateAllTimers(); // Immediately update timers when page is rendered
         }
 
-        // ** ADDED BACK THE MISSING FUNCTIONS **
         function renderBonusPage() { 
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
                 const isClaimed = currentUser.claimedBonuses?.includes(id); 
-                let rewardDisplay;
-                if (currentUser.preferredCurrency === 'USD') {
-                    const rewardUSD = (channel.rewardBTD || 0) * btdToUsdRate;
-                    rewardDisplay = `+${ rewardUSD.toFixed(4) } USD`;
-                } else {
-                    rewardDisplay = `+${ (channel.rewardBTD || 0).toFixed(2) } BTD`;
-                }
-
-                const buttonText = isClaimed ? 'Claimed' : (channel.status === 'pending_verification' ? 'Verifying...' : 'Join & Claim');
-                const buttonDisabled = isClaimed || (channel.status === 'pending_verification');
+                let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `+${((channel.rewardBTD || 0) * btdToUsdRate).toFixed(4)} USD` : `+${(channel.rewardBTD || 0).toFixed(2)} BTD`;
+                const buttonText = isClaimed ? 'Claimed' : 'Join & Claim';
                 const buttonAction = isClaimed ? '' : `handleBonusClickAndVerify('${id}', '${channel.link}')`;
-
-                return channel.enabled ? 
-                    `<li class="channel-item">
-                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span>
-                        <button class="btn" onclick="${buttonAction}" ${buttonDisabled ? 'disabled' : ''} id="bonusBtn_${id}">
-                            ${buttonText}
-                        </button>
-                    </li>` : ''; 
+                return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span><button class="btn" onclick="${buttonAction}" ${isClaimed ? 'disabled' : ''} id="bonusBtn_${id}">${buttonText}</button></li>` : ''; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; 
         }
@@ -313,44 +289,18 @@
             const methods = methodsSnap.val() || {}; 
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
             const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
-
-            let withdrawCurrencySymbol = currentUser.preferredCurrency === 'USD' ? '<i class="fas fa-dollar-sign"></i>' : '<i class="fas fa-coins"></i>';
-            let withdrawPlaceholder = `Amount in ${currentUser.preferredCurrency}`;
-            let minWithdrawDisplay;
-            let currentBalanceForWithdraw;
-
-            if (currentUser.preferredCurrency === 'USD') {
-                minWithdrawDisplay = minWithdrawUSD.toFixed(2) + ' USD';
-                currentBalanceForWithdraw = (currentUser.usdBalance || 0).toFixed(2);
-            } else {
-                minWithdrawDisplay = (minWithdrawUSD / (appSettings.btdToUsdRate || 0.01)).toFixed(2) + ' BTD';
-                currentBalanceForWithdraw = (currentUser.btdBalance || 0).toFixed(2);
-            }
-
-            mainContent.innerHTML = `
-                <div class="task-card">
-                    <h2 class="section-title">${withdrawCurrencySymbol} Withdraw ${currentUser.preferredCurrency}</h2>
-                    <p style="margin-bottom: 15px;">Minimum: ${minWithdrawDisplay}. Your balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p>
-                    <select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select>
-                    <input type="number" id="withdraw-amount" placeholder="${withdrawPlaceholder}" class="input-field" step="0.01">
-                    <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
-                    <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
-                </div>
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div>
-                </div>`; 
+            let minWithdrawDisplay = currentUser.preferredCurrency === 'USD' ? `${minWithdrawUSD.toFixed(2)} USD` : `${(minWithdrawUSD / (appSettings.btdToUsdRate || 0.01)).toFixed(2)} BTD`;
+            let currentBalanceForWithdraw = currentUser.preferredCurrency === 'USD' ? (currentUser.usdBalance || 0).toFixed(2) : (currentUser.btdBalance || 0).toFixed(2);
+            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw ${currentUser.preferredCurrency}</h2><p>Minimum: ${minWithdrawDisplay}. Your balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in ${currentUser.preferredCurrency}" class="input-field" step="0.01"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
         }
 
         function renderReferralPage() {
-            const refCount = currentUser.referrals?.count || 0;
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
-            // Simplified for brevity, you can add your full referral page HTML here
             mainContent.innerHTML = `<div class="task-card"><p>Your referral link: ${referralLink}</p></div>`;
         }
-        // ** END OF ADDED FUNCTIONS **
 
         function handleTaskClick(taskId) {
             if (!checkVpnRequirement()) return;
@@ -369,18 +319,14 @@
                     case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
                     default: adPromise = Promise.reject('Unknown network');
                 }
-                if (!adPromise || typeof adPromise.then !== 'function') {
-                    throw new Error(`SDK for ${task.network} failed.`);
-                }
+                if (!adPromise || typeof adPromise.then !== 'function') { throw new Error(`SDK for ${task.network} failed.`); }
             } catch (e) {
                 adPromise = Promise.reject(e);
             }
             Promise.resolve(adPromise).then(() => {
                 const rewardBTD = parseFloat(task.rewardBTD) || 0;
                 if (rewardBTD > 0) {
-                    const updates = {};
-                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
-                    database.ref().update(updates);
+                    database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
                     showToast(`+${rewardBTD.toFixed(2)} BTD!`);
                 }
                 const timerSeconds = parseInt(task.timer) || 0;
@@ -420,20 +366,14 @@
             }
         }
         
-        function showToast(message, duration = 3000) { 
-            const toast = document.getElementById('toast'); 
-            if(toast){ 
-                toast.textContent = message; 
-                toast.classList.add('show'); 
-                setTimeout(() => toast.classList.remove('show'), duration); 
-            }
-        }
+        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
+        
         // Placeholder for other functions to avoid errors
-        function loadLeaderboard(type, selector) { /* ... */ }
-        function handleDailyBonus() { /* ... */ }
-        function handleSubmitWithdrawal() { /* ... */ }
-        function loadWithdrawHistory() { /* ... */ }
-        function handleBonusClickAndVerify() { /* ... */ }
+        function loadLeaderboard(type, selector) { /* Implement your leaderboard logic here */ }
+        function handleDailyBonus() { /* Implement your daily bonus logic here */ }
+        function handleSubmitWithdrawal() { /* Implement your withdrawal logic here */ }
+        function loadWithdrawHistory() { /* Implement your history logic here */ }
+        function handleBonusClickAndVerify(id, link) { /* Implement your bonus claim logic here */ }
 
     </script>
 </body>
