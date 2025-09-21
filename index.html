@@ -191,7 +191,7 @@
         let appSettings = {};
         let tasks = {};
         let bonusChannels = {};
-        let taskTimerInterval = null; // To hold the timer interval
+        let taskTimers = {}; // Object to keep track of active timers for each task button
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -442,7 +442,7 @@
                         <h3><i class="fas fa-rocket"></i> ${task.name}${timerDisplay}</h3>
                         <p>Complete this task to earn ${rewardDisplay}!</p>
                         <!-- Removed div id="${task.zoneId}" as it was not used and caused confusion -->
-                        <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
+                        <button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
                     </div>` : ''; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn more currency.'}</p></div>${tasksHtml || '<p style="text-align:center; margin-top:20px;">No tasks available right now. Please check back later!</p>'}`; 
@@ -698,41 +698,36 @@
             if (!checkVpnRequirement()) return; // VPN Check
 
             const task = tasks[taskId]; 
+            const taskButton = document.getElementById(`taskBtn_${taskId}`);
+            if (taskButton.disabled) return; // Prevent clicking if timer is active
+
+            // Disable button
+            taskButton.disabled = true;
+
             const clickCounterRule = appSettings.clickCounterRule || 10; 
             const clicksToday = currentUser.taskStats?.clicksToday || 0; 
             if (clicksToday > 0 && clicksToday % clickCounterRule === 0) tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`); 
             database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)); 
             
-            // Start the timer
+            // Start the timer on the button itself
             let timerSeconds = task.timer || 0;
             if (timerSeconds > 0) {
-                openAdModal(`${task.network} Ad Playing...`);
-                document.getElementById('adTimerDisplay').style.display = 'block';
-                document.getElementById('adTimerDisplay').textContent = `${timerSeconds}s`;
+                let currentTimer = timerSeconds;
+                taskButton.textContent = `Wait ${currentTimer}s`;
 
-                taskTimerInterval = setInterval(() => {
-                    timerSeconds--;
-                    if (timerSeconds >= 0) {
-                        document.getElementById('adTimerDisplay').textContent = `${timerSeconds}s`;
+                taskTimers[taskId] = setInterval(() => {
+                    currentTimer--;
+                    if (currentTimer > 0) {
+                        taskButton.textContent = `Wait ${currentTimer}s`;
                     } else {
-                        clearInterval(taskTimerInterval);
-                        document.getElementById('adTimerDisplay').style.display = 'none';
-                        closeAdModal();
-                        
-                        const updates = {}; 
-                        const rewardBTD = task.rewardBTD || 0;
-                        const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                        const rewardUSD = rewardBTD * btdToUsdRate;
-
-                        updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
-                        updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
-                        updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
-                        database.ref().update(updates); 
-                        showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`); 
+                        clearInterval(taskTimers[taskId]);
+                        taskButton.disabled = false;
+                        taskButton.textContent = 'Start Task';
+                        delete taskTimers[taskId];
                     }
                 }, 1000);
             } else {
-                openAdModal(`${task.network} Ad Playing...`);
+                taskButton.disabled = false; // Re-enable immediately if no timer
             }
 
             let adPromise; 
@@ -746,11 +741,28 @@
                 } 
             } catch (e) { adPromise = Promise.reject('SDK error'); } 
             
-            adPromise.catch(err => { 
-                closeAdModal(); 
-                if (taskTimerInterval) clearInterval(taskTimerInterval);
-                document.getElementById('adTimerDisplay').style.display = 'none';
+            adPromise.then(() => {
+                const rewardBTD = task.rewardBTD || 0;
+                if (rewardBTD > 0) { // Only reward if ad was successful
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    const rewardUSD = rewardBTD * btdToUsdRate;
+
+                    const updates = {}; 
+                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                    updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                    updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                    database.ref().update(updates); 
+                    showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`);
+                }
+            }).catch(err => { 
                 showToast("Ad failed. Please try again."); 
+                // If ad fails, we should also clear the timer and re-enable the button
+                if (taskTimers[taskId]) {
+                    clearInterval(taskTimers[taskId]);
+                    taskButton.disabled = false;
+                    taskButton.textContent = 'Start Task';
+                    delete taskTimers[taskId];
+                }
             }); 
         }
 
@@ -774,7 +786,7 @@
                 showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD) bonus claimed!`); 
                 
                 // After successful claim, update the button visually
-                const bonusBtn = document.getElementById(`bonusBtn_${id}`);
+                const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
                 if (bonusBtn) {
                     bonusBtn.textContent = 'Claimed';
                     bonusBtn.disabled = true;
