@@ -29,9 +29,34 @@
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
-        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
-        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
-        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
+        .currency-selector {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            background: var(--toggle-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            overflow: hidden;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: var(--transition);
+        }
+        .currency-selector .btn {
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: none;
+            background: none;
+            color: var(--text-primary);
+            transition: var(--transition);
+            line-height: 1;
+        }
+        .currency-selector .btn.active {
+            background: var(--primary-color);
+            color: white !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset;
+        }
         .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
         body.dark-mode .currency-selector .btn { color: var(--text-light); }
         body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
@@ -39,7 +64,17 @@
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .main-balance-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin-top: 8px; }
+        .main-balance-display {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(74, 144, 226, 0.1);
+            padding: 6px 15px;
+            border-radius: 50px;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
         .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
         body.dark-mode .stat-item { background: var(--input-bg); }
@@ -55,7 +90,15 @@
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .channel-list { list-style: none; }
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; padding: 10px 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
+        .history-item { 
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 0; 
+            border-bottom: 1px solid var(--border-color); 
+            background: var(--bg-light);
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 5px;
+            padding: 10px 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        } 
         .history-item:last-child { border-bottom: none; } 
         .history-item span:first-child { font-weight: 500; }
         .history-item b { color: var(--primary-color); margin-right: 5px; }
@@ -286,7 +329,8 @@
         function renderBonusPage() { 
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
-                const isClaimed = currentUser.claimedBonuses?.includes(id); 
+                const claimedBonuses = currentUser.claimedBonuses || [];
+                const isClaimed = claimedBonuses.includes(id); 
                 let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `+${((channel.rewardBTD || 0) * btdToUsdRate).toFixed(4)} USD` : `+${(channel.rewardBTD || 0).toFixed(2)} BTD`;
                 const buttonText = isClaimed ? 'Claimed' : 'Join & Claim';
                 const buttonAction = isClaimed ? '' : `handleBonusClickAndVerify('${id}', '${channel.link}')`;
@@ -302,7 +346,7 @@
             const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
             let minWithdrawDisplay = currentUser.preferredCurrency === 'USD' ? `${minWithdrawUSD.toFixed(2)} USD` : `${(minWithdrawUSD / (appSettings.btdToUsdRate || 0.01)).toFixed(2)} BTD`;
             let currentBalanceForWithdraw = currentUser.preferredCurrency === 'USD' ? (currentUser.usdBalance || 0).toFixed(2) : (currentUser.btdBalance || 0).toFixed(2);
-            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw ${currentUser.preferredCurrency}</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawDisplay}. Your balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in ${currentUser.preferredCurrency}" class="input-field" step="0.01"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
+            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw ${currentUser.preferredCurrency}</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawDisplay}.</p><p>Your balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in ${currentUser.preferredCurrency}" class="input-field" step="0.01"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
         }
@@ -320,9 +364,9 @@
             }
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
-            const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link directly with your friends for automatic rewards.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div><button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button></div>`;
-            const referralCodeBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2><p style="margin-bottom: 15px;">Or, have friends enter this code manually in the verify box.</p><div class="input-group"><input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold; letter-spacing: 2px; font-size: 1.1rem;"><button class="btn" id="copyReferralCodeBtn">Copy</button></div></div>`;
-            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2 class="section-title">Referral Verify Box</h2><p style="margin-bottom: 15px;">If a friend gave you a code, enter it here to get bonus currency!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
+            const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link directly with friends.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div><button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button></div>`;
+            const referralCodeBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2><p style="margin-bottom: 15px;">Or, have friends enter this code manually.</p><div class="input-group"><input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold;"><button class="btn" id="copyReferralCodeBtn">Copy</button></div></div>`;
+            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2 class="section-title">Referral Verify Box</h2><p style="margin-bottom: 15px;">Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
             mainContent.innerHTML = `${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}${referralLinkBox}${referralCodeBox}${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>${incomeStatHtml}</div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')); });
             document.getElementById('copyReferralCodeBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralCode).then(() => showToast('Code copied!')); });
@@ -409,13 +453,14 @@
 
         function handleBonusClaim(channelId) {
             const claimedBonuses = currentUser.claimedBonuses || [];
-            if(claimedBonuses.includes(channelId)) {
+            if(claimedBonuses.some(item => item === channelId)) {
                 showToast("Already claimed!");
                 return;
             }
-            const rewardBTD = bonusChannels[channelId].rewardBTD || 0;
+            const rewardBTD = bonusChannels[channelId]?.rewardBTD || 0;
             database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
-            database.ref(`users/${currentUser.id}/claimedBonuses`).push(channelId);
+            claimedBonuses.push(channelId);
+            database.ref(`users/${currentUser.id}/claimedBonuses`).set(claimedBonuses);
             showToast(`+${rewardBTD.toFixed(2)} BTD Bonus!`);
             navigateTo('bonus', true);
         }
@@ -432,7 +477,9 @@
                 return; 
             } 
             historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
-                return `<div class="history-item"><span>${(req.amount || 0).toFixed(2)} ${req.currency} - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
+                let displayAmount = currentUser.preferredCurrency === 'USD' ? (req.amount || 0).toFixed(2) : ((req.amount || 0) / (appSettings.btdToUsdRate || 0.01)).toFixed(2);
+                let displayCurrency = currentUser.preferredCurrency;
+                return `<div class="history-item"><span>${displayAmount} ${displayCurrency} - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
             }).join(''); 
         }
 
@@ -445,7 +492,7 @@
                 return showToast("Please fill all fields correctly.");
             }
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-            let amountInUSD = currentUser.preferredCurrency === 'USD' ? amount : amount / btdToUsdRate;
+            let amountInUSD = currentUser.preferredCurrency === 'USD' ? amount : amount * btdToUsdRate;
             if (amountInUSD < (appSettings.minWithdrawUSD || 0)) {
                 return showToast(`Minimum withdrawal is ${appSettings.minWithdrawUSD || 0} USD.`);
             }
@@ -463,7 +510,7 @@
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
             }; 
             database.ref('withdrawRequests').push(requestData).then(() => { 
-                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountInUSD / btdToUsdRate));
+                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-(amountInUSD / btdToUsdRate)));
                 showToast("Withdrawal request submitted!"); 
                 navigateTo('withdraw', true); 
             }).catch(err => {
@@ -475,7 +522,8 @@
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
             listEl.innerHTML = "<p>Loading...</p>"; 
-            const snapshot = await database.ref(type === 'btd' ? 'users' : 'users').orderByChild(type === 'btd' ? 'btdBalance' : 'referrals/count').limitToLast(10).once('value'); 
+            const query = (type === 'btd') ? database.ref('users').orderByChild('btdBalance') : database.ref('users').orderByChild('referrals/count');
+            const snapshot = await query.limitToLast(10).once('value'); 
             const data = snapshot.val(); 
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
             
@@ -488,7 +536,7 @@
                 return `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
-        
+
         async function handleReferralVerification() {
             // Your original referral verification logic
         }
