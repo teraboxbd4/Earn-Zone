@@ -73,7 +73,7 @@
                 <div style="display: flex; justify-content: center; align-items: center; margin-top: 10px;">
                     <div class="currency-display" id="mainCurrencyDisplay">
                         <!-- Content will be dynamically updated by JS, USD will show first -->
-                        <i class="fas fa-dollar-sign"></i> 0.000 USD
+                        <i class="fas fa-dollar-sign"></i> 0.00 USD
                     </div>
                     <button id="toggleCurrencyBtn" class="btn" style="width: auto; margin-left: 10px; padding: 6px 10px; font-size: 0.8rem;">Show BTD</button>
                 </div>
@@ -190,24 +190,25 @@
                         const referrerSnap = await referrerQuery.once('value');
                         if (referrerSnap.exists()) {
                             const referrerId = Object.keys(referrerSnap.val())[0];
-                            const bonuses = appSettings.referralBonus || { refereeBTD: 0, refereeUSD: 0, referrerBTD: 0, referrerUSD: 0 };
-                            
+                            const bonuses = appSettings.referralBonus || { refereeBTD: 0, referrerBTD: 0 };
+                            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
                             userData.btdBalance += bonuses.refereeBTD;
-                            userData.usdBalance += bonuses.refereeUSD;
+                            userData.usdBalance += (bonuses.refereeBTD * btdToUsdRate);
                             userData.btdWallet += bonuses.refereeBTD;
-                            userData.usdWallet += bonuses.refereeUSD;
+                            userData.usdWallet += (bonuses.refereeBTD * btdToUsdRate);
                             userData.referredBy = referrerCode;
                             userData.referralApplied = true;
 
                             const updates = {};
                             updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
-                            updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
+                            updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
                             updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
                             updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
-                            updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
+                            updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
 
                             await database.ref().update(updates);
-                            showToast(`Welcome! You received ${bonuses.refereeBTD.toFixed(2)} BTD & ${bonuses.refereeUSD.toFixed(3)} USD bonus!`);
+                            showToast(`Welcome! You received ${bonuses.refereeBTD.toFixed(2)} BTD (${(bonuses.refereeBTD * btdToUsdRate).toFixed(2)} USD) bonus!`);
                         }
                     }
                     await userRef.set(userData);
@@ -221,17 +222,34 @@
                     updates.lastActive = new Date().toISOString();
                     // Ensure new currency fields are initialized for old users if they don't exist
                     if (userData.btdBalance === undefined) updates.btdBalance = 0;
-                    if (userData.usdBalance === undefined) updates.usdBalance = 0;
+                    if (userData.usdBalance === undefined) updates.usdBalance = 0; // Will be calculated below
                     if (userData.btdWallet === undefined) updates.btdWallet = 0;
-                    if (userData.usdWallet === undefined) updates.usdWallet = 0;
+                    if (userData.usdWallet === undefined) updates.usdWallet = 0; // Will be calculated below
                     if (userData.referrals?.incomeBTD === undefined) updates['referrals/incomeBTD'] = 0;
-                    if (userData.referrals?.incomeUSD === undefined) updates['referrals/incomeUSD'] = 0;
+                    if (userData.referrals?.incomeUSD === undefined) updates['referrals/incomeUSD'] = 0; // Will be calculated below
 
                     if (Object.keys(updates).length > 0) { await userRef.update(updates); }
+
+                    // Also ensure USD balances are up-to-date with current BTD and rate
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    if (userData.usdBalance !== (userData.btdBalance * btdToUsdRate)) {
+                        await userRef.update({
+                            usdBalance: userData.btdBalance * btdToUsdRate,
+                            usdWallet: userData.btdWallet * btdToUsdRate,
+                            'referrals/incomeUSD': (userData.referrals?.incomeBTD || 0) * btdToUsdRate
+                        });
+                    }
                 }
                 
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
+                    // Recalculate USD balances on client-side for display if rates change or data is inconsistent
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
+                    currentUser.usdWallet = (currentUser.btdWallet || 0) * btdToUsdRate;
+                    currentUser.referrals.incomeUSD = (currentUser.referrals?.incomeBTD || 0) * btdToUsdRate;
+
+
                     if (currentUser.isBanned) {
                         document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
                         return;
@@ -276,8 +294,11 @@
             const mainCurrencyDisplay = document.getElementById('mainCurrencyDisplay');
             const toggleCurrencyBtn = document.getElementById('toggleCurrencyBtn');
 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
             if (currentUser.preferredCurrency === 'USD') {
-                mainCurrencyDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ (currentUser.usdBalance || 0).toFixed(3) } USD`;
+                const usdValue = (currentUser.btdBalance || 0) * btdToUsdRate;
+                mainCurrencyDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ usdValue.toFixed(2) } USD`;
                 toggleCurrencyBtn.textContent = 'Show BTD';
             } else { // BTD
                 mainCurrencyDisplay.innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
@@ -304,10 +325,12 @@
         function renderTasksPage() { 
             let tasksHtml = Object.keys(tasks).map(taskId => { 
                 const task = tasks[taskId]; 
+                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                const rewardUSD = (task.rewardBTD || 0) * btdToUsdRate;
                 return task.enabled ? 
                     `<div class="task-card">
                         <h3><i class="fas fa-rocket"></i> ${task.name} (${task.network})</h3>
-                        <p>Complete this task to earn ${ (task.rewardBTD || 0).toFixed(2) } BTD & ${ (task.rewardUSD || 0).toFixed(3) } USD!</p>
+                        <p>Complete this task to earn ${ (task.rewardBTD || 0).toFixed(2) } BTD (${ rewardUSD.toFixed(2) } USD)!</p>
                         <div id="${task.zoneId}"></div>
                         <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
                     </div>` : ''; 
@@ -318,10 +341,13 @@
         function renderBonusPage() { 
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
                 const isClaimed = currentUser.claimedBonuses?.includes(id); 
+                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                const rewardUSD = (channel.rewardBTD || 0) * btdToUsdRate;
+
                 return channel.enabled ? 
                     `<li class="channel-item">
-                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${ (channel.rewardBTD || 0).toFixed(2) } BTD & +${ (channel.rewardUSD || 0).toFixed(3) } USD)</span>
-                        <button class="btn" onclick="handleBonusClaim('${id}', ${channel.rewardBTD || 0}, ${channel.rewardUSD || 0}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
+                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${ (channel.rewardBTD || 0).toFixed(2) } BTD / ${ rewardUSD.toFixed(2) } USD)</span>
+                        <button class="btn" onclick="handleBonusClaim('${id}', ${channel.rewardBTD || 0}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
                             ${isClaimed ? 'Claimed' : 'Claim'}
                         </button>
                     </li>` : ''; 
@@ -333,16 +359,15 @@
             const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); 
             const methods = methodsSnap.val() || {}; 
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
+            const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
+
             mainContent.innerHTML = `
                 <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw Currency</h2>
-                    <p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p>
+                    <h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw USD</h2>
+                    <p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''} Minimum withdrawal: ${minWithdrawUSD.toFixed(2)} USD.</p>
                     <select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select>
-                    <select id="withdraw-currency" class="select-field">
-                        <option value="USD">USD</option> <!-- USD as default/primary -->
-                        <option value="BTD">BTD</option>
-                    </select>
-                    <input type="number" id="withdraw-amount" placeholder="Amount" class="input-field" step="0.01">
+                    <!-- User always withdraws in USD as per minWithdrawUSD setting -->
+                    <input type="number" id="withdraw-amount" placeholder="Amount in USD" class="input-field" step="0.01">
                     <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
                     <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
                 </div>
@@ -357,7 +382,7 @@
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
             const earnedBTDFromReferrals = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
-            const earnedUSDFromReferrals = (currentUser.referrals?.incomeUSD || 0).toFixed(3);
+            const earnedUSDFromReferrals = (currentUser.referrals?.incomeUSD || 0).toFixed(2);
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
 
@@ -456,21 +481,22 @@
                 }
 
                 const referrerId = Object.keys(referrerSnap.val())[0];
-                const bonuses = appSettings.referralBonus || { refereeBTD: 0, refereeUSD: 0, referrerBTD: 0, referrerUSD: 0 };
-                
+                const bonuses = appSettings.referralBonus || { refereeBTD: 0, referrerBTD: 0 };
+                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
                 const updates = {};
                 updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.refereeBTD);
-                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.refereeUSD);
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.refereeBTD * btdToUsdRate);
                 updates[`/users/${currentUser.id}/btdWallet`] = firebase.database.ServerValue.increment(bonuses.refereeBTD);
-                updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(bonuses.refereeUSD);
+                updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(bonuses.refereeBTD * btdToUsdRate);
                 updates[`/users/${currentUser.id}/referredBy`] = enteredCode;
                 updates[`/users/${currentUser.id}/referralApplied`] = true;
                 
                 updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
-                updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
+                updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
                 updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
-                updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerUSD);
+                updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
                 
                 updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
                 updates[`/leaderboards/btd/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrerBTD); // Update BTD leaderboard
@@ -478,7 +504,7 @@
                 
                 await database.ref().update(updates);
                 
-                showToast(`Success! You received ${bonuses.refereeBTD.toFixed(2)} BTD & ${bonuses.refereeUSD.toFixed(3)} USD bonus!`);
+                showToast(`Success! You received ${bonuses.refereeBTD.toFixed(2)} BTD (${(bonuses.refereeBTD * btdToUsdRate).toFixed(2)} USD) bonus!`);
                 document.getElementById('referralVerifyBox').style.display = 'none';
 
             } catch (error) {
@@ -491,7 +517,9 @@
         function handleDailyBonus() { 
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); 
             const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
-            const rewardUSD = appSettings.dailyBonus?.rewardUSD || 0;
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            const rewardUSD = rewardBTD * btdToUsdRate;
+
             openAdModal('Daily Bonus Ad'); 
             setTimeout(() => { 
                 closeAdModal(); 
@@ -501,7 +529,7 @@
                 updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; 
                 updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
                 database.ref().update(updates); 
-                showToast(`+${rewardBTD.toFixed(2)} BTD & +${rewardUSD.toFixed(3)} USD! Bonus claimed.`); 
+                showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)! Bonus claimed.`); 
             }, 3000); 
         }
 
@@ -527,32 +555,37 @@
                 closeAdModal(); 
                 const updates = {}; 
                 const rewardBTD = task.rewardBTD || 0;
-                const rewardUSD = task.rewardUSD || 0;
+                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                const rewardUSD = rewardBTD * btdToUsdRate;
+
                 updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
                 updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
                 updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
                 database.ref().update(updates); 
-                showToast(`+${rewardBTD.toFixed(2)} BTD & +${rewardUSD.toFixed(3)} USD!`); 
+                showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`); 
             }).catch(err => { 
                 closeAdModal(); 
                 showToast("Ad failed. Please try again."); 
             }); 
         }
 
-        function handleBonusClaim(channelId, rewardBTD, rewardUSD, link) { 
+        function handleBonusClaim(channelId, rewardBTD, link) { 
             showToast("Verifying, please wait...", 5000); 
             tg.openTelegramLink(link); 
             setTimeout(() => { 
                 const claimedBonuses = currentUser.claimedBonuses || []; 
                 if (!claimedBonuses.includes(channelId)) { 
                     claimedBonuses.push(channelId); 
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    const rewardUSD = rewardBTD * btdToUsdRate;
+
                     const updates = {}; 
                     updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
                     updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
                     updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; 
                     updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
                     database.ref().update(updates); 
-                    showToast(`+${rewardBTD.toFixed(2)} BTD & +${rewardUSD.toFixed(3)} USD bonus claimed!`); 
+                    showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD) bonus claimed!`); 
                 } 
             }, 5000); 
         }
@@ -563,45 +596,35 @@
             historyEl.innerHTML = '<p>Loading...</p>'; 
             const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); 
             const snapshot = await historyRef.once('value'); 
-            const historyData = snapshot.val(); 
-            if (!historyData) { 
+            const historyData = snapshot.val() || {}; 
+            if (Object.keys(historyData).length === 0) { 
                 historyEl.innerHTML = '<p>No history found.</p>'; 
                 return; 
             } 
             historyEl.innerHTML = Object.values(historyData).reverse().map(req => 
                 `<div class="history-item">
-                    <span>${(req.amount || 0).toFixed(req.currency === 'USD' ? 3 : 2)} ${req.currency} - ${req.method}</span>
+                    <span>${(req.amount || 0).toFixed(2)} ${req.currency || 'USD'} - ${req.method}</span>
                     <span class="status-${req.status}">${req.status}</span>
                 </div>`).join(''); 
         }
 
         function handleSubmitWithdrawal() { 
             const method = document.getElementById('withdraw-method').value; 
-            const currency = document.getElementById('withdraw-currency').value;
-            const amount = parseFloat(document.getElementById('withdraw-amount').value); 
+            const amount = parseFloat(document.getElementById('withdraw-amount').value); // Amount is always in USD
             const account = document.getElementById('withdraw-account').value.trim(); 
             
-            const minWithdrawBTD = appSettings.minWithdrawBTD || 0;
             const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
-            let currentBalance, minWithdrawAmount;
-
-            if (currency === 'BTD') {
-                currentBalance = currentUser.btdBalance || 0;
-                minWithdrawAmount = minWithdrawBTD;
-            } else { // USD
-                currentBalance = currentUser.usdBalance || 0;
-                minWithdrawAmount = minWithdrawUSD;
-            }
+            let currentUsdBalance = currentUser.usdBalance || 0;
 
             if (!method || isNaN(amount) || amount <= 0 || !account) return showToast("Please fill all fields and enter a valid amount."); 
-            if (amount < minWithdrawAmount) return showToast(`Minimum withdrawal for ${currency} is ${minWithdrawAmount.toFixed(currency === 'USD' ? 3 : 2)} ${currency}.`); 
-            if (amount > currentBalance) return showToast("You do not have enough funds in your selected currency."); 
+            if (amount < minWithdrawUSD) return showToast(`Minimum withdrawal is ${minWithdrawUSD.toFixed(2)} USD.`); 
+            if (amount > currentUsdBalance) return showToast("You do not have enough USD funds."); 
 
             const requestData = { 
                 userId: currentUser.id, 
                 userName: currentUser.name, 
                 amount: amount, 
-                currency: currency,
+                currency: "USD", // Always USD for withdrawal
                 method: method, 
                 account: account, 
                 status: 'pending', 
@@ -610,13 +633,9 @@
             
             database.ref('withdrawRequests').push(requestData).then(() => { 
                 const updates = {}; 
-                if (currency === 'BTD') {
-                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(-amount); 
-                    updates[`/users/${currentUser.id}/btdWallet`] = firebase.database.ServerValue.increment(-amount); 
-                } else { // USD
-                    updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(-amount); 
-                    updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(-amount); 
-                }
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(-amount); 
+                updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(-amount); 
+                // We don't deduct BTD here, as BTD is not directly withdrawn, only USD conversion.
                 database.ref().update(updates); 
                 showToast("Withdrawal request submitted!"); 
                 navigateTo('withdraw'); 
