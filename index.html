@@ -485,7 +485,7 @@
             
             // Optionally, you could change the button text to "Confirm Claim" here
             // For now, it will just re-call handleBonusClaim if clicked again
-            const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+            const bonusBtn = document.getElementById(`bonusBtn_${id}`);
             if (bonusBtn && bonusBtn.textContent === 'Join & Claim') {
                 bonusBtn.textContent = 'Claim'; // Indicate that a second click is needed
                 // The onclick is already set to handleBonusClaim, so it will proceed to claim on second click.
@@ -774,7 +774,7 @@
                 showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD) bonus claimed!`); 
                 
                 // After successful claim, update the button visually
-                const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+                const bonusBtn = document.getElementById(`bonusBtn_${id}`);
                 if (bonusBtn) {
                     bonusBtn.textContent = 'Claimed';
                     bonusBtn.disabled = true;
