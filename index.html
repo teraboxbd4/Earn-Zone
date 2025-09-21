@@ -33,7 +33,24 @@
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .currency-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; margin-top: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin: 0 5px; }
+        .currency-selector { display: flex; border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; margin-bottom: 10px; }
+        .currency-btn { width: auto; margin: 0; border-radius: 0; background: none; color: var(--text-secondary); padding: 6px 15px; font-size: 0.8rem; border: none;}
+        .currency-btn:first-child { border-right: 1px solid var(--border-color); }
+        .currency-btn.active {
+            background: var(--primary-color);
+            color: white !important; /* Override default color */
+        }
+        .main-balance-display {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(74, 144, 226, 0.1);
+            padding: 6px 15px;
+            border-radius: 50px;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
 
         .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
@@ -70,12 +87,14 @@
             <div class="profile-card">
                 <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
-                <div style="display: flex; justify-content: center; align-items: center; margin-top: 10px;">
-                    <div class="currency-display" id="mainCurrencyDisplay">
-                        <!-- Content will be dynamically updated by JS, USD will show first -->
-                        <i class="fas fa-dollar-sign"></i> 0.00 USD
+                <div style="display: flex; justify-content: center; align-items: center; flex-direction: column; margin-top: 10px;">
+                    <div class="currency-selector">
+                        <button id="showUsdBtn" class="btn currency-btn"><i class="fas fa-dollar-sign"></i> USD</button>
+                        <button id="showBtdBtn" class="btn currency-btn"><i class="fas fa-coins"></i> BTD</button>
                     </div>
-                    <button id="toggleCurrencyBtn" class="btn" style="width: auto; margin-left: 10px; padding: 6px 10px; font-size: 0.8rem;">Show BTD</button>
+                    <div class="main-balance-display" id="mainBalanceDisplay">
+                        <!-- Balance will be displayed here dynamically by JS -->
+                    </div>
                 </div>
                 <div class="stats-display">
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
@@ -151,7 +170,8 @@
 
             // Initialize preferred currency from localStorage or default to USD
             currentUser.preferredCurrency = localStorage.getItem('preferredCurrency') || 'USD';
-            document.getElementById('toggleCurrencyBtn').addEventListener('click', togglePreferredCurrency);
+            document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
+            document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
 
             loadInitialData(tgUser);
         }
@@ -269,10 +289,14 @@
             }
         }
         
-        function togglePreferredCurrency() {
-            currentUser.preferredCurrency = currentUser.preferredCurrency === 'USD' ? 'BTD' : 'USD';
-            localStorage.setItem('preferredCurrency', currentUser.preferredCurrency);
-            updateUI();
+        function setPreferredCurrency(currency) {
+            currentUser.preferredCurrency = currency;
+            localStorage.setItem('preferredCurrency', currency);
+            updateUI(); // Update header balance and buttons
+            const currentPage = document.querySelector('.nav-item.active')?.dataset.page;
+            if (currentPage) {
+                navigateTo(currentPage, true); // Re-render current page content
+            }
         }
 
         function navigateTo(page, forceRender = false) {
@@ -291,18 +315,22 @@
             document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
 
-            const mainCurrencyDisplay = document.getElementById('mainCurrencyDisplay');
-            const toggleCurrencyBtn = document.getElementById('toggleCurrencyBtn');
+            const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
+            const showUsdBtn = document.getElementById('showUsdBtn');
+            const showBtdBtn = document.getElementById('showBtdBtn');
 
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
 
+            showUsdBtn.classList.remove('active');
+            showBtdBtn.classList.remove('active');
+
             if (currentUser.preferredCurrency === 'USD') {
                 const usdValue = (currentUser.btdBalance || 0) * btdToUsdRate;
-                mainCurrencyDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ usdValue.toFixed(2) } USD`;
-                toggleCurrencyBtn.textContent = 'Show BTD';
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ usdValue.toFixed(2) } USD`;
+                showUsdBtn.classList.add('active');
             } else { // BTD
-                mainCurrencyDisplay.innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
-                toggleCurrencyBtn.textContent = 'Show USD';
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
+                showBtdBtn.classList.add('active');
             }
             
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
@@ -323,14 +351,21 @@
         }
 
         function renderTasksPage() { 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             let tasksHtml = Object.keys(tasks).map(taskId => { 
                 const task = tasks[taskId]; 
-                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                const rewardUSD = (task.rewardBTD || 0) * btdToUsdRate;
+                let rewardDisplay;
+                if (currentUser.preferredCurrency === 'USD') {
+                    const rewardUSD = (task.rewardBTD || 0) * btdToUsdRate;
+                    rewardDisplay = `${ rewardUSD.toFixed(2) } USD`;
+                } else {
+                    rewardDisplay = `${ (task.rewardBTD || 0).toFixed(2) } BTD`;
+                }
+                
                 return task.enabled ? 
                     `<div class="task-card">
                         <h3><i class="fas fa-rocket"></i> ${task.name} (${task.network})</h3>
-                        <p>Complete this task to earn ${ (task.rewardBTD || 0).toFixed(2) } BTD (${ rewardUSD.toFixed(2) } USD)!</p>
+                        <p>Complete this task to earn ${rewardDisplay}!</p>
                         <div id="${task.zoneId}"></div>
                         <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
                     </div>` : ''; 
@@ -339,14 +374,20 @@
         }
 
         function renderBonusPage() { 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
                 const isClaimed = currentUser.claimedBonuses?.includes(id); 
-                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                const rewardUSD = (channel.rewardBTD || 0) * btdToUsdRate;
+                let rewardDisplay;
+                if (currentUser.preferredCurrency === 'USD') {
+                    const rewardUSD = (channel.rewardBTD || 0) * btdToUsdRate;
+                    rewardDisplay = `+${ rewardUSD.toFixed(2) } USD`;
+                } else {
+                    rewardDisplay = `+${ (channel.rewardBTD || 0).toFixed(2) } BTD`;
+                }
 
                 return channel.enabled ? 
                     `<li class="channel-item">
-                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${ (channel.rewardBTD || 0).toFixed(2) } BTD / ${ rewardUSD.toFixed(2) } USD)</span>
+                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span>
                         <button class="btn" onclick="handleBonusClaim('${id}', ${channel.rewardBTD || 0}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
                             ${isClaimed ? 'Claimed' : 'Claim'}
                         </button>
@@ -381,8 +422,18 @@
         
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
-            const earnedBTDFromReferrals = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
-            const earnedUSDFromReferrals = (currentUser.referrals?.incomeUSD || 0).toFixed(2);
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
+            let earnedDisplayBTD = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
+            let earnedDisplayUSD = ((currentUser.referrals?.incomeBTD || 0) * btdToUsdRate).toFixed(2);
+
+            let incomeStatHtml;
+            if (currentUser.preferredCurrency === 'USD') {
+                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayUSD} USD</div><div class="stat-label">USD Earned</div></div>`;
+            } else {
+                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayBTD} BTD</div><div class="stat-label">BTD Earned</div></div>`;
+            }
+
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
 
@@ -426,8 +477,7 @@
                     <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
                     <div class="stats-display">
                         <div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>
-                        <div class="stat-item"><div class="stat-value">${earnedBTDFromReferrals} BTD</div><div class="stat-label">BTD Earned</div></div>
-                        <div class="stat-item"><div class="stat-value">${earnedUSDFromReferrals} USD</div><div class="stat-label">USD Earned</div></div>
+                        ${incomeStatHtml}
                     </div>
                 </div>
                 <div class="task-card">
