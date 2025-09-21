@@ -70,10 +70,12 @@
             <div class="profile-card">
                 <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
-                <div style="display: flex; justify-content: center; margin-top: 10px;">
-                    <!-- USD will show first as per requirement -->
-                    <div class="currency-display" id="usdBalanceDisplay"><i class="fas fa-dollar-sign"></i> 0.000 USD</div>
-                    <div class="currency-display" id="btdBalanceDisplay"><i class="fas fa-coins"></i> 0.00 BTD</div>
+                <div style="display: flex; justify-content: center; align-items: center; margin-top: 10px;">
+                    <div class="currency-display" id="mainCurrencyDisplay">
+                        <!-- Content will be dynamically updated by JS, USD will show first -->
+                        <i class="fas fa-dollar-sign"></i> 0.000 USD
+                    </div>
+                    <button id="toggleCurrencyBtn" class="btn" style="width: auto; margin-left: 10px; padding: 6px 10px; font-size: 0.8rem;">Show BTD</button>
                 </div>
                 <div class="stats-display">
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
@@ -146,6 +148,10 @@
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
+
+            // Initialize preferred currency from localStorage or default to USD
+            currentUser.preferredCurrency = localStorage.getItem('preferredCurrency') || 'USD';
+            document.getElementById('toggleCurrencyBtn').addEventListener('click', togglePreferredCurrency);
 
             loadInitialData(tgUser);
         }
@@ -245,6 +251,12 @@
             }
         }
         
+        function togglePreferredCurrency() {
+            currentUser.preferredCurrency = currentUser.preferredCurrency === 'USD' ? 'BTD' : 'USD';
+            localStorage.setItem('preferredCurrency', currentUser.preferredCurrency);
+            updateUI();
+        }
+
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
             if (!forceRender && currentActive && currentActive.dataset.page === page) return;
@@ -261,8 +273,16 @@
             document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
 
-            document.getElementById('usdBalanceDisplay').innerHTML = `<i class="fas fa-dollar-sign"></i> ${ (currentUser.usdBalance || 0).toFixed(3) } USD`;
-            document.getElementById('btdBalanceDisplay').innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
+            const mainCurrencyDisplay = document.getElementById('mainCurrencyDisplay');
+            const toggleCurrencyBtn = document.getElementById('toggleCurrencyBtn');
+
+            if (currentUser.preferredCurrency === 'USD') {
+                mainCurrencyDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ (currentUser.usdBalance || 0).toFixed(3) } USD`;
+                toggleCurrencyBtn.textContent = 'Show BTD';
+            } else { // BTD
+                mainCurrencyDisplay.innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
+                toggleCurrencyBtn.textContent = 'Show USD';
+            }
             
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             const refCount = currentUser.referrals?.count || 0;
