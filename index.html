@@ -369,6 +369,16 @@
 
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
+
+        // --- VPN Requirement Check (Advisory/Blocking) ---
+        function checkVpnRequirement() {
+            if (appSettings.vpnRequired) {
+                const vpnNotice = appSettings.vpnNotice || "VPN is required to perform this action. Please connect to an allowed country.";
+                tg.showAlert(vpnNotice);
+                return false; // Block action
+            }
+            return true; // Allow action
+        }
         
         function renderHomePage() { 
             mainContent.innerHTML = `
@@ -395,7 +405,7 @@
                     `<div class="task-card">
                         <h3><i class="fas fa-rocket"></i> ${task.name} (${task.network})</h3>
                         <p>Complete this task to earn ${rewardDisplay}!</p>
-                        <div id="${task.zoneId}"></div>
+                        <!-- Removed div id="${task.zoneId}" as it was not used and caused confusion -->
                         <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
                     </div>` : ''; 
             }).join(''); 
@@ -555,7 +565,7 @@
 
                 if (!referrerSnap.exists()) {
                     showToast("Invalid referral code.");
-                    verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+                    verifyBtn.disabled = false; VerifyBtn.textContent = 'Verify';
                     return;
                 }
 
@@ -594,6 +604,7 @@
         }
 
         function handleDailyBonus() { 
+            if (!checkVpnRequirement()) return; // VPN Check
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); 
             const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
@@ -613,6 +624,8 @@
         }
 
         function handleTaskClick(taskId) { 
+            if (!checkVpnRequirement()) return; // VPN Check
+
             const task = tasks[taskId]; 
             const clickCounterRule = appSettings.clickCounterRule || 10; 
             const clicksToday = currentUser.taskStats?.clicksToday || 0; 
@@ -649,6 +662,8 @@
         }
 
         function handleBonusClaim(channelId, rewardBTD, link) { 
+            if (!checkVpnRequirement()) return; // VPN Check
+
             showToast("Verifying, please wait...", 5000); 
             tg.openTelegramLink(link); 
             setTimeout(() => { 
