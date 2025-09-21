@@ -95,7 +95,20 @@
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .channel-list { list-style: none; }
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
-        .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); } .history-item:last-child { border-bottom: none; } .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
+        .history-item { 
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 0; 
+            border-bottom: 1px solid var(--border-color); 
+            background: var(--bg-light); /* Added for leaderboard item background */
+            border-radius: var(--border-radius-sm); /* Added for rounded corners */
+            margin-bottom: 5px; /* Spacing between items */
+            padding: 10px 15px; /* Internal padding */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
+        } 
+        .history-item:last-child { border-bottom: none; } 
+        .history-item span:first-child { font-weight: 500; }
+        .history-item b { color: var(--primary-color); margin-right: 5px; }
+
+        .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
         .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
@@ -103,6 +116,8 @@
         .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
         .spinner { width: 45px; height: 45px; border: 3px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; margin: 15px auto; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 30px; z-index: 1000; opacity: 0; transition: all 0.3s ease; } .toast.show { opacity: 1; bottom: 90px; }
+        /* Verification checkmark style */
+        .verified-icon { color: #28a745; margin-left: 5px; font-size: 0.8em; }
     </style>
 </head>
 <body>
@@ -116,7 +131,7 @@
                 <button id="showBtdBtn" class="btn">BTD</button>
             </div>
 
-            <h1 class="header-title">Earn Zone</h1>
+            <h1 class="header-title">Earn Zone <i class="fas fa-check-circle verified-icon"></i></h1>
         </div>
         <div class="profile-section">
             <div class="profile-card">
@@ -231,7 +246,7 @@
                     const referrerCode = tg.initDataUnsafe.start_param;
 
                     userData = {
-                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, usdBalance: 0, btdWallet: 0, usdWallet: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0, incomeUSD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: []
+                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, usdBalance: 0, btdWallet: 0, usdWallet: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0, incomeUSD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: [], isVerified: false // New field
                     };
                     
                     if (referrerCode && referrerCode !== ownReferralCode) {
@@ -276,6 +291,7 @@
                     if (userData.usdWallet === undefined) updates.usdWallet = 0; // Will be calculated below
                     if (userData.referrals?.incomeBTD === undefined) updates['referrals/incomeBTD'] = 0;
                     if (userData.referrals?.incomeUSD === undefined) updates['referrals/incomeUSD'] = 0; // Will be calculated below
+                    if (userData.isVerified === undefined) updates.isVerified = false; // Initialize new field
 
                     if (Object.keys(updates).length > 0) { await userRef.update(updates); }
 
@@ -341,7 +357,11 @@
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
             
-            document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
+            let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
+            if (currentUser.isVerified) {
+                profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
+            }
+            document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
 
             const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
@@ -401,9 +421,17 @@
                     rewardDisplay = `${ (task.rewardBTD || 0).toFixed(2) } BTD`;
                 }
                 
+                // Display timer in readable format
+                let timerDisplay = '';
+                if (task.timer !== undefined && task.timer > 0) {
+                    const minutes = Math.floor(task.timer / 60);
+                    const seconds = task.timer % 60;
+                    timerDisplay = ` (Timer: ${minutes > 0 ? minutes + 'm ' : ''}${seconds}s)`;
+                }
+
                 return task.enabled ? 
                     `<div class="task-card">
-                        <h3><i class="fas fa-rocket"></i> ${task.name}</h3>
+                        <h3><i class="fas fa-rocket"></i> ${task.name}${timerDisplay}</h3>
                         <p>Complete this task to earn ${rewardDisplay}!</p>
                         <!-- Removed div id="${task.zoneId}" as it was not used and caused confusion -->
                         <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
@@ -424,16 +452,38 @@
                     rewardDisplay = `+${ (channel.rewardBTD || 0).toFixed(2) } BTD`;
                 }
 
+                // New logic for manual verification
+                const buttonText = isClaimed ? 'Claimed' : (channel.status === 'pending_verification' ? 'Verifying...' : 'Join & Claim');
+                const buttonDisabled = isClaimed || (channel.status === 'pending_verification');
+                const buttonAction = isClaimed ? '' : (channel.status === 'pending_verification' ? '' : `handleBonusClickAndVerify('${id}', ${channel.rewardBTD || 0}, '${channel.link}')`);
+
                 return channel.enabled ? 
                     `<li class="channel-item">
                         <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span>
-                        <button class="btn" onclick="handleBonusClaim('${id}', ${channel.rewardBTD || 0}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
-                            ${isClaimed ? 'Claimed' : 'Claim'}
+                        <button class="btn" onclick="${buttonAction}" ${buttonDisabled ? 'disabled' : ''} id="bonusBtn_${id}">
+                            ${buttonText}
                         </button>
                     </li>` : ''; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; 
         }
+
+        // New function for bonus click and manual verification
+        function handleBonusClickAndVerify(channelId, rewardBTD, link) {
+            if (!checkVpnRequirement()) return; // VPN Check
+
+            tg.openTelegramLink(link); // Open the link
+            showToast("Please join the channel and then click 'Claim' again to get your reward.", 5000);
+            
+            // Optionally, you could change the button text to "Confirm Claim" here
+            // For now, it will just re-call handleBonusClaim if clicked again
+            const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+            if (bonusBtn && bonusBtn.textContent === 'Join & Claim') {
+                bonusBtn.textContent = 'Claim'; // Indicate that a second click is needed
+                // The onclick is already set to handleBonusClaim, so it will proceed to claim on second click.
+            }
+        }
+
 
         async function renderWithdrawPage() { 
             const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); 
@@ -441,13 +491,26 @@
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
             const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
 
+            let withdrawCurrencySymbol = currentUser.preferredCurrency === 'USD' ? '<i class="fas fa-dollar-sign"></i>' : '<i class="fas fa-coins"></i>';
+            let withdrawPlaceholder = `Amount in ${currentUser.preferredCurrency}`;
+            let minWithdrawDisplay;
+            let currentBalanceForWithdraw;
+
+            if (currentUser.preferredCurrency === 'USD') {
+                minWithdrawDisplay = minWithdrawUSD.toFixed(2) + ' USD';
+                currentBalanceForWithdraw = (currentUser.btdBalance * (appSettings.btdToUsdRate || 0.01)).toFixed(2);
+            } else { // BTD
+                minWithdrawDisplay = (minWithdrawUSD / (appSettings.btdToUsdRate || 0.01)).toFixed(2) + ' BTD';
+                currentBalanceForWithdraw = currentUser.btdBalance.toFixed(2);
+            }
+
+
             mainContent.innerHTML = `
                 <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-wallet"></i> Withdraw USD</h2>
-                    <p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''} Minimum withdrawal: ${minWithdrawUSD.toFixed(2)} USD.</p>
+                    <h2 class="section-title">${withdrawCurrencySymbol} Withdraw ${currentUser.preferredCurrency}</h2>
+                    <p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''} Minimum withdrawal: ${minWithdrawDisplay}. Your current balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p>
                     <select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select>
-                    <!-- User always withdraws in USD as per minWithdrawUSD setting -->
-                    <input type="number" id="withdraw-amount" placeholder="Amount in USD" class="input-field" step="0.01">
+                    <input type="number" id="withdraw-amount" placeholder="${withdrawPlaceholder}" class="input-field" step="0.01">
                     <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
                     <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
                 </div>
@@ -664,24 +727,33 @@
         function handleBonusClaim(channelId, rewardBTD, link) { 
             if (!checkVpnRequirement()) return; // VPN Check
 
-            showToast("Verifying, please wait...", 5000); 
-            tg.openTelegramLink(link); 
-            setTimeout(() => { 
-                const claimedBonuses = currentUser.claimedBonuses || []; 
-                if (!claimedBonuses.includes(channelId)) { 
-                    claimedBonuses.push(channelId); 
-                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                    const rewardUSD = rewardBTD * btdToUsdRate;
+            showToast("Verifying, please wait...", 3000); // Shorter toast for actual claim
+            
+            const claimedBonuses = currentUser.claimedBonuses || []; 
+            if (!claimedBonuses.includes(channelId)) { 
+                claimedBonuses.push(channelId); 
+                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                const rewardUSD = rewardBTD * btdToUsdRate;
 
-                    const updates = {}; 
-                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
-                    updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
-                    updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; 
-                    updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
-                    database.ref().update(updates); 
-                    showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD) bonus claimed!`); 
-                } 
-            }, 5000); 
+                const updates = {}; 
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; 
+                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                database.ref().update(updates); 
+                showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD) bonus claimed!`); 
+                
+                // After successful claim, update the button visually
+                const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+                if (bonusBtn) {
+                    bonusBtn.textContent = 'Claimed';
+                    bonusBtn.disabled = true;
+                    bonusBtn.onclick = null; // Remove onclick handler
+                }
+
+            } else {
+                showToast("You have already claimed this bonus.", "info");
+            }
         }
 
         async function loadWithdrawHistory() { 
@@ -695,11 +767,30 @@
                 historyEl.innerHTML = '<p>No history found.</p>'; 
                 return; 
             } 
-            historyEl.innerHTML = Object.values(historyData).reverse().map(req => 
-                `<div class="history-item">
-                    <span>${(req.amount || 0).toFixed(2)} ${req.currency || 'USD'} - ${req.method}</span>
+            
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
+            historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
+                let displayAmount;
+                let displayCurrency;
+
+                // Assuming withdrawRequests always stores in USD and includes btdToUsdRateAtWithdrawal if it was BTD-initiated
+                const amountUSD = req.amount;
+                const currencyStored = req.currency || 'USD'; // Default to USD if not specified
+
+                if (currentUser.preferredCurrency === 'BTD' && req.btdAmountAtWithdrawal !== undefined) {
+                    displayAmount = (req.btdAmountAtWithdrawal || 0).toFixed(2);
+                    displayCurrency = 'BTD';
+                } else {
+                    displayAmount = (amountUSD || 0).toFixed(2);
+                    displayCurrency = 'USD';
+                }
+
+                return `<div class="history-item">
+                    <span>${displayAmount} ${displayCurrency} - ${req.method}</span>
                     <span class="status-${req.status}">${req.status}</span>
-                </div>`).join(''); 
+                </div>`;
+            }).join(''); 
         }
 
         function handleSubmitWithdrawal() { 
@@ -722,7 +813,9 @@
                 method: method, 
                 account: account, 
                 status: 'pending', 
-                timestamp: firebase.database.ServerValue.TIMESTAMP 
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                btdToUsdRateAtWithdrawal: appSettings.btdToUsdRate || 0.01, // Store rate for historical conversion
+                btdAmountAtWithdrawal: amount / (appSettings.btdToUsdRate || 0.01) // Store original BTD equivalent
             }; 
             
             database.ref('withdrawRequests').push(requestData).then(() => { 
@@ -751,10 +844,12 @@
             } 
             const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); 
             const users = await Promise.all(promises); 
+            
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
             listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
                 let displayScore;
                 if (currentUser.preferredCurrency === 'USD' && type === 'btd') {
-                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                     displayScore = (user.score * btdToUsdRate).toFixed(2) + ' USD';
                 } else if (type === 'btd') {
                     displayScore = user.score.toFixed(2) + ' BTD';
