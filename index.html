@@ -29,9 +29,34 @@
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
-        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
-        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
-        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
+        .currency-selector {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            background: var(--toggle-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            overflow: hidden;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: var(--transition);
+        }
+        .currency-selector .btn {
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: none;
+            background: none;
+            color: var(--text-primary);
+            transition: var(--transition);
+            line-height: 1;
+        }
+        .currency-selector .btn.active {
+            background: var(--primary-color);
+            color: white !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset;
+        }
         .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
         body.dark-mode .currency-selector .btn { color: var(--text-light); }
         body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
@@ -39,7 +64,17 @@
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .main-balance-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin-top: 8px; }
+        .main-balance-display {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(74, 144, 226, 0.1);
+            padding: 6px 15px;
+            border-radius: 50px;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
         .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
         body.dark-mode .stat-item { background: var(--input-bg); }
@@ -55,7 +90,15 @@
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .channel-list { list-style: none; }
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; padding: 10px 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
+        .history-item { 
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 0; 
+            border-bottom: 1px solid var(--border-color); 
+            background: var(--bg-light);
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 5px;
+            padding: 10px 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        } 
         .history-item:last-child { border-bottom: none; } 
         .history-item span:first-child { font-weight: 500; }
         .history-item b { color: var(--primary-color); margin-right: 5px; }
@@ -169,7 +212,6 @@
             document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
 
             loadInitialData(tgUser);
-
             setInterval(updateAllTimers, 1000);
         }
 
@@ -187,7 +229,25 @@
                 const userRef = database.ref('users/' + userId);
                 
                 const snapshot = await userRef.once('value');
-                currentUser = { id: userId, ...snapshot.val() };
+                let userData = snapshot.val();
+                
+                const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
+                const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+
+                const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+                if (!userData) {
+                    const ownReferralCode = generateReferralCode();
+                    const referrerCode = tg.initDataUnsafe.start_param;
+
+                    userData = {
+                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0 }, taskStats: { clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: [], isVerified: false
+                    };
+                    
+                    await userRef.set(userData);
+                }
+
+                currentUser = { id: userId, ...userData };
                 
                 if (currentUser.isBanned) {
                     document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1></div>`;
@@ -197,7 +257,6 @@
                 updateUI();
                 navigateTo('home', true);
 
-                // This listener now only updates data in the background without re-rendering the page
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
@@ -263,13 +322,11 @@
             let tasksHtml = Object.keys(tasks).map(taskId => { 
                 const task = tasks[taskId]; 
                 let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`;
-                
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
-
                 return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>` : ''; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`;
-            updateAllTimers(); // Immediately update timers when page is rendered
+            updateAllTimers();
         }
 
         function renderBonusPage() { 
@@ -299,7 +356,13 @@
         function renderReferralPage() {
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
-            mainContent.innerHTML = `<div class="task-card"><p>Your referral link: ${referralLink}</p></div>`;
+            const refCount = currentUser.referrals?.count || 0;
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            const incomeBTD = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
+            const incomeUSD = (incomeBTD * btdToUsdRate).toFixed(4);
+            let incomeDisplay = currentUser.preferredCurrency === 'USD' ? `${incomeUSD} USD` : `${incomeBTD} BTD`;
+            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p>Share this link with friends.</p><div class="input-group"><input type="text" value="${referralLink}" class="input-field" readonly><button class="btn" id="copyBtn">Copy</button></div></div><div class="task-card"><h2>Your Stats</h2><p>Total Referrals: ${refCount}</p><p>Referral Income: ${incomeDisplay}</p></div>`;
+            document.getElementById('copyBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Copied!')); });
         }
 
         function handleTaskClick(taskId) {
@@ -366,14 +429,118 @@
             }
         }
         
-        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
+        function handleBonusClickAndVerify(channelId, link) {
+            tg.openTelegramLink(link);
+            showToast("After joining, click the 'Claim' button.", 5000);
+            const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+            if(bonusBtn) {
+                bonusBtn.textContent = 'Claim';
+                bonusBtn.setAttribute('onclick', `handleBonusClaim('${channelId}')`);
+            }
+        }
+
+        function handleBonusClaim(channelId) {
+            const claimedBonuses = currentUser.claimedBonuses || [];
+            if(claimedBonuses.includes(channelId)) {
+                showToast("Already claimed!");
+                return;
+            }
+            const rewardBTD = bonusChannels[channelId].rewardBTD || 0;
+            database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
+            database.ref(`users/${currentUser.id}/claimedBonuses`).push(channelId);
+            showToast(`+${rewardBTD.toFixed(2)} BTD Bonus!`);
+            navigateTo('bonus', true);
+        }
+
+        async function loadWithdrawHistory() { 
+            const historyEl = document.getElementById('withdraw-history'); 
+            if(!historyEl) return; 
+            historyEl.innerHTML = '<p>Loading...</p>'; 
+            const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); 
+            const snapshot = await historyRef.once('value'); 
+            const historyData = snapshot.val() || {}; 
+            if (Object.keys(historyData).length === 0) { 
+                historyEl.innerHTML = '<p>No history found.</p>'; 
+                return; 
+            } 
+            historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
+                return `<div class="history-item"><span>${(req.amount || 0).toFixed(2)} ${req.currency} - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
+            }).join(''); 
+        }
+
+        function handleSubmitWithdrawal() { 
+            const method = document.getElementById('withdraw-method').value; 
+            const amountStr = document.getElementById('withdraw-amount').value;
+            const account = document.getElementById('withdraw-account').value.trim(); 
+            const amount = parseFloat(amountStr);
+
+            if (!method || !amountStr || isNaN(amount) || amount <= 0 || !account) {
+                return showToast("Please fill all fields correctly.");
+            }
+
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            let amountInUSD = currentUser.preferredCurrency === 'USD' ? amount : amount / btdToUsdRate;
+
+            if (amountInUSD < (appSettings.minWithdrawUSD || 0)) {
+                return showToast(`Minimum withdrawal is ${appSettings.minWithdrawUSD || 0} USD.`);
+            }
+
+            if (amountInUSD > currentUser.usdBalance) {
+                return showToast("Insufficient balance.");
+            }
+
+            const requestData = { 
+                userId: currentUser.id, 
+                userName: currentUser.name, 
+                amount: amountInUSD, 
+                currency: "USD",
+                method: method, 
+                account: account, 
+                status: 'pending', 
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+            }; 
+            
+            database.ref('withdrawRequests').push(requestData).then(() => { 
+                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountInUSD / btdToUsdRate));
+                showToast("Withdrawal request submitted!"); 
+                navigateTo('withdraw', true); 
+            }).catch(err => {
+                showToast("Error submitting request.");
+            }); 
+        }
+
+        async function loadLeaderboard(type, elementId) { 
+            const listEl = document.querySelector(elementId); 
+            if (!listEl) return; 
+            listEl.innerHTML = "<p>Loading...</p>"; 
+            const snapshot = await database.ref(type === 'btd' ? 'users' : 'users').orderByChild(type === 'btd' ? 'btdBalance' : 'referrals/count').limitToLast(10).once('value'); 
+            const data = snapshot.val(); 
+            if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
+            
+            const users = Object.values(data).map(user => ({
+                name: user.name,
+                score: type === 'btd' ? (user.btdBalance || 0) : (user.referrals?.count || 0)
+            }));
+
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
+                let displayScore = type === 'btd' ? `${user.score.toFixed(2)} BTD` : user.score;
+                return `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${displayScore}</span></div>`;
+            }).join(''); 
+        }
+
+        function handleDailyBonus() { 
+            if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Already claimed today."); 
+            const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
+            if (rewardBTD > 0) {
+                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
+                database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
+                showToast(`+${rewardBTD.toFixed(2)} BTD Daily Bonus!`);
+            }
+        }
         
-        // Placeholder for other functions to avoid errors
-        function loadLeaderboard(type, selector) { /* Implement your leaderboard logic here */ }
-        function handleDailyBonus() { /* Implement your daily bonus logic here */ }
-        function handleSubmitWithdrawal() { /* Implement your withdrawal logic here */ }
-        function loadWithdrawHistory() { /* Implement your history logic here */ }
-        function handleBonusClickAndVerify(id, link) { /* Implement your bonus claim logic here */ }
+        function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
+        function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
+        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
 
     </script>
 </body>
