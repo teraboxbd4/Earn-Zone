@@ -429,17 +429,9 @@
                     rewardDisplay = `${ (task.rewardBTD || 0).toFixed(2) } BTD`;
                 }
                 
-                // Display timer in readable format
-                let timerDisplay = '';
-                if (task.timer !== undefined && task.timer > 0) {
-                    const minutes = Math.floor(task.timer / 60);
-                    const seconds = task.timer % 60;
-                    timerDisplay = ` (Timer: ${minutes > 0 ? minutes + 'm ' : ''}${seconds}s)`;
-                }
-
                 return task.enabled ? 
                     `<div class="task-card">
-                        <h3><i class="fas fa-rocket"></i> ${task.name}${timerDisplay}</h3>
+                        <h3><i class="fas fa-rocket"></i> ${task.name}</h3>
                         <p>Complete this task to earn ${rewardDisplay}!</p>
                         <!-- Removed div id="${task.zoneId}" as it was not used and caused confusion -->
                         <button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
@@ -485,7 +477,7 @@
             
             // Optionally, you could change the button text to "Confirm Claim" here
             // For now, it will just re-call handleBonusClaim if clicked again
-            const bonusBtn = document.getElementById(`bonusBtn_${id}`);
+            const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
             if (bonusBtn && bonusBtn.textContent === 'Join & Claim') {
                 bonusBtn.textContent = 'Claim'; // Indicate that a second click is needed
                 // The onclick is already set to handleBonusClaim, so it will proceed to claim on second click.
@@ -786,7 +778,7 @@
                 showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD) bonus claimed!`); 
                 
                 // After successful claim, update the button visually
-                const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+                const bonusBtn = document.getElementById(`bonusBtn_${id}`);
                 if (bonusBtn) {
                     bonusBtn.textContent = 'Claimed';
                     bonusBtn.disabled = true;
