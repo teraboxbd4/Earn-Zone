@@ -27,36 +27,12 @@
         body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
         .app-container { max-width: 480px; margin: 0 auto; position: relative; }
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
-        .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
+        .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
+        .tg-verified-icon { width: 24px; height: 24px; margin-left: 8px; } /* Style for TG Verified Icon */
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
-        .currency-selector {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            display: flex;
-            background: var(--toggle-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 50px;
-            overflow: hidden;
-            z-index: 10;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: var(--transition);
-        }
-        .currency-selector .btn {
-            padding: 5px 12px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            border: none;
-            background: none;
-            color: var(--text-primary);
-            transition: var(--transition);
-            line-height: 1;
-        }
-        .currency-selector .btn.active {
-            background: var(--primary-color);
-            color: white !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset;
-        }
+        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
+        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
+        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
         .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
         body.dark-mode .currency-selector .btn { color: var(--text-light); }
         body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
@@ -64,17 +40,7 @@
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .main-balance-display {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(74, 144, 226, 0.1);
-            padding: 6px 15px;
-            border-radius: 50px;
-            font-weight: 600;
-            color: var(--primary-color);
-            font-size: 0.9rem;
-            margin-top: 8px;
-        }
+        .main-balance-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin-top: 8px; }
         .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
         .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
         body.dark-mode .stat-item { background: var(--input-bg); }
@@ -90,18 +56,11 @@
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .channel-list { list-style: none; }
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
-        .history-item { 
-            display: flex; justify-content: space-between; align-items: center; padding: 8px 0; 
-            border-bottom: 1px solid var(--border-color); 
-            background: var(--bg-light);
-            border-radius: var(--border-radius-sm);
-            margin-bottom: 5px;
-            padding: 10px 15px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        } 
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
         .history-item:last-child { border-bottom: none; } 
-        .history-item span:first-child { font-weight: 500; }
-        .history-item b { color: var(--primary-color); margin-right: 5px; }
+        .history-item span:first-child { font-weight: 500; display: flex; align-items: center; }
+        .history-item b { color: var(--primary-color); margin-right: 8px; }
+        .leaderboard-badge { font-size: 1.2rem; margin-right: 8px; }
         .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
@@ -122,8 +81,7 @@
                 <button id="showUsdBtn" class="btn">USD</button>
                 <button id="showBtdBtn" class="btn">BTD</button>
             </div>
-            <!-- ## CHANGE 1: Added Verified Icon to App Title ## -->
-            <h1 class="header-title">Earn Zone <i class="fas fa-check-circle verified-icon"></i></h1>
+            <h1 class="header-title">Earn Zone <svg class="tg-verified-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,9.6L11.4,14.4L7.8,10.8L9.2,9.4L11.4,11.6L14.8,8.2L16.2,9.6Z"></path></svg></h1>
         </div>
         <div class="profile-section">
             <div class="profile-card">
@@ -208,7 +166,6 @@
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
 
-            // ## CHANGE 3: Default currency set to USD ##
             currentUser.preferredCurrency = localStorage.getItem('preferredCurrency') || 'USD';
             document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
             document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
@@ -292,7 +249,6 @@
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
             
-            // ## CHANGE 2: Added conditional verified icon for user name ##
             let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
             if (currentUser.isVerified) {
                 profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
@@ -537,9 +493,20 @@
                 name: user.name,
                 score: type === 'btd' ? (user.btdBalance || 0) : (user.referrals?.count || 0)
             }));
+
             listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
                 let displayScore = type === 'btd' ? `${user.score.toFixed(2)} BTD` : user.score;
-                return `<div class="history-item"><span><b>#${i + 1}</b> ${user.name}</span><span>${displayScore}</span></div>`;
+                let rankDisplay;
+                if (i === 0) {
+                    rankDisplay = '<span class="leaderboard-badge">🏆</span>';
+                } else if (i === 1) {
+                    rankDisplay = '<span class="leaderboard-badge">🥈</span>';
+                } else if (i === 2) {
+                    rankDisplay = '<span class="leaderboard-badge">🥉</span>';
+                } else {
+                    rankDisplay = `<b>#${i + 1}</b>`;
+                }
+                return `<div class="history-item"><span>${rankDisplay} ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
         
