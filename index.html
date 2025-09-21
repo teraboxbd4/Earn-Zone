@@ -1,96 +1,922 @@
-function handleTaskClick(taskId) {
-    if (!checkVpnRequirement()) return;
-
-    const task = tasks[taskId];
-    const taskButton = document.getElementById(`taskBtn_${taskId}`);
-    if (taskButton.disabled) return;
-
-    taskButton.disabled = true;
-
-    const clickCounterRule = appSettings.clickCounterRule || 10;
-    const clicksToday = currentUser.taskStats?.clicksToday || 0;
-    if (clicksToday > 0 && clicksToday % clickCounterRule === 0) {
-        tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`);
-    }
-    database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
-
-    let adPromise;
-    try {
-        switch(task.network) {
-            case 'Monetag': adPromise = window.show_9797628(); break;
-            case 'Gigapub': adPromise = window.showGiga(); break;
-            case 'Adexora': adPromise = window.showAdexora(); break;
-            case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
-            default: adPromise = Promise.reject('Unknown network');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Earn Zone</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://ad.gigapub.tech/script?id=2868"></script>
+    <script src="https://adexora.com/cdn/ads.js?id=159"></script>
+    <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c273eb631018e08b894.js"></script>
+    <script src='//libtl.com/sdk.js' data-zone='9797628' data-sdk='show_9797628'></script>
+    <style>
+        :root {
+            --primary-color: #4A90E2; --primary-dark: #357ABD; --secondary-color: #50E3C2; --accent-color: #F5A623; --bg-light: #F7F7F7; --bg-dark: #2C3E50; --card-bg-light: #FFFFFF; --card-bg-dark: #34495E; --text-dark: #333333; --text-light: #F7F7F7; --border-color-light: #E0E0E0; --border-color-dark: #4A657D; --border-radius: 12px; --border-radius-sm: 8px; --transition: all 0.3s ease-in-out;
         }
-        // যদি adPromise একটি ভ্যালিড Promise না হয় (যেমন SDK ফাংশন मौजूद না থাকলে), তাহলে এটি একটি ত্রুটি দেবে।
-        if (!adPromise || typeof adPromise.then !== 'function') {
-            throw new Error("SDK function did not return a valid promise.");
+        body.dark-mode {
+            background-color: var(--bg-dark); color: var(--text-light); --header-bg: linear-gradient(135deg, var(--bg-dark), #1A2530); --card-bg: var(--card-bg-dark); --text-primary: var(--text-light); --text-secondary: #B0B0B0; --border-color: var(--border-color-dark); --input-bg: #4A657D; --input-border: #5A7E9C; --button-bg-secondary: #4A657D; --button-text-secondary: var(--secondary-color); --toggle-bg: #4A657D;
         }
-    } catch (e) {
-        adPromise = Promise.reject('SDK error: ' + e.message);
-    }
+        body:not(.dark-mode) {
+            background-color: var(--bg-light); color: var(--text-dark); --header-bg: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); --card-bg: var(--card-bg-light); --text-primary: var(--text-dark); --text-secondary: #666666; --border-color: var(--border-color-light); --input-bg: #F0F0E0; --input-border: #E0E0E0; --button-bg-secondary: #E9ECEF; --button-text-secondary: var(--primary-color); --toggle-bg: #E0E0E0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
+        .app-container { max-width: 480px; margin: 0 auto; position: relative; }
+        .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+        .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
+        .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
+        .currency-selector {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            background: var(--toggle-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            overflow: hidden;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: var(--transition);
+        }
+        .currency-selector .btn {
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: none;
+            background: none;
+            color: var(--text-primary);
+            transition: var(--transition);
+            line-height: 1;
+        }
+        .currency-selector .btn.active {
+            background: var(--primary-color);
+            color: white !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset;
+        }
+        .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
+        body.dark-mode .currency-selector .btn { color: var(--text-light); }
+        body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
 
-    // --- নতুন টাইমআউট ব্যবস্থা ---
-    const TIMEOUT_DURATION = 20000; // ২০ সেকেন্ড
-    const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-            reject(new Error('AdTimeout'));
-        }, TIMEOUT_DURATION);
-    });
 
-    // Promise.race বিজ্ঞাপন বা টাইমআউটের মধ্যে যেটি আগে হবে, সেটিকে গ্রহণ করবে
-    Promise.race([adPromise, timeoutPromise])
-        .then(() => {
-            // বিজ্ঞাপন সফল হলে এই অংশ কাজ করবে
-            const rewardBTD = task.rewardBTD || 0;
-            if (rewardBTD > 0) {
+        .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
+        .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
+        .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
+        .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
+        
+        .main-balance-display {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(74, 144, 226, 0.1);
+            padding: 6px 15px;
+            border-radius: 50px;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+        .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
+        body.dark-mode .stat-item { background: var(--input-bg); }
+        .stat-value { font-weight: 600; color: var(--text-primary); font-size: 1rem; }
+        .stat-label { font-size: 0.7rem; color: var(--text-secondary); }
+        .content-section { padding: 20px; margin-bottom: 80px; }
+        .section-title { display: flex; align-items: center; margin-bottom: 18px; font-size: 1.2rem; font-weight: 600; color: var(--text-primary); }
+        .task-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); border: 1px solid var(--border-color); }
+        .btn { display: block; width: 100%; padding: 12px; border-radius: var(--border-radius-sm); border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; text-align: center; text-decoration: none; }
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn:disabled { background: #ccc; color: #888; cursor: not-allowed; }
+        .input-field, .select-field { width: 100%; padding: 10px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); font-size: 0.95rem; margin-bottom: 10px; }
+        .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+        .channel-list { list-style: none; }
+        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
+        .history-item { 
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 0; 
+            border-bottom: 1px solid var(--border-color); 
+            background: var(--bg-light);
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 5px;
+            padding: 10px 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        } 
+        .history-item:last-child { border-bottom: none; } 
+        .history-item span:first-child { font-weight: 500; }
+        .history-item b { color: var(--primary-color); margin-right: 5px; }
+
+        .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
+        .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
+        .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
+        .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
+        .spinner { width: 45px; height: 45px; border: 3px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; margin: 15px auto; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+        .ad-timer-display { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); margin-top: 10px; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 30px; z-index: 1000; opacity: 0; transition: all 0.3s ease; } .toast.show { opacity: 1; bottom: 90px; }
+        .verified-icon { color: #40A7E3; margin-left: 5px; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
+            
+            <div class="currency-selector">
+                <button id="showUsdBtn" class="btn">USD</button>
+                <button id="showBtdBtn" class="btn">BTD</button>
+            </div>
+
+            <h1 class="header-title">Earn Zone <i class="fas fa-check-circle verified-icon"></i></h1>
+        </div>
+        <div class="profile-section">
+            <div class="profile-card">
+                <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
+                <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
+                <div class="main-balance-display" id="mainBalanceDisplay">
+                </div>
+                <div class="stats-display">
+                    <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
+                    <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="content-section" id="mainContent"></div>
+        <div class="bottom-nav" id="bottomNav">
+            <a href="#" class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
+            <a href="#" class="nav-item" data-page="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></a>
+            <a href="#" class="nav-item" data-page="bonus"><i class="fas fa-gift"></i><span>Bonus</span></a>
+            <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
+            <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
+        </div>
+        <div class="ad-modal-overlay" id="adModal">
+            <div class="ad-modal">
+                <h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3>
+                <div class="spinner"></div>
+                <div class="ad-timer-display" id="adTimerDisplay"></div>
+            </div>
+        </div>
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
+            authDomain: "earn-zone-a6dce.firebaseapp.com",
+            databaseURL: "https://earn-zone-a6dce-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "earn-zone-a6dce",
+            storageBucket: "earn-zone-a6dce.appspot.com",
+            messagingSenderId: "470563695372",
+            appId: "1:470563695372:web:323d2941c316cef0a4b729"
+        };
+        firebase.initializeApp(firebaseConfig);
+        
+        const auth = firebase.auth();
+        const database = firebase.database();
+        const tg = window.Telegram.WebApp;
+        const BOT_USERNAME = "earn_zone_user_bot";
+
+        let currentUser = {};
+        let appSettings = {};
+        let tasks = {};
+        let bonusChannels = {};
+        let taskTimers = {};
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                initializeAppLogic(); 
+            } else {
+                auth.signInAnonymously().catch(error => {
+                    console.error("Anonymous sign-in failed:", error);
+                    document.body.innerHTML = `<p style="text-align:center; padding: 20px; color: red;">CRITICAL ERROR: Could not connect.</p>`;
+                });
+            }
+        });
+
+        function initializeAppLogic() {
+            tg.ready();
+            tg.expand();
+            
+            const tgUser = tg.initDataUnsafe?.user;
+            if (!tgUser) {
+                document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>";
+                return;
+            }
+
+            applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
+            });
+
+            currentUser.preferredCurrency = localStorage.getItem('preferredCurrency') || 'USD';
+            document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
+            document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
+
+            loadInitialData(tgUser);
+        }
+
+        async function loadInitialData(tgUser) {
+            try {
+                const adminRef = await database.ref('admin').once('value');
+                const adminData = adminRef.val();
+                if (!adminData) { throw new Error("Admin config not found."); }
+
+                appSettings = adminData.settings || {};
+                appSettings.notices = adminData.notices || {};
+                tasks = adminData.tasks || {};
+                bonusChannels = adminData.bonusChannels || {};
+                
+                const userId = tgUser.id.toString();
+                const userRef = database.ref('users/' + userId);
+                const snapshot = await userRef.once('value');
+                let userData = snapshot.val();
+                
+                const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
+                const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+
+                const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+                if (!userData) {
+                    const ownReferralCode = generateReferralCode();
+                    const referrerCode = tg.initDataUnsafe.start_param;
+
+                    userData = {
+                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, usdBalance: 0, btdWallet: 0, usdWallet: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0, incomeUSD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: [], isVerified: false
+                    };
+                    
+                    if (referrerCode && referrerCode !== ownReferralCode) {
+                        const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(referrerCode).limitToFirst(1);
+                        const referrerSnap = await referrerQuery.once('value');
+                        if (referrerSnap.exists()) {
+                            const referrerId = Object.keys(referrerSnap.val())[0];
+                            const bonuses = appSettings.referralBonus || { refereeBTD: 0, referrerBTD: 0 };
+                            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
+                            userData.btdBalance += bonuses.refereeBTD;
+                            userData.usdBalance += (bonuses.refereeBTD * btdToUsdRate);
+                            userData.btdWallet += bonuses.refereeBTD;
+                            userData.usdWallet += (bonuses.refereeBTD * btdToUsdRate);
+                            userData.referredBy = referrerCode;
+                            userData.referralApplied = true;
+
+                            const updates = {};
+                            updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                            updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
+                            updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                            updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                            updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
+
+                            await database.ref().update(updates);
+                            showToast(`Welcome! You received ${bonuses.refereeBTD.toFixed(2)} BTD (${(bonuses.refereeBTD * btdToUsdRate).toFixed(2)} USD) bonus!`);
+                        }
+                    }
+                    await userRef.set(userData);
+
+                } else {
+                    const updates = {};
+                    if (userData.name !== currentTgName || userData.photoUrl !== currentTgPhoto) {
+                        updates.name = currentTgName; updates.photoUrl = currentTgPhoto;
+                    }
+                    if (!userData.referralCode) { updates.referralCode = generateReferralCode(); }
+                    updates.lastActive = new Date().toISOString();
+                    if (userData.btdBalance === undefined) updates.btdBalance = 0;
+                    if (userData.usdBalance === undefined) updates.usdBalance = 0;
+                    if (userData.btdWallet === undefined) updates.btdWallet = 0;
+                    if (userData.usdWallet === undefined) updates.usdWallet = 0;
+                    if (userData.referrals?.incomeBTD === undefined) updates['referrals/incomeBTD'] = 0;
+                    if (userData.referrals?.incomeUSD === undefined) updates['referrals/incomeUSD'] = 0;
+                    if (userData.isVerified === undefined) updates.isVerified = false;
+
+                    if (Object.keys(updates).length > 0) { await userRef.update(updates); }
+
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    if (userData.usdBalance !== (userData.btdBalance * btdToUsdRate)) {
+                        await userRef.update({
+                            usdBalance: userData.btdBalance * btdToUsdRate,
+                            usdWallet: userData.btdWallet * btdToUsdRate,
+                            'referrals/incomeUSD': (userData.referrals?.incomeBTD || 0) * btdToUsdRate
+                        });
+                    }
+                }
+                
+                userRef.on('value', (snap) => {
+                    currentUser = { id: userId, ...snap.val() };
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
+                    currentUser.usdWallet = (currentUser.btdWallet || 0) * btdToUsdRate;
+                    currentUser.referrals.incomeUSD = (currentUser.referrals?.incomeBTD || 0) * btdToUsdRate;
+
+                    if (currentUser.isBanned) {
+                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
+                        return;
+                    }
+                    const today = new Date().toISOString().split('T')[0];
+                    if (currentUser.taskStats?.lastResetDate !== today) {
+                        database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
+                    }
+                    updateUI();
+                    const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
+                    navigateTo(currentPage, true);
+                });
+
+            } catch (error) {
+                console.error("Initialization Error:", error);
+                document.body.innerHTML = `<p style="color: red; font-weight: bold; text-align:center; padding:20px;">${error.message}</p>`;
+            }
+        }
+        
+        function setPreferredCurrency(currency) {
+            currentUser.preferredCurrency = currency;
+            localStorage.setItem('preferredCurrency', currency);
+            updateUI();
+            const currentPage = document.querySelector('.nav-item.active')?.dataset.page;
+            if (currentPage) {
+                navigateTo(currentPage, true);
+            }
+        }
+
+        function navigateTo(page, forceRender = false) {
+            const currentActive = document.querySelector('.nav-item.active');
+            if (!forceRender && currentActive && currentActive.dataset.page === page) return;
+            document.querySelector('.nav-item.active')?.classList.remove('active');
+            const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
+            if (newActive) newActive.classList.add('active');
+            const pages = { home: renderHomePage, tasks: renderTasksPage, bonus: renderBonusPage, withdraw: renderWithdrawPage, referral: renderReferralPage };
+            if (pages[page]) pages[page]();
+        }
+        
+        function updateUI() {
+            if (!currentUser || !document.getElementById('profileNameDisplay')) return;
+            
+            let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
+            if (currentUser.isVerified) {
+                profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
+            }
+            document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
+            document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+
+            const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
+            const showUsdBtn = document.getElementById('showUsdBtn');
+            const showBtdBtn = document.getElementById('showBtdBtn');
+
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
+            showUsdBtn.classList.remove('active');
+            showBtdBtn.classList.remove('active');
+
+            if (currentUser.preferredCurrency === 'USD') {
+                const usdValue = (currentUser.btdBalance || 0) * btdToUsdRate;
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ usdValue.toFixed(4) } USD`;
+                showUsdBtn.classList.add('active');
+            } else {
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
+                showBtdBtn.classList.add('active');
+            }
+            
+            document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
+            const refCount = currentUser.referrals?.count || 0;
+            document.getElementById('ref-count').textContent = refCount;
+        }
+
+        function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
+        function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
+
+        function checkVpnRequirement() {
+            if (appSettings.vpnRequired) {
+                const vpnNotice = appSettings.vpnNotice || "VPN is required to perform this action. Please connect to an allowed country.";
+                tg.showAlert(vpnNotice);
+                return false;
+            }
+            return true;
+        }
+        
+        function renderHomePage() { 
+            mainContent.innerHTML = `
+                <div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div>
+                <div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>
+                <div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; 
+            document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); 
+            loadLeaderboard('btd', '#leaderboard-list');
+        }
+
+        function renderTasksPage() { 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            let tasksHtml = Object.keys(tasks).map(taskId => { 
+                const task = tasks[taskId]; 
+                let rewardDisplay;
+                if (currentUser.preferredCurrency === 'USD') {
+                    const rewardUSD = (task.rewardBTD || 0) * btdToUsdRate;
+                    rewardDisplay = `${ rewardUSD.toFixed(4) } USD`;
+                } else {
+                    rewardDisplay = `${ (task.rewardBTD || 0).toFixed(2) } BTD`;
+                }
+                
+                return task.enabled ? 
+                    `<div class="task-card">
+                        <h3><i class="fas fa-rocket"></i> ${task.name}</h3>
+                        <p>Complete this task to earn ${rewardDisplay}!</p>
+                        <button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
+                    </div>` : ''; 
+            }).join(''); 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn more currency.'}</p></div>${tasksHtml || '<p style="text-align:center; margin-top:20px;">No tasks available right now. Please check back later!</p>'}`; 
+        }
+
+        function renderBonusPage() { 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
+                const isClaimed = currentUser.claimedBonuses?.includes(id); 
+                let rewardDisplay;
+                if (currentUser.preferredCurrency === 'USD') {
+                    const rewardUSD = (channel.rewardBTD || 0) * btdToUsdRate;
+                    rewardDisplay = `+${ rewardUSD.toFixed(4) } USD`;
+                } else {
+                    rewardDisplay = `+${ (channel.rewardBTD || 0).toFixed(2) } BTD`;
+                }
+
+                const buttonText = isClaimed ? 'Claimed' : (channel.status === 'pending_verification' ? 'Verifying...' : 'Join & Claim');
+                const buttonDisabled = isClaimed || (channel.status === 'pending_verification');
+                const buttonAction = isClaimed ? '' : (channel.status === 'pending_verification' ? '' : `handleBonusClickAndVerify('${id}', ${channel.rewardBTD || 0}, '${channel.link}')`);
+
+                return channel.enabled ? 
+                    `<li class="channel-item">
+                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span>
+                        <button class="btn" onclick="${buttonAction}" ${buttonDisabled ? 'disabled' : ''} id="bonusBtn_${id}">
+                            ${buttonText}
+                        </button>
+                    </li>` : ''; 
+            }).join(''); 
+            mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; 
+        }
+
+        function handleBonusClickAndVerify(channelId, rewardBTD, link) {
+            if (!checkVpnRequirement()) return;
+
+            tg.openTelegramLink(link);
+            showToast("Please join the channel and then click 'Claim' again to get your reward.", 5000);
+            
+            const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+            if (bonusBtn && bonusBtn.textContent === 'Join & Claim') {
+                bonusBtn.textContent = 'Claim';
+            }
+        }
+
+
+        async function renderWithdrawPage() { 
+            const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); 
+            const methods = methodsSnap.val() || {}; 
+            const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
+            const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
+
+            let withdrawCurrencySymbol = currentUser.preferredCurrency === 'USD' ? '<i class="fas fa-dollar-sign"></i>' : '<i class="fas fa-coins"></i>';
+            let withdrawPlaceholder = `Amount in ${currentUser.preferredCurrency}`;
+            let minWithdrawDisplay;
+            let currentBalanceForWithdraw;
+
+            if (currentUser.preferredCurrency === 'USD') {
+                minWithdrawDisplay = minWithdrawUSD.toFixed(2) + ' USD';
+                currentBalanceForWithdraw = (currentUser.btdBalance * (appSettings.btdToUsdRate || 0.01)).toFixed(2);
+            } else {
+                minWithdrawDisplay = (minWithdrawUSD / (appSettings.btdToUsdRate || 0.01)).toFixed(2) + ' BTD';
+                currentBalanceForWithdraw = currentUser.btdBalance.toFixed(2);
+            }
+
+            mainContent.innerHTML = `
+                <div class="task-card">
+                    <h2 class="section-title">${withdrawCurrencySymbol} Withdraw ${currentUser.preferredCurrency}</h2>
+                    <p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''} Minimum withdrawal: ${minWithdrawDisplay}. Your current balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p>
+                    <select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select>
+                    <input type="number" id="withdraw-amount" placeholder="${withdrawPlaceholder}" class="input-field" step="0.01">
+                    <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
+                    <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
+                </div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2>
+                    <div id="withdraw-history"></div>
+                </div>`; 
+            document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
+            loadWithdrawHistory(); 
+        }
+        
+        function renderReferralPage() {
+            const refCount = currentUser.referrals?.count || 0;
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
+            let earnedDisplayBTD = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
+            let earnedDisplayUSD = ((currentUser.referrals?.incomeBTD || 0) * btdToUsdRate).toFixed(4);
+
+            let incomeStatHtml;
+            if (currentUser.preferredCurrency === 'USD') {
+                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayUSD} USD</div><div class="stat-label">USD Earned</div></div>`;
+            } else {
+                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayBTD} BTD</div><div class="stat-label">BTD Earned</div></div>`;
+            }
+
+            const referralCode = currentUser.referralCode || '';
+            const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
+
+            const referralLinkBox = `
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
+                    <p style="margin-bottom: 15px;">Share this link directly with your friends for automatic rewards.</p>
+                    <div class="input-group">
+                        <input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly>
+                        <button class="btn" id="copyReferralLinkBtn">Copy</button>
+                    </div>
+                    <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button>
+                </div>`;
+            
+            const referralCodeBox = `
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2>
+                    <p style="margin-bottom: 15px;">Or, have friends enter this code manually in the verify box.</p>
+                    <div class="input-group">
+                        <input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold; letter-spacing: 2px; font-size: 1.1rem;">
+                        <button class="btn" id="copyReferralCodeBtn">Copy</button>
+                    </div>
+                </div>`;
+
+            const verifyBox = `
+                <div class="task-card" id="referralVerifyBox">
+                    <h2 class="section-title">Referral Verify Box</h2>
+                    <p style="margin-bottom: 15px;">If a friend gave you a code, enter it here to get bonus currency!</p>
+                    <div class="input-group">
+                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
+                        <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
+                    </div>
+                </div>`;
+
+            mainContent.innerHTML = `
+                ${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}
+                ${referralLinkBox}
+                ${referralCodeBox}
+                ${currentUser.referralApplied ? '' : verifyBox}
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
+                    <div class="stats-display">
+                        <div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>
+                        ${incomeStatHtml}
+                    </div>
+                </div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
+                    <div id="ref-leaderboard-list"></div>
+                </div>`;
+            
+            document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { 
+                navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')); 
+            });
+
+            document.getElementById('copyReferralCodeBtn').addEventListener('click', () => { 
+                navigator.clipboard.writeText(referralCode).then(() => showToast('Code copied!')); 
+            });
+
+            document.getElementById('shareReferralBtn').addEventListener('click', () => {
+                 tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join and earn rewards!")}`);
+            });
+
+            if (!currentUser.referralApplied) {
+                document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
+            }
+            loadLeaderboard('referrals', '#ref-leaderboard-list');
+        }
+
+        async function handleReferralVerification() {
+            const verifyBtn = document.getElementById('verifyReferralBtn');
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+            
+            const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
+            if (!enteredCode) {
+                showToast("Please enter a code.");
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+                return;
+            }
+            if (enteredCode === currentUser.referralCode) {
+                showToast("You cannot use your own code.");
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+                return;
+            }
+
+            try {
+                const referrerQuery = database.ref('users').orderByChild('referralCode').equalTo(enteredCode).limitToFirst(1);
+                const referrerSnap = await referrerQuery.once('value');
+
+                if (!referrerSnap.exists()) {
+                    showToast("Invalid referral code.");
+                    verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+                    return;
+                }
+
+                const referrerId = Object.keys(referrerSnap.val())[0];
+                const bonuses = appSettings.referralBonus || { refereeBTD: 0, referrerBTD: 0 };
+                const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
+                const updates = {};
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.refereeBTD);
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.refereeBTD * btdToUsdRate);
+                updates[`/users/${currentUser.id}/btdWallet`] = firebase.database.ServerValue.increment(bonuses.refereeBTD);
+                updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(bonuses.refereeBTD * btdToUsdRate);
+                updates[`/users/${currentUser.id}/referredBy`] = enteredCode;
+                updates[`/users/${currentUser.id}/referralApplied`] = true;
+                
+                updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                updates[`/users/${referrerId}/usdBalance`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
+                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                updates[`/users/${referrerId}/referrals/incomeUSD`] = firebase.database.ServerValue.increment(bonuses.referrerBTD * btdToUsdRate);
+                
+                updates[`/leaderboards/referrals/${referrerId}`] = firebase.database.ServerValue.increment(1);
+                updates[`/leaderboards/btd/${referrerId}`] = firebase.database.ServerValue.increment(bonuses.referrerBTD);
+                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(bonuses.refereeBTD);
+                
+                await database.ref().update(updates);
+                
+                showToast(`Success! You received ${bonuses.refereeBTD.toFixed(2)} BTD (${(bonuses.refereeBTD * btdToUsdRate).toFixed(2)} USD) bonus!`);
+                document.getElementById('referralVerifyBox').style.display = 'none';
+
+            } catch (error) {
+                console.error("Referral verification error:", error);
+                showToast("An error occurred. Please try again.");
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
+            }
+        }
+
+        function handleDailyBonus() { 
+            if (!checkVpnRequirement()) return;
+            if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Daily bonus already claimed."); 
+            const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            const rewardUSD = rewardBTD * btdToUsdRate;
+
+            openAdModal('Daily Bonus Ad'); 
+            setTimeout(() => { 
+                closeAdModal(); 
+                const updates = {}; 
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                updates[`/users/${currentUser.id}/taskStats/dailyBonusClaimed`] = true; 
+                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                database.ref().update(updates); 
+                showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)! Bonus claimed.`); 
+            }, 3000); 
+        }
+
+        // =========================================================================
+        // ======================= START: MODIFIED FUNCTION ========================
+        // =========================================================================
+        function handleTaskClick(taskId) {
+            if (!checkVpnRequirement()) return;
+
+            const task = tasks[taskId];
+            const taskButton = document.getElementById(`taskBtn_${taskId}`);
+            if (taskButton.disabled) return;
+
+            taskButton.disabled = true;
+
+            const clickCounterRule = appSettings.clickCounterRule || 10;
+            const clicksToday = currentUser.taskStats?.clicksToday || 0;
+            if (clicksToday > 0 && clicksToday % clickCounterRule === 0) {
+                tg.showAlert(`This is click #${clicksToday + 1}. Please interact with the ad.`);
+            }
+            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
+
+            let adPromise;
+            try {
+                switch(task.network) {
+                    case 'Monetag': adPromise = window.show_9797628(); break;
+                    case 'Gigapub': adPromise = window.showGiga(); break;
+                    case 'Adexora': adPromise = window.showAdexora(); break;
+                    case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
+                    default: adPromise = Promise.reject('Unknown network');
+                }
+                if (!adPromise || typeof adPromise.then !== 'function') {
+                    throw new Error("SDK function did not return a valid promise.");
+                }
+            } catch (e) {
+                adPromise = Promise.reject('SDK error: ' + e.message);
+            }
+
+            const TIMEOUT_DURATION = 20000; // 20 seconds timeout
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error('AdTimeout'));
+                }, TIMEOUT_DURATION);
+            });
+
+            Promise.race([adPromise, timeoutPromise])
+                .then(() => {
+                    // Ad was successful
+                    const rewardBTD = task.rewardBTD || 0;
+                    if (rewardBTD > 0) {
+                        const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                        const rewardUSD = rewardBTD * btdToUsdRate;
+
+                        const updates = {};
+                        updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
+                        updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD);
+                        updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD);
+                        database.ref().update(updates);
+                        showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`);
+                    }
+
+                    // Start timer AFTER successful ad view and reward
+                    let timerSeconds = task.timer || 0;
+                    if (timerSeconds > 0) {
+                        let currentTimer = timerSeconds;
+                        taskButton.textContent = `Wait ${currentTimer}s`;
+
+                        taskTimers[taskId] = setInterval(() => {
+                            currentTimer--;
+                            if (currentTimer > 0) {
+                                taskButton.textContent = `Wait ${currentTimer}s`;
+                            } else {
+                                clearInterval(taskTimers[taskId]);
+                                taskButton.disabled = false;
+                                taskButton.textContent = 'Start Task';
+                                delete taskTimers[taskId];
+                            }
+                        }, 1000);
+                    } else {
+                        taskButton.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    // Ad failed or timed out
+                    if (err && err.message === 'AdTimeout') {
+                        showToast("Ad took too long to load. Please try again.");
+                    } else {
+                        showToast("Ad failed. Please try again.");
+                    }
+                    
+                    if (taskTimers[taskId]) {
+                        clearInterval(taskTimers[taskId]);
+                    }
+                    taskButton.disabled = false;
+                    taskButton.textContent = 'Start Task';
+                    delete taskTimers[taskId];
+                });
+        }
+        // =======================================================================
+        // ======================== END: MODIFIED FUNCTION =======================
+        // =======================================================================
+
+
+        function handleBonusClaim(channelId, rewardBTD, link) { 
+            if (!checkVpnRequirement()) return;
+
+            showToast("Verifying, please wait...", 3000);
+            
+            const claimedBonuses = currentUser.claimedBonuses || []; 
+            if (!claimedBonuses.includes(channelId)) { 
+                claimedBonuses.push(channelId); 
                 const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                 const rewardUSD = rewardBTD * btdToUsdRate;
 
-                const updates = {};
-                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
-                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD);
-                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD);
-                database.ref().update(updates);
-                showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD)!`);
-            }
+                const updates = {}; 
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD); 
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(rewardUSD); 
+                updates[`/users/${currentUser.id}/claimedBonuses`] = claimedBonuses; 
+                updates[`/leaderboards/btd/${currentUser.id}`] = firebase.database.ServerValue.increment(rewardBTD); 
+                database.ref().update(updates); 
+                showToast(`+${rewardBTD.toFixed(2)} BTD (+${rewardUSD.toFixed(2)} USD) bonus claimed!`); 
+                
+                const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+                if (bonusBtn) {
+                    bonusBtn.textContent = 'Claimed';
+                    bonusBtn.disabled = true;
+                    bonusBtn.onclick = null;
+                }
 
-            // পুরস্কার দেওয়ার পর টাইমার শুরু হবে
-            let timerSeconds = task.timer || 0;
-            if (timerSeconds > 0) {
-                let currentTimer = timerSeconds;
-                taskButton.textContent = `Wait ${currentTimer}s`;
-
-                taskTimers[taskId] = setInterval(() => {
-                    currentTimer--;
-                    if (currentTimer > 0) {
-                        taskButton.textContent = `Wait ${currentTimer}s`;
-                    } else {
-                        clearInterval(taskTimers[taskId]);
-                        taskButton.disabled = false;
-                        taskButton.textContent = 'Start Task';
-                        delete taskTimers[taskId];
-                    }
-                }, 1000);
             } else {
-                taskButton.disabled = false;
+                showToast("You have already claimed this bonus.", "info");
             }
-        })
-        .catch(err => {
-            // বিজ্ঞাপন ব্যর্থ হলে বা টাইমআউট হলে এই অংশ কাজ করবে
-            if (err && err.message === 'AdTimeout') {
-                showToast("বিজ্ঞাপন লোড হতে দেরি হচ্ছে। আবার চেষ্টা করুন।");
-            } else {
-                showToast("বিজ্ঞাপন দেখাতে ব্যর্থ। আবার চেষ্টা করুন।");
-            }
+        }
 
-            // বাটনটিকে আবার আগের অবস্থায় ফিরিয়ে আনা
-            if (taskTimers[taskId]) {
-                clearInterval(taskTimers[taskId]);
-            }
-            taskButton.disabled = false;
-            taskButton.textContent = 'Start Task';
-            delete taskTimers[taskId];
-        });
-}
+        async function loadWithdrawHistory() { 
+            const historyEl = document.getElementById('withdraw-history'); 
+            if(!historyEl) return; 
+            historyEl.innerHTML = '<p>Loading...</p>'; 
+            const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); 
+            const snapshot = await historyRef.once('value'); 
+            const historyData = snapshot.val() || {}; 
+            if (Object.keys(historyData).length === 0) { 
+                historyEl.innerHTML = '<p>No history found.</p>'; 
+                return; 
+            } 
+            
+            historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
+                let displayAmount;
+                let displayCurrency;
+
+                const amountUSD = req.amount;
+                
+                if (currentUser.preferredCurrency === 'BTD' && req.btdAmountAtWithdrawal !== undefined) {
+                    displayAmount = (req.btdAmountAtWithdrawal || 0).toFixed(2);
+                    displayCurrency = 'BTD';
+                } else {
+                    displayAmount = (amountUSD || 0).toFixed(2);
+                    displayCurrency = 'USD';
+                }
+
+                return `<div class="history-item">
+                    <span>${displayAmount} ${displayCurrency} - ${req.method}</span>
+                    <span class="status-${req.status}">${req.status}</span>
+                </div>`;
+            }).join(''); 
+        }
+
+        function handleSubmitWithdrawal() { 
+            const method = document.getElementById('withdraw-method').value; 
+            const amount = parseFloat(document.getElementById('withdraw-amount').value);
+            const account = document.getElementById('withdraw-account').value.trim(); 
+            
+            const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
+            let currentUsdBalance = currentUser.usdBalance || 0;
+
+            if (!method || isNaN(amount) || amount <= 0 || !account) return showToast("Please fill all fields and enter a valid amount."); 
+            if (amount < minWithdrawUSD) return showToast(`Minimum withdrawal is ${minWithdrawUSD.toFixed(2)} USD.`); 
+            if (amount > currentUsdBalance) return showToast("You do not have enough USD funds."); 
+
+            const requestData = { 
+                userId: currentUser.id, 
+                userName: currentUser.name, 
+                amount: amount, 
+                currency: "USD",
+                method: method, 
+                account: account, 
+                status: 'pending', 
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                btdToUsdRateAtWithdrawal: appSettings.btdToUsdRate || 0.01,
+                btdAmountAtWithdrawal: amount / (appSettings.btdToUsdRate || 0.01)
+            }; 
+            
+            database.ref('withdrawRequests').push(requestData).then(() => { 
+                const updates = {}; 
+                updates[`/users/${currentUser.id}/usdBalance`] = firebase.database.ServerValue.increment(-amount); 
+                updates[`/users/${currentUser.id}/usdWallet`] = firebase.database.ServerValue.increment(-amount); 
+                database.ref().update(updates); 
+                showToast("Withdrawal request submitted!"); 
+                navigateTo('withdraw'); 
+            }).catch(err => {
+                console.error("Error submitting withdrawal:", err);
+                showToast("Error: Could not submit request.");
+            }); 
+        }
+
+        async function loadLeaderboard(type, elementId) { 
+            const listEl = document.querySelector(elementId); 
+            if (!listEl) return; 
+            listEl.innerHTML = "<p>Loading...</p>"; 
+            const snapshot = await database.ref(`leaderboards/${type}`).orderByValue().limitToLast(10).once('value'); 
+            const data = snapshot.val(); 
+            if (!data) { 
+                listEl.innerHTML = '<p>No data available.</p>'; 
+                return; 
+            } 
+            const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); 
+            const users = await Promise.all(promises); 
+            
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
+                let displayScore;
+                if (currentUser.preferredCurrency === 'USD' && type === 'btd') {
+                    displayScore = (user.score * btdToUsdRate).toFixed(2) + ' USD';
+                } else if (type === 'btd') {
+                    displayScore = user.score.toFixed(2) + ' BTD';
+                } else {
+                    displayScore = user.score;
+                }
+
+                return `<div class="history-item">
+                    <span><b>#${i + 1}</b> ${user.name}</span>
+                    <span>${displayScore}</span>
+                </div>`;
+            }).join(''); 
+        }
+
+        function openAdModal(title) { 
+            document.getElementById('adModalTitle').textContent = title; 
+            document.getElementById('adModal').classList.add('show'); 
+        }
+        function closeAdModal() { 
+            document.getElementById('adModal').classList.remove('show'); 
+        }
+        function showToast(message, duration = 3000) { 
+            const toast = document.getElementById('toast'); 
+            toast.textContent = message; 
+            toast.classList.add('show'); 
+            setTimeout(() => toast.classList.remove('show'), duration); 
+        }
+
+    </script>
+</body>
+</html>
