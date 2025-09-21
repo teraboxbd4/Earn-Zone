@@ -136,14 +136,14 @@
         let appSettings = {};
         let tasks = {};
         let bonusChannels = {};
-        let taskTimers = {}; // Object to store timer states: { taskId: endTime }
+        let taskTimers = {};
 
         auth.onAuthStateChanged(user => {
             if (user) {
                 initializeAppLogic(); 
             } else {
                 auth.signInAnonymously().catch(error => {
-                    document.body.innerHTML = `<p style="text-align:center; padding: 20px; color: red;">CRITICAL ERROR: Could not connect.</p>`;
+                    document.body.innerHTML = `<p style="text-align:center;">Could not connect.</p>`;
                 });
             }
         });
@@ -154,7 +154,7 @@
             
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
-                document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>";
+                document.body.innerHTML = "<p style='text-align:center;'>Not in Telegram.</p>";
                 return;
             }
 
@@ -170,8 +170,6 @@
 
             loadInitialData(tgUser);
 
-            // ** NEW: Global Timer Loop **
-            // This single interval will manage all countdowns efficiently.
             setInterval(updateAllTimers, 1000);
         }
 
@@ -182,41 +180,35 @@
                 if (!adminData) { throw new Error("Admin config not found."); }
 
                 appSettings = adminData.settings || {};
-                appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
                 
                 const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
                 
-                userRef.on('value', (snap) => {
-                    const wasJustInitialized = !currentUser.id;
-                    currentUser = { id: userId, ...snap.val() };
-                    
+                // ** MODIFIED: Use .once() for initial load to prevent re-rendering issues **
+                const snapshot = await userRef.once('value');
+                currentUser = { id: userId, ...snapshot.val() };
+                
+                if (currentUser.isBanned) {
+                    document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1></div>`;
+                    return;
+                }
+                
+                updateUI();
+                navigateTo('home', true);
+
+                // ** NEW: Set up a separate listener just for balance updates **
+                // This will only update the UI, not re-render the whole page.
+                const balanceRef = database.ref(`users/${userId}/btdBalance`);
+                balanceRef.on('value', (snap) => {
+                    currentUser.btdBalance = snap.val() || 0;
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                    currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
-                    
-                    if (currentUser.isBanned) {
-                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1></div>`;
-                        return;
-                    }
-                    
-                    const today = new Date().toISOString().split('T')[0];
-                    if (currentUser.taskStats?.lastResetDate !== today) {
-                        database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
-                    }
-                    
-                    updateUI();
-                    
-                    // ** MODIFIED: Only render the page on first load **
-                    // This prevents the page from re-rendering on every balance update.
-                    if (wasJustInitialized) {
-                        navigateTo('home', true);
-                    }
+                    currentUser.usdBalance = currentUser.btdBalance * btdToUsdRate;
+                    updateUI(); // Only update the UI parts
                 });
 
             } catch (error) {
-                console.error("Initialization Error:", error);
                 document.body.innerHTML = `<p style="color: red; padding:20px;">${error.message}</p>`;
             }
         }
@@ -269,7 +261,6 @@
         
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('btd', '#leaderboard-list'); }
         
-        // ** MODIFIED: renderTasksPage now checks for active timers **
         function renderTasksPage() { 
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01; 
             let tasksHtml = Object.keys(tasks).map(taskId => { 
@@ -292,9 +283,6 @@
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`; 
         }
 
-        // =========================================================================
-        // ======================= START: FINAL PRODUCTION CODE =====================
-        // =========================================================================
         function handleTaskClick(taskId) {
             if (!checkVpnRequirement()) return;
 
@@ -336,9 +324,8 @@
 
                     const timerSeconds = parseInt(task.timer) || 0;
                     if (timerSeconds > 0) {
-                        // Set the end time in our state object. The global loop will handle the UI.
                         taskTimers[taskId] = Date.now() + timerSeconds * 1000;
-                        updateAllTimers(); // Run once immediately to update the button text
+                        updateAllTimers();
                     } else {
                         taskButton.disabled = false;
                         taskButton.textContent = 'Start Task';
@@ -346,7 +333,7 @@
                 })
                 .catch(err => {
                     showToast("Ad failed. Please try again.");
-                    delete taskTimers[taskId]; // Clear timer state on failure
+                    delete taskTimers[taskId];
                     if (taskButton) {
                         taskButton.disabled = false;
                         taskButton.textContent = 'Start Task';
@@ -354,7 +341,6 @@
                 });
         }
         
-        // ** NEW: Function to update all timers on the screen **
         function updateAllTimers() {
             const now = Date.now();
             for (const taskId in taskTimers) {
@@ -369,17 +355,21 @@
                     } else {
                         taskButton.textContent = 'Start Task';
                         taskButton.disabled = false;
-                        delete taskTimers[taskId]; // Clean up finished timer
+                        delete taskTimers[taskId];
                     }
                 }
             }
         }
-        // =======================================================================
-        // ======================== END: FINAL PRODUCTION CODE ====================
-        // =======================================================================
         
-        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
-        // The rest of your helper functions would go here...
+        function showToast(message, duration = 3000) { 
+            const toast = document.getElementById('toast'); 
+            if(toast){ 
+                toast.textContent = message; 
+                toast.classList.add('show'); 
+                setTimeout(() => toast.classList.remove('show'), duration); 
+            }
+        }
+        // Other helper functions...
 
     </script>
 </body>
