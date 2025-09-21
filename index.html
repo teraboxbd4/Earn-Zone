@@ -179,7 +179,7 @@
                     const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
                     const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
                     const ownReferralCode = 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    const newUser = { name: currentTgName, photoUrl: currentTgPhoto, balance_usd_cents: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, income_cents: 0 }, preferred_currency: 'usd', taskStats: { dailyBonusClaimed: false } };
+                    const newUser = { name: currentTgName, photoUrl: currentTgPhoto, balance_usd_cents: 0, referralCode: ownReferralCode, referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, income_cents: 0 }, preferred_currency: 'usd', taskStats: { dailyBonusClaimed: false }, claimedBonuses: [] };
                     await userRef.set(newUser);
                 }
             } catch (error) {
@@ -234,7 +234,7 @@
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         
-        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); }
+        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Top Earners</h2><div id="balance-leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('balance', '#balance-leaderboard-list'); }
         
         function renderBonusPage() {
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => {
@@ -425,5 +425,6 @@
     </script>
 </body>
 </html>
+
 </body>
 </html>
