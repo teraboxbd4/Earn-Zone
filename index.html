@@ -136,7 +136,7 @@
         let appSettings = {};
         let tasks = {};
         let bonusChannels = {};
-        let taskTimers = {};
+        let taskTimers = {}; // Object to store timer states: { taskId: endTime }
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -151,6 +151,7 @@
         function initializeAppLogic() {
             tg.ready();
             tg.expand();
+            
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
                 document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>";
@@ -168,6 +169,10 @@
             document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
 
             loadInitialData(tgUser);
+
+            // ** NEW: Global Timer Loop **
+            // This single interval will manage all countdowns efficiently.
+            setInterval(updateAllTimers, 1000);
         }
 
         async function loadInitialData(tgUser) {
@@ -184,24 +189,18 @@
                 const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
                 
-                // Use .on() to listen for realtime updates
                 userRef.on('value', (snap) => {
+                    const wasJustInitialized = !currentUser.id;
                     currentUser = { id: userId, ...snap.val() };
                     
-                    // Always recalculate balances on client side to reflect rate changes
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                     currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
-                    currentUser.usdWallet = (currentUser.btdWallet || 0) * btdToUsdRate;
-                    if (currentUser.referrals) {
-                        currentUser.referrals.incomeUSD = (currentUser.referrals.incomeBTD || 0) * btdToUsdRate;
-                    }
-
+                    
                     if (currentUser.isBanned) {
-                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
+                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1></div>`;
                         return;
                     }
                     
-                    // Daily reset logic
                     const today = new Date().toISOString().split('T')[0];
                     if (currentUser.taskStats?.lastResetDate !== today) {
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
@@ -209,17 +208,16 @@
                     
                     updateUI();
                     
-                    // To prevent re-rendering loops, only render if the page isn't already there
-                    const mainContent = document.getElementById('mainContent');
-                    const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                    if (!mainContent.innerHTML || mainContent.dataset.currentPage !== currentPage) {
-                         navigateTo(currentPage, true);
+                    // ** MODIFIED: Only render the page on first load **
+                    // This prevents the page from re-rendering on every balance update.
+                    if (wasJustInitialized) {
+                        navigateTo('home', true);
                     }
                 });
 
             } catch (error) {
                 console.error("Initialization Error:", error);
-                document.body.innerHTML = `<p style="color: red; font-weight: bold; text-align:center; padding:20px;">${error.message}</p>`;
+                document.body.innerHTML = `<p style="color: red; padding:20px;">${error.message}</p>`;
             }
         }
         
@@ -231,15 +229,11 @@
         }
 
         function navigateTo(page, forceRender = false) {
-            const mainContent = document.getElementById('mainContent');
             const currentActive = document.querySelector('.nav-item.active');
-            
             if (!forceRender && currentActive && currentActive.dataset.page === page) return;
 
             document.querySelector('.nav-item.active')?.classList.remove('active');
             document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
-            
-            mainContent.dataset.currentPage = page; // Track current page
             
             const pages = { home: renderHomePage, tasks: renderTasksPage, bonus: renderBonusPage, withdraw: renderWithdrawPage, referral: renderReferralPage };
             if (pages[page]) {
@@ -258,7 +252,6 @@
             const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
             const showUsdBtn = document.getElementById('showUsdBtn');
             const showBtdBtn = document.getElementById('showBtdBtn');
-            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             showUsdBtn.classList.toggle('active', currentUser.preferredCurrency === 'USD');
             showBtdBtn.classList.toggle('active', currentUser.preferredCurrency !== 'USD');
             if (currentUser.preferredCurrency === 'USD') {
@@ -275,8 +268,29 @@
         function checkVpnRequirement() { if (appSettings.vpnRequired) { tg.showAlert(appSettings.vpnNotice || "VPN is required."); return false; } return true; }
         
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('btd', '#leaderboard-list'); }
-        function renderTasksPage() { const btdToUsdRate = appSettings.btdToUsdRate || 0.01; let tasksHtml = Object.keys(tasks).map(taskId => { const task = tasks[taskId]; let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`; return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button></div>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`; }
-        // All other render functions remain the same...
+        
+        // ** MODIFIED: renderTasksPage now checks for active timers **
+        function renderTasksPage() { 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01; 
+            let tasksHtml = Object.keys(tasks).map(taskId => { 
+                const task = tasks[taskId]; 
+                let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`;
+                
+                const now = Date.now();
+                const endTime = taskTimers[taskId];
+                let buttonHtml;
+
+                if (endTime && endTime > now) {
+                    const secondsLeft = Math.ceil((endTime - now) / 1000);
+                    buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" disabled>Wait ${secondsLeft}s</button>`;
+                } else {
+                    buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
+                }
+
+                return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>` : ''; 
+            }).join(''); 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`; 
+        }
 
         // =========================================================================
         // ======================= START: FINAL PRODUCTION CODE =====================
@@ -287,28 +301,12 @@
             const task = tasks[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             
-            if (!task || !taskButton) {
-                tg.showAlert("Error: Task data seems to be missing. Please reload the app.");
-                return;
-            }
-            
-            if (taskButton.disabled) return;
+            if (!task || !taskButton || taskButton.disabled) return;
 
             taskButton.disabled = true;
             taskButton.textContent = 'Loading Ad...';
 
             database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
-
-            const resetButton = () => {
-                if (taskTimers[taskId]) {
-                    clearInterval(taskTimers[taskId]);
-                    delete taskTimers[taskId];
-                }
-                if (taskButton) {
-                    taskButton.disabled = false;
-                    taskButton.textContent = 'Start Task';
-                }
-            };
 
             let adPromise;
             try {
@@ -320,55 +318,68 @@
                     default: adPromise = Promise.reject('Unknown network');
                 }
                 if (!adPromise || typeof adPromise.then !== 'function') {
-                    throw new Error(`SDK function for ${task.network} is not available.`);
+                    throw new Error(`SDK for ${task.network} failed.`);
                 }
             } catch (e) {
-                adPromise = Promise.reject('SDK error: ' + e.message);
+                adPromise = Promise.reject(e);
             }
 
             Promise.resolve(adPromise)
                 .then(() => {
-                    // Ad was successful
-                    try {
-                        const rewardBTD = parseFloat(task.rewardBTD) || 0;
-                        if (rewardBTD > 0) {
-                            const updates = {};
-                            updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
-                            database.ref().update(updates);
-                            showToast(`+${rewardBTD.toFixed(2)} BTD!`);
-                        }
+                    const rewardBTD = parseFloat(task.rewardBTD) || 0;
+                    if (rewardBTD > 0) {
+                        const updates = {};
+                        updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
+                        database.ref().update(updates);
+                        showToast(`+${rewardBTD.toFixed(2)} BTD!`);
+                    }
 
-                        const timerSeconds = parseInt(task.timer) || 0;
-
-                        if (timerSeconds > 0) {
-                            let currentTimer = timerSeconds;
-                            taskButton.textContent = `Wait ${currentTimer}s`;
-                            taskTimers[taskId] = setInterval(() => {
-                                currentTimer--;
-                                if (currentTimer > 0) {
-                                    if(taskButton) taskButton.textContent = `Wait ${currentTimer}s`;
-                                } else {
-                                    resetButton();
-                                }
-                            }, 1000);
-                        } else {
-                            resetButton();
-                        }
-                    } catch (error) {
-                        resetButton();
+                    const timerSeconds = parseInt(task.timer) || 0;
+                    if (timerSeconds > 0) {
+                        // Set the end time in our state object. The global loop will handle the UI.
+                        taskTimers[taskId] = Date.now() + timerSeconds * 1000;
+                        updateAllTimers(); // Run once immediately to update the button text
+                    } else {
+                        taskButton.disabled = false;
+                        taskButton.textContent = 'Start Task';
                     }
                 })
                 .catch(err => {
                     showToast("Ad failed. Please try again.");
-                    resetButton();
+                    delete taskTimers[taskId]; // Clear timer state on failure
+                    if (taskButton) {
+                        taskButton.disabled = false;
+                        taskButton.textContent = 'Start Task';
+                    }
                 });
+        }
+        
+        // ** NEW: Function to update all timers on the screen **
+        function updateAllTimers() {
+            const now = Date.now();
+            for (const taskId in taskTimers) {
+                const endTime = taskTimers[taskId];
+                const taskButton = document.getElementById(`taskBtn_${taskId}`);
+
+                if (taskButton) {
+                    if (endTime > now) {
+                        const secondsLeft = Math.ceil((endTime - now) / 1000);
+                        taskButton.textContent = `Wait ${secondsLeft}s`;
+                        taskButton.disabled = true;
+                    } else {
+                        taskButton.textContent = 'Start Task';
+                        taskButton.disabled = false;
+                        delete taskTimers[taskId]; // Clean up finished timer
+                    }
+                }
+            }
         }
         // =======================================================================
         // ======================== END: FINAL PRODUCTION CODE ====================
         // =======================================================================
         
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
-        // The rest of your helper functions (handleBonusClaim, etc.) would go here...
+        // The rest of your helper functions would go here...
 
     </script>
 </body>
