@@ -33,7 +33,6 @@
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        /* .points-display removed as per requirement */
         .currency-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; margin-top: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin: 0 5px; }
 
         .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
@@ -72,8 +71,9 @@
                 <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
                 <div style="display: flex; justify-content: center; margin-top: 10px;">
-                    <div class="currency-display" id="btdBalanceDisplay"><i class="fas fa-coins"></i> 0 BTD</div>
-                    <div class="currency-display" id="usdBalanceDisplay"><i class="fas fa-dollar-sign"></i> 0 USD</div>
+                    <!-- USD will show first as per requirement -->
+                    <div class="currency-display" id="usdBalanceDisplay"><i class="fas fa-dollar-sign"></i> 0.000 USD</div>
+                    <div class="currency-display" id="btdBalanceDisplay"><i class="fas fa-coins"></i> 0.00 BTD</div>
                 </div>
                 <div class="stats-display">
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
@@ -261,8 +261,8 @@
             document.getElementById('profileNameDisplay').textContent = currentUser.name || `User ${currentUser.id}`;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
 
-            document.getElementById('btdBalanceDisplay').innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
             document.getElementById('usdBalanceDisplay').innerHTML = `<i class="fas fa-dollar-sign"></i> ${ (currentUser.usdBalance || 0).toFixed(3) } USD`;
+            document.getElementById('btdBalanceDisplay').innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
             
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             const refCount = currentUser.referrals?.count || 0;
@@ -286,7 +286,7 @@
                 const task = tasks[taskId]; 
                 return task.enabled ? 
                     `<div class="task-card">
-                        <h3><i class="fas fa-rocket"></i> ${task.network} Task</h3>
+                        <h3><i class="fas fa-rocket"></i> ${task.name} (${task.network})</h3>
                         <p>Complete this task to earn ${ (task.rewardBTD || 0).toFixed(2) } BTD & ${ (task.rewardUSD || 0).toFixed(3) } USD!</p>
                         <div id="${task.zoneId}"></div>
                         <button class="btn btn-primary" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button>
@@ -300,7 +300,7 @@
                 const isClaimed = currentUser.claimedBonuses?.includes(id); 
                 return channel.enabled ? 
                     `<li class="channel-item">
-                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${ (channel.rewardBTD || 0).toFixed(2) } BTD)</span>
+                        <span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (+${ (channel.rewardBTD || 0).toFixed(2) } BTD & +${ (channel.rewardUSD || 0).toFixed(3) } USD)</span>
                         <button class="btn" onclick="handleBonusClaim('${id}', ${channel.rewardBTD || 0}, ${channel.rewardUSD || 0}, '${channel.link}')" ${isClaimed ? 'disabled' : ''}>
                             ${isClaimed ? 'Claimed' : 'Claim'}
                         </button>
@@ -319,8 +319,8 @@
                     <p style="margin-bottom: 15px;">${appSettings.notices?.withdraw || ''}</p>
                     <select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select>
                     <select id="withdraw-currency" class="select-field">
+                        <option value="USD">USD</option> <!-- USD as default/primary -->
                         <option value="BTD">BTD</option>
-                        <option value="USD">USD</option>
                     </select>
                     <input type="number" id="withdraw-amount" placeholder="Amount" class="input-field" step="0.01">
                     <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
