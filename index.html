@@ -73,7 +73,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- The entire HTML body structure remains the same -->
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
             <div class="currency-selector">
@@ -150,63 +149,135 @@
         });
 
         function initializeAppLogic() {
-            // All other initialization logic remains the same
             tg.ready();
             tg.expand();
             const tgUser = tg.initDataUnsafe?.user;
-            if (!tgUser) { document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>"; return; }
+            if (!tgUser) {
+                document.body.innerHTML = "<p style='text-align:center; padding:20px;'>Error: Not running inside Telegram.</p>";
+                return;
+            }
+
             applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-            document.querySelectorAll('.nav-item').forEach(item => { item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); }); });
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
+            });
+
             currentUser.preferredCurrency = localStorage.getItem('preferredCurrency') || 'USD';
             document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
             document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
+
             loadInitialData(tgUser);
         }
 
         async function loadInitialData(tgUser) {
-            // This function remains unchanged.
             try {
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
                 if (!adminData) { throw new Error("Admin config not found."); }
+
                 appSettings = adminData.settings || {};
+                appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
+                
                 const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
+                
+                // Use .on() to listen for realtime updates
                 userRef.on('value', (snap) => {
                     currentUser = { id: userId, ...snap.val() };
+                    
+                    // Always recalculate balances on client side to reflect rate changes
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                     currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
                     currentUser.usdWallet = (currentUser.btdWallet || 0) * btdToUsdRate;
-                    if(currentUser.referrals) currentUser.referrals.incomeUSD = (currentUser.referrals.incomeBTD || 0) * btdToUsdRate;
-                    if (currentUser.isBanned) { document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1></div>`; return; }
+                    if (currentUser.referrals) {
+                        currentUser.referrals.incomeUSD = (currentUser.referrals.incomeBTD || 0) * btdToUsdRate;
+                    }
+
+                    if (currentUser.isBanned) {
+                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1><p>Your account has been banned.</p></div>`;
+                        return;
+                    }
+                    
+                    // Daily reset logic
                     const today = new Date().toISOString().split('T')[0];
                     if (currentUser.taskStats?.lastResetDate !== today) {
                         database.ref(`users/${currentUser.id}/taskStats`).update({ lastResetDate: today, dailyBonusClaimed: false, clicksToday: 0 });
                     }
+                    
                     updateUI();
+                    
+                    // To prevent re-rendering loops, only render if the page isn't already there
+                    const mainContent = document.getElementById('mainContent');
                     const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-                    navigateTo(currentPage, true);
+                    if (!mainContent.innerHTML || mainContent.dataset.currentPage !== currentPage) {
+                         navigateTo(currentPage, true);
+                    }
                 });
+
             } catch (error) {
-                document.body.innerHTML = `<p style="color: red; text-align:center; padding:20px;">${error.message}</p>`;
+                console.error("Initialization Error:", error);
+                document.body.innerHTML = `<p style="color: red; font-weight: bold; text-align:center; padding:20px;">${error.message}</p>`;
             }
         }
         
-        // All other functions like setPreferredCurrency, navigateTo, updateUI, render functions, etc. remain exactly the same.
-        // I am omitting them here for brevity, but they are included in the final code block.
-        function setPreferredCurrency(currency) { localStorage.setItem('preferredCurrency', currency); window.location.reload(); }
-        function navigateTo(page, forceRender = false) { const currentActive = document.querySelector('.nav-item.active'); if (!forceRender && currentActive && currentActive.dataset.page === page) return; document.querySelector('.nav-item.active')?.classList.remove('active'); document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active'); const pages = { home: renderHomePage, tasks: renderTasksPage, bonus: renderBonusPage, withdraw: renderWithdrawPage, referral: renderReferralPage }; if (pages[page]) pages[page](); }
-        function updateUI() { if (!currentUser || !document.getElementById('profileNameDisplay')) return; let profileNameHtml = currentUser.name || `User ${currentUser.id}`; if (currentUser.isVerified) { profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>'; } document.getElementById('profileNameDisplay').innerHTML = profileNameHtml; document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'; const mainBalanceDisplay = document.getElementById('mainBalanceDisplay'); const showUsdBtn = document.getElementById('showUsdBtn'); const showBtdBtn = document.getElementById('showBtdBtn'); const btdToUsdRate = appSettings.btdToUsdRate || 0.01; showUsdBtn.classList.remove('active'); showBtdBtn.classList.remove('active'); if (currentUser.preferredCurrency === 'USD') { mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${(currentUser.btdBalance * btdToUsdRate).toFixed(4)} USD`; showUsdBtn.classList.add('active'); } else { mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(2)} BTD`; showBtdBtn.classList.add('active'); } document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0; document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0; }
+        function setPreferredCurrency(currency) {
+            localStorage.setItem('preferredCurrency', currency);
+            currentUser.preferredCurrency = currency;
+            updateUI();
+            navigateTo(document.querySelector('.nav-item.active')?.dataset.page || 'home', true);
+        }
+
+        function navigateTo(page, forceRender = false) {
+            const mainContent = document.getElementById('mainContent');
+            const currentActive = document.querySelector('.nav-item.active');
+            
+            if (!forceRender && currentActive && currentActive.dataset.page === page) return;
+
+            document.querySelector('.nav-item.active')?.classList.remove('active');
+            document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+            
+            mainContent.dataset.currentPage = page; // Track current page
+            
+            const pages = { home: renderHomePage, tasks: renderTasksPage, bonus: renderBonusPage, withdraw: renderWithdrawPage, referral: renderReferralPage };
+            if (pages[page]) {
+                pages[page]();
+            }
+        }
+        
+        function updateUI() {
+            if (!currentUser || !document.getElementById('profileNameDisplay')) return;
+            let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
+            if (currentUser.isVerified) {
+                profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
+            }
+            document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
+            document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+            const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
+            const showUsdBtn = document.getElementById('showUsdBtn');
+            const showBtdBtn = document.getElementById('showBtdBtn');
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            showUsdBtn.classList.toggle('active', currentUser.preferredCurrency === 'USD');
+            showBtdBtn.classList.toggle('active', currentUser.preferredCurrency !== 'USD');
+            if (currentUser.preferredCurrency === 'USD') {
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${(currentUser.usdBalance || 0).toFixed(4)} USD`;
+            } else {
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(2)} BTD`;
+            }
+            document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
+            document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
+        }
+
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         function checkVpnRequirement() { if (appSettings.vpnRequired) { tg.showAlert(appSettings.vpnNotice || "VPN is required."); return false; } return true; }
+        
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('btd', '#leaderboard-list'); }
         function renderTasksPage() { const btdToUsdRate = appSettings.btdToUsdRate || 0.01; let tasksHtml = Object.keys(tasks).map(taskId => { const task = tasks[taskId]; let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`; return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')" style="margin-top:15px;">Start Task</button></div>` : ''; }).join(''); mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.tasks || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`; }
-        // Other render functions here...
-        
+        // All other render functions remain the same...
+
         // =========================================================================
         // ======================= START: FINAL PRODUCTION CODE =====================
         // =========================================================================
@@ -217,7 +288,7 @@
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             
             if (!task || !taskButton) {
-                // This is a safeguard, should not happen in normal operation
+                tg.showAlert("Error: Task data seems to be missing. Please reload the app.");
                 return;
             }
             
@@ -228,7 +299,6 @@
 
             database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
 
-            // Function to reset the button to its original state
             const resetButton = () => {
                 if (taskTimers[taskId]) {
                     clearInterval(taskTimers[taskId]);
@@ -258,7 +328,7 @@
 
             Promise.resolve(adPromise)
                 .then(() => {
-                    // This block executes ONLY after the ad is successful
+                    // Ad was successful
                     try {
                         const rewardBTD = parseFloat(task.rewardBTD) || 0;
                         if (rewardBTD > 0) {
@@ -297,8 +367,8 @@
         // ======================== END: FINAL PRODUCTION CODE ====================
         // =======================================================================
         
-        // All other helper functions (handleBonusClaim, loadWithdrawHistory, etc.) remain unchanged.
-        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); }
+        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
+        // The rest of your helper functions (handleBonusClaim, etc.) would go here...
 
     </script>
 </body>
