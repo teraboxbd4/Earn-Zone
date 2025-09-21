@@ -375,7 +375,7 @@
 
             if (currentUser.preferredCurrency === 'USD') {
                 const usdValue = (currentUser.btdBalance || 0) * btdToUsdRate;
-                mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ usdValue.toFixed(2) } USD`;
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${ usdValue.toFixed(4) } USD`;
                 showUsdBtn.classList.add('active');
             } else { // BTD
                 mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${ (currentUser.btdBalance || 0).toFixed(2) } BTD`;
@@ -416,7 +416,7 @@
                 let rewardDisplay;
                 if (currentUser.preferredCurrency === 'USD') {
                     const rewardUSD = (task.rewardBTD || 0) * btdToUsdRate;
-                    rewardDisplay = `${ rewardUSD.toFixed(2) } USD`;
+                    rewardDisplay = `${ rewardUSD.toFixed(4) } USD`;
                 } else {
                     rewardDisplay = `${ (task.rewardBTD || 0).toFixed(2) } BTD`;
                 }
@@ -447,7 +447,7 @@
                 let rewardDisplay;
                 if (currentUser.preferredCurrency === 'USD') {
                     const rewardUSD = (channel.rewardBTD || 0) * btdToUsdRate;
-                    rewardDisplay = `+${ rewardUSD.toFixed(2) } USD`;
+                    rewardDisplay = `+${ rewardUSD.toFixed(4) } USD`;
                 } else {
                     rewardDisplay = `+${ (channel.rewardBTD || 0).toFixed(2) } BTD`;
                 }
@@ -527,7 +527,7 @@
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
 
             let earnedDisplayBTD = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
-            let earnedDisplayUSD = ((currentUser.referrals?.incomeBTD || 0) * btdToUsdRate).toFixed(2);
+            let earnedDisplayUSD = ((currentUser.referrals?.incomeBTD || 0) * btdToUsdRate).toFixed(4);
 
             let incomeStatHtml;
             if (currentUser.preferredCurrency === 'USD') {
