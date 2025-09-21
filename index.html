@@ -166,7 +166,6 @@
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
 
-            // Set default currency to USD if it's not already set in local storage
             if (!localStorage.getItem('preferredCurrency')) {
                 localStorage.setItem('preferredCurrency', 'USD');
             }
