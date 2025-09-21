@@ -29,17 +29,45 @@
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
+        /* New styles for currency selector */
+        .currency-selector {
+            position: absolute;
+            top: 20px; /* Aligned with theme toggle */
+            left: 20px;
+            display: flex;
+            background: var(--toggle-bg); /* Use similar background as theme toggle */
+            border: 1px solid var(--border-color);
+            border-radius: 50px; /* Pill shape */
+            overflow: hidden;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: var(--transition);
+        }
+        .currency-selector .btn {
+            padding: 5px 12px; /* Smaller padding */
+            font-size: 0.75rem; /* Smaller font size */
+            font-weight: 500;
+            border: none;
+            background: none;
+            color: var(--text-primary); /* Default text color */
+            transition: var(--transition);
+            line-height: 1; /* Adjust line height for vertical centering */
+        }
+        .currency-selector .btn.active {
+            background: var(--primary-color);
+            color: white !important; /* Active state color */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; /* Inner shadow for active button */
+        }
+        .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
+        body.dark-mode .currency-selector .btn { color: var(--text-light); }
+        body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
+
+
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
-        .currency-selector { display: flex; border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; margin-bottom: 10px; }
-        .currency-btn { width: auto; margin: 0; border-radius: 0; background: none; color: var(--text-secondary); padding: 6px 15px; font-size: 0.8rem; border: none;}
-        .currency-btn:first-child { border-right: 1px solid var(--border-color); }
-        .currency-btn.active {
-            background: var(--primary-color);
-            color: white !important; /* Override default color */
-        }
+        
         .main-balance-display {
             display: inline-flex;
             align-items: center;
@@ -81,20 +109,21 @@
     <div class="app-container">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
+            
+            <!-- Currency Selector above the title -->
+            <div class="currency-selector">
+                <button id="showUsdBtn" class="btn">USD</button>
+                <button id="showBtdBtn" class="btn">BTD</button>
+            </div>
+
             <h1 class="header-title">Earn Zone</h1>
         </div>
         <div class="profile-section">
             <div class="profile-card">
                 <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
-                <div style="display: flex; justify-content: center; align-items: center; flex-direction: column; margin-top: 10px;">
-                    <div class="currency-selector">
-                        <button id="showUsdBtn" class="btn currency-btn"><i class="fas fa-dollar-sign"></i> USD</button>
-                        <button id="showBtdBtn" class="btn currency-btn"><i class="fas fa-coins"></i> BTD</button>
-                    </div>
-                    <div class="main-balance-display" id="mainBalanceDisplay">
-                        <!-- Balance will be displayed here dynamically by JS -->
-                    </div>
+                <div class="main-balance-display" id="mainBalanceDisplay">
+                    <!-- Balance will be displayed here dynamically by JS -->
                 </div>
                 <div class="stats-display">
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
@@ -707,11 +736,22 @@
             } 
             const promises = Object.entries(data).map(([id, score]) => database.ref(`users/${id}/name`).once('value').then(snap => ({ name: snap.val() || `User ${id}`, score }))); 
             const users = await Promise.all(promises); 
-            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => 
-                `<div class="history-item">
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => {
+                let displayScore;
+                if (currentUser.preferredCurrency === 'USD' && type === 'btd') {
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    displayScore = (user.score * btdToUsdRate).toFixed(2) + ' USD';
+                } else if (type === 'btd') {
+                    displayScore = user.score.toFixed(2) + ' BTD';
+                } else { // referrals
+                    displayScore = user.score; // No currency for referrals count
+                }
+
+                return `<div class="history-item">
                     <span><b>#${i + 1}</b> ${user.name}</span>
-                    <span>${(user.score || 0).toFixed(2)} ${type === 'btd' ? 'BTD' : 'Refs'}</span>
-                </div>`).join(''); 
+                    <span>${displayScore}</span>
+                </div>`;
+            }).join(''); 
         }
 
         function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
