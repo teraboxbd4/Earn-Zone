@@ -448,53 +448,33 @@
                 return; 
             } 
             historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
-                let displayAmount = currentUser.preferredCurrency === 'USD' ? (req.amount || 0).toFixed(2) : ((req.amount || 0) / (appSettings.btdToUsdRate || 0.01)).toFixed(2);
-                let displayCurrency = currentUser.preferredCurrency;
+                let displayAmount = currentUser.preferredCurrency === 'USD' ? (req.amount || 0).toFixed(2) : ((req.btdAmount || 0)).toFixed(2);
+                let displayCurrency = currentUser.preferredCurrency === 'USD' ? 'USD' : 'BTD';
                 return `<div class="history-item"><span>${displayAmount} ${displayCurrency} - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
             }).join(''); 
         }
 
-        // ########## সমাধান করা ফাংশন ##########
         function handleSubmitWithdrawal() {
             const method = document.getElementById('withdraw-method').value;
             const amountStr = document.getElementById('withdraw-amount').value;
             const account = document.getElementById('withdraw-account').value.trim();
             const amount = parseFloat(amountStr);
-
             if (!method || !amountStr || isNaN(amount) || amount <= 0 || !account) {
                 return showToast("Please fill all fields correctly.");
             }
-
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             const amountInUSD = currentUser.preferredCurrency === 'USD' ? amount : amount * btdToUsdRate;
-            
-            // নতুন যোগ করা হয়েছে: কত BTD কাটা হবে তা এখানে হিসাব করুন
             const amountInBTD = amountInUSD / btdToUsdRate;
-
             if (amountInUSD < (appSettings.minWithdrawUSD || 0)) {
                 return showToast(`Minimum withdrawal is ${appSettings.minWithdrawUSD || 0} USD.`);
             }
-            
-            // পরিবর্তন করা হয়েছে: এখন সরাসরি BTD ব্যালেন্স চেক করা হচ্ছে
             if (amountInBTD > (currentUser.btdBalance || 0)) {
                 return showToast("Insufficient balance.");
             }
-
-            // requestData অবজেক্টে btdAmount যোগ করা হয়েছে
             const requestData = {
-                userId: currentUser.id,
-                userName: currentUser.name,
-                amount: amountInUSD,
-                btdAmount: amountInBTD, // এই নতুন ফিল্ডটি যোগ করা হয়েছে
-                currency: "USD",
-                method: method,
-                account: account,
-                status: 'pending',
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                userId: currentUser.id, userName: currentUser.name, amount: amountInUSD, btdAmount: amountInBTD, currency: "USD", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
             };
-            
             database.ref('withdrawRequests').push(requestData).then(() => {
-                // পরিবর্তন করা হয়েছে: সরাসরি amountInBTD ব্যবহার করে ব্যালেন্স কাটা হচ্ছে
                 database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountInBTD));
                 showToast("Withdrawal request submitted!");
                 navigateTo('withdraw', true);
@@ -502,15 +482,20 @@
                 showToast("Error submitting request.");
             });
         }
-        // ########## ফাংশন শেষ ##########
 
+        // ########## লিডারবোর্ডের জন্য আপডেট করা ফাংশন ##########
         async function loadLeaderboard(type, elementId) { 
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
             listEl.innerHTML = "<p>Loading...</p>"; 
-            const query = (type === 'btd') ? database.ref('users').orderByChild('btdBalance') : database.ref('users').orderByChild('referrals/count');
+            
+            const query = (type === 'btd') 
+                ? database.ref('users').orderByChild('btdBalance') 
+                : database.ref('users').orderByChild('referrals/count');
+                
             const snapshot = await query.limitToLast(10).once('value'); 
             const data = snapshot.val(); 
+            
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
             
             const users = Object.values(data).map(user => ({
@@ -531,16 +516,23 @@
                 }
                 
                 let rankDisplay;
-                if (i === 0) { rankDisplay = '<span class="leaderboard-badge">🏆</span>'; } 
-                else if (i === 1) { rankDisplay = '<span class="leaderboard-badge">🥈</span>'; } 
-                else if (i === 2) { rankDisplay = '<span class="leaderboard-badge">🥉</span>'; } 
-                else { rankDisplay = `<b style="width: 25px; text-align: center; margin-right: 8px;">#${i + 1}</b>`; }
+                const rankNumber = i + 1;
+                const stylishRanks = {
+                    1: '🏆', 2: '🥈', 3: '🥉', 4: '❹', 5: '❺', 6: '❻', 7: '❼', 8: '❽', 9: '❾', 10: '❿'
+                };
+
+                if (stylishRanks[rankNumber]) {
+                    rankDisplay = `<span class="leaderboard-badge">${stylishRanks[rankNumber]}</span>`;
+                } else {
+                    rankDisplay = `<b style="width: 25px; text-align: center; margin-right: 8px;">#${rankNumber}</b>`;
+                }
+                
                 return `<div class="history-item"><span>${rankDisplay} ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
-        
+
         async function handleReferralVerification() {
-            // Your original referral verification logic can be pasted here
+            // Your referral verification logic here
         }
 
         function handleDailyBonus() { 
