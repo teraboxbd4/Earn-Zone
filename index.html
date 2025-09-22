@@ -179,6 +179,7 @@
                 initializeAppLogic(user); 
             } else {
                 console.log("[User Panel] No Firebase user detected. Signing in anonymously.");
+                // Ensure Telegram Web App is ready before anonymous sign-in
                 if (tg && tg.ready) {
                     tg.ready();
                     tg.expand();
@@ -212,7 +213,7 @@
                 
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) { throw new new Error("Admin configuration not found. Please set up admin panel."); }
+                if (!adminData) { throw new Error("Admin configuration not found. Please set up admin panel."); }
 
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
@@ -260,7 +261,7 @@
                         //     }
                         // }
                         await userRef.update(updates);
-                        userData = { ...userData, ...updates }; // Update local userData with changes
+                        userData = { ...userData, ...updates }; 
                         console.log("[User Panel] Daily stats reset completed.");
                     }
                 }
@@ -308,12 +309,6 @@
 
         function navigateTo(page, forceRender = false) {
             console.log(`[Navigation] Attempting to navigate to: ${page}, forceRender: ${forceRender}`);
-            const currentActive = document.querySelector('.nav-item.active');
-            if (!forceRender && currentActive && currentActive.dataset.page === page) {
-                console.log(`[Navigation] Already on page ${page}, skipping render.`);
-                return;
-            }
-
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             const targetNavItem = document.querySelector(`.nav-item[data-page="${page}"]`);
             if (targetNavItem) {
@@ -347,7 +342,6 @@
             const showUsdBtn = document.getElementById('showUsdBtn');
             const showBtdBtn = document.getElementById('showBtdBtn');
             
-            // Ensure buttons exist before toggling classes
             if (showUsdBtn) showUsdBtn.classList.toggle('active', currentUser.preferredCurrency === 'USD');
             if (showBtdBtn) showBtdBtn.classList.toggle('active', currentUser.preferredCurrency !== 'USD');
 
@@ -370,7 +364,6 @@
         }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         
-        // --- VPN Check (from admin settings) ---
         function checkVpnRequirement() { 
             if (appSettings.vpnRequired) { 
                 const vpnNoticeText = appSettings.vpnNotice || "VPN is required to complete tasks. Please connect to USA, UK, or Canada.";
@@ -385,7 +378,6 @@
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome to Earn Zone! Complete tasks and invite friends to earn rewards.'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; 
             document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); 
             loadLeaderboard('btd', '#leaderboard-list'); 
-            // Disable daily bonus button if already claimed
             if (currentUser.taskStats?.dailyBonusClaimed) {
                 const dailyBonusBtn = document.getElementById('dailyBonusBtn');
                 if (dailyBonusBtn) {
@@ -543,7 +535,7 @@
                 await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
                     if (currentData === null) {
                         console.warn("[Task Click Transaction] Current data is null. Aborting transaction.");
-                        return undefined; // Abort transaction
+                        return undefined; 
                     }
                     console.log("[Task Click Transaction] Current user data:", currentData);
 
@@ -564,7 +556,7 @@
                     currentData.taskHistory[taskId].lastClicked = Date.now();
 
                     console.log("[Task Click Transaction] New user data after increments:", currentData);
-                    return currentData; // Commit transaction
+                    return currentData; 
                 }, (error, committed, snapshot) => {
                     if (error) {
                         console.error("[Task Click Transaction Callback] Transaction failed:", error);
@@ -616,6 +608,7 @@
                 console.error("[Task Click Error]", err);
                 
                 // Revert counts if an error occurred after initial increment transaction
+                // This transaction will only run if the initial one committed.
                 await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
                     if (currentData) {
                         if (currentData.taskStats && currentData.taskStats.clicksToday > 0) currentData.taskStats.clicksToday--;
@@ -633,7 +626,6 @@
                     taskButton.textContent = 'Start Task';
                 }
             } finally {
-                // Ensure UI is updated visually
                 updateUI();
                 renderTasksPage(); // Re-render tasks to update buttons and limits
             }
@@ -653,7 +645,7 @@
                         taskButton.textContent = 'Start Task';
                         taskButton.disabled = false;
                         delete taskTimers[taskId]; 
-                        renderTasksPage(); // Re-render to update the button status
+                        renderTasksPage(); 
                     }
                 } else {
                     delete taskTimers[taskId];
@@ -694,7 +686,7 @@
                 await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
                     if (currentData === null) {
                         console.warn("[Bonus Transaction] Current data is null. Aborting transaction.");
-                        return undefined; // Abort transaction
+                        return undefined; 
                     }
                     console.log("[Bonus Transaction] Current user data:", currentData);
                     currentData.btdBalance = (currentData.btdBalance || 0) + rewardBTD;
@@ -802,14 +794,14 @@
                 await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
                     if (currentData === null) {
                         console.warn("[Withdrawal Transaction] Current data is null. Aborting transaction.");
-                        return undefined; // Abort transaction
+                        return undefined; 
                     }
                     console.log("[Withdrawal Transaction] Current user data:", currentData);
                     if ((currentData.btdBalance || 0) >= amountInBTD) {
                         currentData.btdBalance -= amountInBTD;
                     } else {
                         console.warn("[Withdrawal Transaction] Insufficient balance during transaction. Aborting.");
-                        return; // Abort transaction if balance is insufficient
+                        return; 
                     }
                     console.log("[Withdrawal Transaction] New user data after deduction:", currentData);
                     return currentData;
@@ -886,9 +878,179 @@
             }
         }
         
+        async function handleReferralVerification() {
+            console.log("[Referral] User attempting to verify referral code.");
+            const referralCodeInput = document.getElementById('referralCodeInput');
+            const verifyReferralBtn = document.getElementById('verifyReferralBtn');
+
+            if (!referralCodeInput || !verifyReferralBtn) {
+                console.error("[Referral] Referral input or button not found.");
+                return;
+            }
+
+            const enteredCode = referralCodeInput.value.trim();
+            if (!enteredCode) {
+                showToast("Please enter a referral code.", 'warning');
+                return;
+            }
+            if (currentUser.referralApplied) {
+                showToast("You have already applied a referral code.", 'warning');
+                return;
+            }
+            if (enteredCode === currentUser.referralCode) {
+                showToast("You cannot use your own referral code.", 'error');
+                return;
+            }
+
+            verifyReferralBtn.disabled = true;
+            verifyReferralBtn.textContent = 'Verifying...';
+            console.log(`[Referral] Verifying code: ${enteredCode}`);
+
+            try {
+                // 1. Find the referrer user by the entered code
+                const referrerSnapshot = await database.ref('users').orderByChild('referralCode').equalTo(enteredCode).once('value');
+                const referrerData = referrerSnapshot.val();
+
+                if (!referrerData) {
+                    showToast("Invalid referral code. Please check and try again.", 'error');
+                    console.log(`[Referral] Invalid code: ${enteredCode}`);
+                    return;
+                }
+
+                const referrerId = Object.keys(referrerData)[0];
+                
+                // Ensure referrer is not the current user
+                if (referrerId === currentUser.id) {
+                    showToast("You cannot refer yourself!", 'error');
+                    console.warn("[Referral] User tried to refer self.");
+                    return;
+                }
+
+                // Use Firebase Transaction for atomic updates for both users
+                await database.ref('/').transaction(async (currentRootData) => {
+                    if (!currentRootData || !currentRootData.users) {
+                        console.warn("[Referral Transaction] Root data or users node is null. Aborting transaction.");
+                        return undefined; // Abort if data is null or users node is missing
+                    }
+                    console.log("[Referral Transaction] Current root data:", currentRootData);
+
+                    const referrerUserData = currentRootData.users?.[referrerId];
+                    const currentRefereeData = currentRootData.users?.[currentUser.id];
+
+                    if (!referrerUserData) {
+                        console.error("[Referral Transaction] Referrer user data missing during transaction. Aborting.");
+                        return undefined; // Abort
+                    }
+                    if (!currentRefereeData) {
+                         console.error("[Referral Transaction] Current referee user data missing during transaction. Aborting.");
+                        return undefined; // Abort
+                    }
+
+                    if (currentRefereeData.referralApplied) {
+                        // Already applied, abort transaction
+                        console.warn("[Referral Transaction] Referee already applied referral during transaction. Aborting.");
+                        return undefined; 
+                    }
+
+                    // 2. Apply referrer bonus
+                    const referrerBonusBTD = appSettings.referralBonus?.referrerBTD || 0;
+                    if (referrerBonusBTD > 0) {
+                        referrerUserData.btdBalance = (referrerUserData.btdBalance || 0) + referrerBonusBTD;
+                        if (!referrerUserData.referrals) referrerUserData.referrals = { count: 0, incomeBTD: 0, incomeUSD: 0 };
+                        referrerUserData.referrals.incomeBTD = (referrerUserData.referrals.incomeBTD || 0) + referrerBonusBTD;
+                        referrerUserData.referrals.count = (referrerUserData.referrals.count || 0) + 1;
+                        console.log(`[Referral Transaction] Referrer ${referrerId} awarded ${referrerBonusBTD} BTD.`);
+                    }
+
+                    // 3. Apply referee bonus
+                    const refereeBonusBTD = appSettings.referralBonus?.refereeBTD || 0;
+                    if (refereeBonusBTD > 0) {
+                        currentRefereeData.btdBalance = (currentRefereeData.btdBalance || 0) + refereeBonusBTD;
+                        console.log(`[Referral Transaction] Referee ${currentUser.id} awarded ${refereeBonusBTD} BTD.`);
+                    }
+
+                    // 4. Mark current user as having applied a referral
+                    currentRefereeData.referralApplied = true;
+
+                    // Update the root data
+                    currentRootData.users[referrerId] = referrerUserData;
+                    currentRootData.users[currentUser.id] = currentRefereeData;
+                    console.log("[Referral Transaction] New root data after referral application:", currentRootData);
+                    return currentRootData; // Commit changes
+                }, (error, committed, snapshot) => {
+                    if (error) {
+                        showToast(`Referral transaction failed: ${error.message}`, 'error');
+                        console.error("[Referral Transaction Callback] Transaction failed:", error);
+                    } else if (!committed) {
+                        showToast("Referral already applied or data conflict. Please try again.", 'warning');
+                        console.warn("[Referral Transaction Callback] Transaction not committed.");
+                    } else {
+                        showToast(`Referral code applied successfully! You and your friend earned bonus.`, 'success', 5000);
+                        console.log("[Referral Transaction Callback] Referral committed successfully.");
+                        navigateTo('referral', true); // Re-render page to show updated stats
+                    }
+                });
+            } catch (error) {
+                showToast(`Referral verification failed: ${error.message}`, 'error');
+                console.error("[Referral verification error (outside transaction):", error);
+            } finally {
+                verifyReferralBtn.disabled = false;
+                verifyReferralBtn.textContent = 'Verify';
+            }
+        }
+
+        async function handleDailyBonus() { 
+            console.log("[Daily Bonus] User attempting to claim daily bonus.");
+            const dailyBonusBtn = document.getElementById('dailyBonusBtn');
+            if (dailyBonusBtn) dailyBonusBtn.disabled = true; 
+
+            if (currentUser.taskStats?.dailyBonusClaimed) {
+                showToast("Daily bonus already claimed today.", 'warning'); 
+                if (dailyBonusBtn) dailyBonusBtn.disabled = false;
+                return;
+            }
+            
+            const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
+            if (rewardBTD > 0) {
+                try {
+                    await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
+                        if (currentData === null) {
+                            console.warn("[Daily Bonus Transaction] Current data is null. Aborting transaction.");
+                            return undefined; 
+                        }
+                        console.log("[Daily Bonus Transaction] Current user data:", currentData);
+                        currentData.btdBalance = (currentData.btdBalance || 0) + rewardBTD;
+                        if (!currentData.taskStats) currentData.taskStats = {};
+                        currentData.taskStats.dailyBonusClaimed = true;
+                        console.log("[Daily Bonus Transaction] New user data after bonus:", currentData);
+                        return currentData;
+                    }, (error, committed, snapshot) => {
+                        if (error) {
+                            console.error("[Daily Bonus Transaction Callback] Transaction failed:", error);
+                            throw new Error(`Transaction failed: ${error.message}`);
+                        } else if (!committed) {
+                            console.warn("[Daily Bonus Transaction Callback] Transaction not committed (aborted).");
+                            throw new Error("Transaction aborted.");
+                        } else {
+                            console.log("[Daily Bonus Transaction Callback] Transaction committed successfully.");
+                        }
+                    });
+                    showToast(`+${rewardBTD.toFixed(2)} BTD Daily Bonus!`, 'success');
+                    navigateTo('home', true); 
+                } catch (error) {
+                    showToast(`Failed to claim daily bonus: ${error.message}`, 'error');
+                    console.error("Daily bonus claim failed:", error);
+                } finally {
+                    if (dailyBonusBtn) dailyBonusBtn.disabled = false;
+                }
+            } else {
+                showToast("Daily bonus not configured or has 0 reward.", 'info');
+                if (dailyBonusBtn) dailyBonusBtn.disabled = false;
+            }
+        }
+        
         // --- Event Listeners Setup (User Panel) ---
-        // This runs after initialAppLogic is done
-        setInterval(updateAllTimers, 1000); // Start timer updates
+        setInterval(updateAllTimers, 1000); 
         
     </script>
 </body>
