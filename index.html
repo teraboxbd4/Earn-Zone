@@ -212,11 +212,16 @@
                     return;
                 }
                 
+                // Set currency preference from localStorage after loading user data
+                currentUser.preferredCurrency = localStorage.getItem('preferredCurrency');
                 updateUI();
                 navigateTo('home', true);
 
                 userRef.on('value', (snap) => {
-                    currentUser = { id: userId, ...snap.val() };
+                    const dbUser = snap.val();
+                    // Merge new data without overwriting local preferences
+                    currentUser = { ...currentUser, ...dbUser }; 
+                    
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                     currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
                     if (currentUser.referrals) {
@@ -234,7 +239,9 @@
             localStorage.setItem('preferredCurrency', currency);
             currentUser.preferredCurrency = currency;
             updateUI();
-            navigateTo(document.querySelector('.nav-item.active')?.dataset.page || 'home', true);
+            // Re-render the current page to update any currency-specific text
+            const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
+            navigateTo(currentPage, true);
         }
 
         function navigateTo(page, forceRender = false) {
