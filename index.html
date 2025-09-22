@@ -186,6 +186,10 @@
 
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
+                // Add referral bonus settings from admin panel for verification logic
+                appSettings.referralBonus = adminData.referralBonus || { rewardBTD: 5 }; // Default bonus for new user
+                appSettings.referrerBonus = adminData.referrerBonus || { rewardBTD: 10 }; // Default bonus for referrer
+
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
                 
@@ -525,7 +529,78 @@
         }
         
         async function handleReferralVerification() {
-            // Your original referral verification logic can be pasted here
+            const codeInput = document.getElementById('referralCodeInput');
+            if (!codeInput) return;
+            const referralCode = codeInput.value.trim();
+
+            if (!referralCode) {
+                return showToast("Please enter a referral code.");
+            }
+
+            if (referralCode === currentUser.referralCode) {
+                return showToast("You cannot use your own referral code.");
+            }
+
+            const verifyBtn = document.getElementById('verifyReferralBtn');
+            if(verifyBtn) {
+                verifyBtn.disabled = true;
+                verifyBtn.textContent = 'Verifying...';
+            }
+
+            try {
+                const usersRef = database.ref('users');
+                const snapshot = await usersRef.orderByChild('referralCode').equalTo(referralCode).once('value');
+                
+                if (snapshot.exists()) {
+                    const referrerData = snapshot.val();
+                    const referrerId = Object.keys(referrerData)[0];
+                    const referrer = referrerData[referrerId];
+
+                    if (referrer.isBanned) {
+                        showToast("This referrer's code is invalid.");
+                    } else if (referrerId === currentUser.id) {
+                        showToast("You cannot use your own referral code.");
+                    }
+                    else {
+                        const updates = {};
+                        
+                        // Give bonus to the current user who applied the code
+                        const newUserBonus = appSettings.referralBonus?.rewardBTD || 0;
+                        if (newUserBonus > 0) {
+                            updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(newUserBonus);
+                        }
+                        updates[`/users/${currentUser.id}/referralApplied`] = true;
+
+                        // Give bonus to the referrer and update their referral count
+                        const referrerBonus = appSettings.referrerBonus?.rewardBTD || 0;
+                        if (referrerBonus > 0) {
+                            updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(referrerBonus);
+                        }
+                        updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+
+                        // Atomically update all paths
+                        await database.ref().update(updates);
+
+                        showToast(`Successfully applied code! You received a bonus of ${newUserBonus.toFixed(2)} BTD.`);
+                        
+                        // Hide the verification box UI
+                        const verifyBox = document.getElementById('referralVerifyBox');
+                        if (verifyBox) {
+                            verifyBox.style.display = 'none';
+                        }
+                    }
+                } else {
+                    showToast("Invalid referral code. Please try again.");
+                }
+            } catch (error) {
+                showToast("An error occurred. Please try again later.");
+                console.error("Referral verification error:", error);
+            } finally {
+                if(verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Verify';
+                }
+            }
         }
 
         function handleDailyBonus() { 
