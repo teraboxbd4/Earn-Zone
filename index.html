@@ -212,15 +212,15 @@
                     return;
                 }
                 
-                // Set currency preference from localStorage after loading user data
                 currentUser.preferredCurrency = localStorage.getItem('preferredCurrency');
                 updateUI();
                 navigateTo('home', true);
 
                 userRef.on('value', (snap) => {
                     const dbUser = snap.val();
-                    // Merge new data without overwriting local preferences
-                    currentUser = { ...currentUser, ...dbUser }; 
+                    const preferredCurrency = currentUser.preferredCurrency; // Save the preference
+                    currentUser = { ...dbUser, id: userId }; // Overwrite with fresh data
+                    currentUser.preferredCurrency = preferredCurrency; // Restore the preference
                     
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                     currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
@@ -239,9 +239,7 @@
             localStorage.setItem('preferredCurrency', currency);
             currentUser.preferredCurrency = currency;
             updateUI();
-            // Re-render the current page to update any currency-specific text
-            const currentPage = document.querySelector('.nav-item.active')?.dataset.page || 'home';
-            navigateTo(currentPage, true);
+            navigateTo(document.querySelector('.nav-item.active')?.dataset.page || 'home', true);
         }
 
         function navigateTo(page, forceRender = false) {
@@ -508,7 +506,15 @@
             let headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'BALANCE' : 'REFERRALS'}</span></div>`;
 
             listEl.innerHTML = headerHtml + users.sort((a, b) => b.score - a.score).map((user, i) => {
-                let displayScore = type === 'btd' ? `${user.score.toFixed(2)} BTD` : `${user.score} Referrals`;
+                let displayScore;
+                if (type === 'btd') {
+                    displayScore = currentUser.preferredCurrency === 'USD' 
+                        ? `${(user.score * (appSettings.btdToUsdRate || 0.01)).toFixed(4)} USD` 
+                        : `${user.score.toFixed(2)} BTD`;
+                } else {
+                    displayScore = `${user.score} Referrals`;
+                }
+                
                 let rankDisplay;
                 if (i === 0) { rankDisplay = '<span class="leaderboard-badge">🏆</span>'; } 
                 else if (i === 1) { rankDisplay = '<span class="leaderboard-badge">🥈</span>'; } 
