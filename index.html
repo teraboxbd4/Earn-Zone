@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Ad Network SDKs (Ensure these are correct and working for your ad networks) -->
-    <!-- It's crucial that these SDKs are properly initialized and don't conflict -->
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
     <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c273eb631018e08b894.js"></script>
@@ -541,13 +540,32 @@
             
             try {
                 // Increment counts first (optimistic update or before ad)
-                await Promise.all([
-                    database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1)),
-                    database.ref(`users/${currentUser.id}/globalTaskHistory/daily/${today}`).set(firebase.database.ServerValue.increment(1)),
-                    database.ref(`users/${currentUser.id}/globalTaskHistory/hourly/${currentHour}`).set(firebase.database.ServerValue.increment(1)),
-                    database.ref(`users/${currentUser.id}/taskHistory/${taskId}/daily/${today}`).set(firebase.database.ServerValue.increment(1)),
-                    database.ref(`users/${currentUser.id}/taskHistory/${taskId}/lastClicked`).set(Date.now())
-                ]);
+                await database.ref(`users/${currentUser.id}`).transaction(async (currentData) => {
+                    if (currentData) {
+                        if (!currentData.taskStats) currentData.taskStats = {};
+                        if (!currentData.globalTaskHistory) currentData.globalTaskHistory = { daily: {}, hourly: {} };
+                        if (!currentData.taskHistory) currentData.taskHistory = {};
+
+                        // Update clicksToday
+                        currentData.taskStats.clicksToday = (currentData.taskStats.clicksToday || 0) + 1;
+
+                        // Update global daily
+                        if (!currentData.globalTaskHistory.daily) currentData.globalTaskHistory.daily = {};
+                        currentData.globalTaskHistory.daily[today] = (currentData.globalTaskHistory.daily[today] || 0) + 1;
+
+                        // Update global hourly
+                        if (!currentData.globalTaskHistory.hourly) currentData.globalTaskHistory.hourly = {};
+                        currentData.globalTaskHistory.hourly[currentHour] = (currentData.globalTaskHistory.hourly[currentHour] || 0) + 1;
+
+                        // Update task-specific daily
+                        if (!currentData.taskHistory[taskId]) currentData.taskHistory[taskId] = { daily: {}, lastClicked: 0 };
+                        if (!currentData.taskHistory[taskId].daily) currentData.taskHistory[taskId].daily = {};
+                        currentData.taskHistory[taskId].daily[today] = (currentData.taskHistory[taskId].daily[today] || 0) + 1;
+                        currentData.taskHistory[taskId].lastClicked = Date.now();
+                    }
+                    return currentData;
+                });
+
 
                 let adPromise;
                 switch(task.network) {
@@ -581,13 +599,19 @@
                 showToast(`Ad failed: ${err.message || 'Please try again.'}`, 'error');
                 console.error("Ad failed for task", taskId, err);
                 
-                // On ad failure, revert click counts
-                await Promise.all([
-                    database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(-1)),
-                    database.ref(`users/${currentUser.id}/globalTaskHistory/daily/${today}`).set(firebase.database.ServerValue.increment(-1)),
-                    database.ref(`users/${currentUser.id}/globalTaskHistory/hourly/${currentHour}`).set(firebase.database.ServerValue.increment(-1)),
-                    database.ref(`users/${currentUser.id}/taskHistory/${taskId}/daily/${today}`).set(firebase.database.ServerValue.increment(-1)),
-                ]);
+                // On ad failure, revert click counts (transaction should handle this more gracefully)
+                // Since transaction was used, if any error occurs *before* adPromise resolves,
+                // the counts won't be incremented. If error after adPromise, we need to revert.
+                // For simplicity, a manual decrement is added here as a fallback.
+                await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
+                    if (currentData) {
+                        if (currentData.taskStats && currentData.taskStats.clicksToday > 0) currentData.taskStats.clicksToday--;
+                        if (currentData.globalTaskHistory && currentData.globalTaskHistory.daily && currentData.globalTaskHistory.daily[today] > 0) currentData.globalTaskHistory.daily[today]--;
+                        if (currentData.globalTaskHistory && currentData.globalTaskHistory.hourly && currentData.globalTaskHistory.hourly[currentHour] > 0) currentData.globalTaskHistory.hourly[currentHour]--;
+                        if (currentData.taskHistory && currentData.taskHistory[taskId] && currentData.taskHistory[taskId].daily && currentData.taskHistory[taskId].daily[today] > 0) currentData.taskHistory[taskId].daily[today]--;
+                    }
+                    return currentData;
+                });
                 
                 delete taskTimers[taskId]; // Clear timer state if ad failed
                 if (taskButton) {
@@ -599,7 +623,6 @@
         
         function updateAllTimers() {
             const now = Date.now();
-            // Iterate over a copy of keys to avoid issues if items are deleted during iteration
             Object.keys(taskTimers).forEach(taskId => { 
                 const endTime = taskTimers[taskId];
                 const taskButton = document.getElementById(`taskBtn_${taskId}`);
@@ -611,10 +634,9 @@
                     } else {
                         taskButton.textContent = 'Start Task';
                         taskButton.disabled = false;
-                        delete taskTimers[taskId]; // Remove from active timers
+                        delete taskTimers[taskId]; 
                     }
                 } else {
-                    // Button might have been re-rendered or removed, clean up timer
                     delete taskTimers[taskId];
                 }
             });
@@ -627,18 +649,17 @@
             }
             tg.openTelegramLink(link);
             showToast("After joining, click the 'Claim Bonus' button to receive your reward.", 'info', 5000);
-            // Change button state to "Claim Bonus" after user clicks "Join & Claim"
             const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
             if(bonusBtn) {
                 bonusBtn.textContent = 'Claim Bonus';
                 bonusBtn.setAttribute('onclick', `handleBonusClaim('${channelId}')`);
-                bonusBtn.disabled = false; // Enable in case it was somehow disabled
+                bonusBtn.disabled = false; 
             }
         }
 
         async function handleBonusClaim(channelId) {
             const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
-            if(bonusBtn) bonusBtn.disabled = true; // Disable to prevent multiple claims
+            if(bonusBtn) bonusBtn.disabled = true; 
 
             const claimedBonuses = currentUser.claimedBonuses || [];
             if(claimedBonuses.includes(channelId)) {
@@ -649,14 +670,12 @@
             const rewardBTD = bonusChannels[channelId]?.rewardBTD || 0;
 
             try {
-                // Perform a transaction to safely update claimedBonuses
-                await database.ref(`users/${currentUser.id}`).transaction(async (currentData) => {
+                await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
                     if (currentData) {
                         currentData.btdBalance = (currentData.btdBalance || 0) + rewardBTD;
                         if (!currentData.claimedBonuses) {
                             currentData.claimedBonuses = [];
                         }
-                        // Ensure channelId is not already in the list to prevent duplicates
                         if (!currentData.claimedBonuses.includes(channelId)) {
                             currentData.claimedBonuses.push(channelId);
                         }
@@ -669,7 +688,7 @@
             } catch (error) {
                 showToast(`Failed to claim bonus: ${error.message}`, 'error');
                 console.error("Bonus claim failed:", error);
-                if(bonusBtn) bonusBtn.disabled = false; // Re-enable button on error
+                if(bonusBtn) bonusBtn.disabled = false; 
             }
         }
 
@@ -699,7 +718,7 @@
 
         async function handleSubmitWithdrawal() { 
             const submitBtn = document.getElementById('submit-withdraw');
-            submitBtn.disabled = true; // Disable button to prevent multiple submissions
+            submitBtn.disabled = true; 
 
             const method = document.getElementById('withdraw-method').value; 
             const amountStr = document.getElementById('withdraw-amount').value;
@@ -744,26 +763,21 @@
             }; 
             
             try {
-                // Perform a transaction to ensure balance deduction and request creation are atomic
                 await database.ref(`users/${currentUser.id}`).transaction((currentData) => {
                     if (currentData && (currentData.btdBalance || 0) >= amountInBTD) {
                         currentData.btdBalance -= amountInBTD;
-                        // You might also update usdBalance if it's stored directly and not just calculated
-                        // currentData.usdBalance -= amountInUSD; 
                     } else {
-                        // Return undefined to abort the transaction if balance is insufficient
                         return; 
                     }
                     return currentData;
                 });
                 
-                // Add withdrawal request
                 await database.ref('withdrawRequests').push(requestData);
 
                 showToast("Withdrawal request submitted!", 'success'); 
                 document.getElementById('withdraw-amount').value = '';
                 document.getElementById('withdraw-account').value = '';
-                navigateTo('withdraw', true); // Re-render withdraw page to update history
+                navigateTo('withdraw', true); 
             } catch (err) {
                 showToast(`Error submitting request: ${err.message || 'Transaction failed or balance insufficient.'}`, 'error');
                 console.error("Withdrawal submission failed:", err);
@@ -856,30 +870,22 @@
                 }
 
                 const referrerId = Object.keys(referrerData)[0];
-                const referrerUserRef = database.ref(`users/${referrerId}`);
-                const currentUserRef = database.ref(`users/${currentUser.id}`);
-
-                // Check if referrer is the current user (should already be checked by code)
-                if (referrerId === currentUser.id) {
-                    showToast("You cannot refer yourself!", 'error');
-                    return;
-                }
-
+                
                 // Use Firebase Transaction for atomic updates for both users
                 await database.ref('/').transaction(async (currentRootData) => {
-                    if (!currentRootData) return; // Abort if data is null
+                    if (!currentRootData || !currentRootData.users) return; // Abort if data is null or users node is missing
 
                     const referrerUserData = currentRootData.users?.[referrerId];
                     const currentRefereeData = currentRootData.users?.[currentUser.id];
 
                     if (!referrerUserData || !currentRefereeData) {
-                        console.error("Referrer or referee data missing during transaction.");
+                        console.error("Referrer or referee data missing during transaction. Aborting.");
                         return; // Abort
                     }
 
                     if (currentRefereeData.referralApplied) {
                         // Already applied, abort transaction
-                        console.warn("Referee already applied referral during transaction.");
+                        console.warn("Referee already applied referral during transaction. Aborting.");
                         return; 
                     }
 
