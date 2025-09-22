@@ -218,9 +218,9 @@
 
                 userRef.on('value', (snap) => {
                     const dbUser = snap.val();
-                    const preferredCurrency = currentUser.preferredCurrency; // Save the preference
-                    currentUser = { ...dbUser, id: userId }; // Overwrite with fresh data
-                    currentUser.preferredCurrency = preferredCurrency; // Restore the preference
+                    const preferredCurrency = currentUser.preferredCurrency;
+                    currentUser = { ...dbUser, id: userId };
+                    currentUser.preferredCurrency = preferredCurrency;
                     
                     const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
                     currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
