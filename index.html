@@ -307,7 +307,7 @@
                 const buttonAction = isClaimed ? '' : `handleBonusClickAndVerify('${id}', '${channel.link}')`;
                 return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span><button class="btn" onclick="${buttonAction}" ${isClaimed ? 'disabled' : ''} id="bonusBtn_${id}">${buttonText}</button></li>` : ''; 
             }).join(''); 
-            mainContent.innerHTML = `<div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.bonus || 'Join channels for extra rewards!'}</p></div><div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; 
         }
 
         async function renderWithdrawPage() { 
@@ -519,7 +519,7 @@
                 if (i === 0) { rankDisplay = '<span class="leaderboard-badge">🏆</span>'; } 
                 else if (i === 1) { rankDisplay = '<span class="leaderboard-badge">🥈</span>'; } 
                 else if (i === 2) { rankDisplay = '<span class="leaderboard-badge">🥉</span>'; } 
-                else { rankDisplay = `<b style="width: 25px; text-align: center; margin-right: 8px; font-family: monospace;">#${i + 1}</b>`; }
+                else { rankDisplay = `<b style="width: 25px; text-align: center; margin-right: 8px;">#${i + 1}</b>`; }
                 return `<div class="history-item"><span>${rankDisplay} ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
@@ -544,4 +544,4 @@
 
     </script>
 </body>
-</html>```
+</html>
