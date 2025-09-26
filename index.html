@@ -483,28 +483,19 @@
             });
         }
 
-        // ########## লিডারবোর্ডের জন্য আপডেট করা ফাংশন ##########
         async function loadLeaderboard(type, elementId) { 
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
             listEl.innerHTML = "<p>Loading...</p>"; 
-            
-            const query = (type === 'btd') 
-                ? database.ref('users').orderByChild('btdBalance') 
-                : database.ref('users').orderByChild('referrals/count');
-                
+            const query = (type === 'btd') ? database.ref('users').orderByChild('btdBalance') : database.ref('users').orderByChild('referrals/count');
             const snapshot = await query.limitToLast(10).once('value'); 
             const data = snapshot.val(); 
-            
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
-            
             const users = Object.values(data).map(user => ({
                 name: user.name,
                 score: type === 'btd' ? (user.btdBalance || 0) : (user.referrals?.count || 0)
             }));
-            
             let headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'BALANCE' : 'REFERRALS'}</span></div>`;
-
             listEl.innerHTML = headerHtml + users.sort((a, b) => b.score - a.score).map((user, i) => {
                 let displayScore;
                 if (type === 'btd') {
@@ -514,25 +505,72 @@
                 } else {
                     displayScore = `${user.score} Referrals`;
                 }
-                
-                let rankDisplay;
                 const rankNumber = i + 1;
-                const stylishRanks = {
-                    1: '🏆', 2: '🥈', 3: '🥉', 4: '❹', 5: '❺', 6: '❻', 7: '❼', 8: '❽', 9: '❾', 10: '❿'
-                };
-
-                if (stylishRanks[rankNumber]) {
-                    rankDisplay = `<span class="leaderboard-badge">${stylishRanks[rankNumber]}</span>`;
-                } else {
-                    rankDisplay = `<b style="width: 25px; text-align: center; margin-right: 8px;">#${rankNumber}</b>`;
-                }
-                
+                const stylishRanks = { 1: '🏆', 2: '🥈', 3: '🥉', 4: '❹', 5: '❺', 6: '❻', 7: '❼', 8: '❽', 9: '❾', 10: '❿' };
+                let rankDisplay = stylishRanks[rankNumber] ? `<span class="leaderboard-badge">${stylishRanks[rankNumber]}</span>` : `<b style="width:25px;text-align:center;margin-right:8px;">#${rankNumber}</b>`;
                 return `<div class="history-item"><span>${rankDisplay} ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
 
+        // ########## রেফারেল ভেরিফিকেশনের জন্য সম্পূর্ণ ফাংশন ##########
         async function handleReferralVerification() {
-            // Your referral verification logic here
+            const verifyBtn = document.getElementById('verifyReferralBtn');
+            const codeInput = document.getElementById('referralCodeInput');
+            const enteredCode = codeInput.value.trim().toUpperCase();
+
+            if (!enteredCode) {
+                return showToast("Please enter a referral code.", "error");
+            }
+            if (enteredCode === currentUser.referralCode) {
+                return showToast("You cannot use your own referral code.", "error");
+            }
+            if (currentUser.referralApplied) {
+                return showToast("You have already applied a referral code.", "error");
+            }
+
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+
+            try {
+                const usersRef = database.ref('users');
+                const snapshot = await usersRef.orderByChild('referralCode').equalTo(enteredCode).once('value');
+
+                if (!snapshot.exists()) {
+                    throw new Error("Invalid or non-existent referral code.");
+                }
+
+                let referrerId;
+                snapshot.forEach(childSnapshot => {
+                    referrerId = childSnapshot.key;
+                });
+
+                if (referrerId === currentUser.id) {
+                    throw new Error("You cannot use your own referral code.");
+                }
+                
+                const refereeBonus = appSettings.referralBonus?.refereeBTD || 0;
+                const referrerBonus = appSettings.referralBonus?.referrerBTD || 0;
+
+                const updates = {};
+                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(refereeBonus);
+                updates[`/users/${currentUser.id}/referralApplied`] = true;
+                updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(referrerBonus);
+                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(referrerBonus);
+
+                await database.ref().update(updates);
+
+                showToast(`Success! You received ${refereeBonus} BTD as a bonus!`, 'success');
+
+                const verifyBox = document.getElementById('referralVerifyBox');
+                if (verifyBox) verifyBox.style.display = 'none';
+
+            } catch (error) {
+                showToast(error.message, "error");
+            } finally {
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify';
+            }
         }
 
         function handleDailyBonus() { 
@@ -548,7 +586,6 @@
         function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
         function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
         function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
-
     </script>
 </body>
 </html>
