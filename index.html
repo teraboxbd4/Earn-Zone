@@ -146,6 +146,7 @@
         let appSettings = {};
         let tasks = {};
         let socialTasksData = {};
+        let taskTimers = {};
         const mainContent = document.getElementById('mainContent');
 
         auth.onAuthStateChanged(user => {
@@ -182,7 +183,7 @@
                 });
                 document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
                 document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
-                
+
             }).catch(error => {
                 loadingScreen.innerHTML = `<p style="color: red; padding:20px; text-align:center;">${error.message}</p>`;
             });
@@ -277,7 +278,7 @@
             
             const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
             document.getElementById('showUsdBtn').classList.toggle('active', currentUser.preferredCurrency === 'USD');
-            document.getElementById('showBtdBtn').classList.toggle('active', currentUser.preferredCurrency !== 'USD');
+            document.getElementById('showBtdBtn').classList.toggle('active', currentUser.preferredCurrency === 'BTD');
 
             if (currentUser.preferredCurrency === 'USD') {
                 mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${(currentUser.usdBalance || 0).toFixed(4)} USD`;
@@ -295,14 +296,14 @@
         
         function renderTasksPage() { 
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01; 
-            let tasksHtml = Object.keys(tasks).map(taskId => { 
-                const task = tasks[taskId]; 
+            let tasksHtml = Object.entries(tasks).map(([taskId, task]) => { 
                 if (!task.enabled) return '';
                 let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`;
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`;
+            updateAllTimers();
         }
 
         function renderSocialTasksPage(data = null) {
@@ -381,32 +382,48 @@
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
+        function checkTaskLimits(taskId, task) {
+            const now = new Date();
+            const dateKey = now.toISOString().split('T')[0];
+            const hourKey = `${dateKey}T${now.getUTCHours()}`;
+            const hourlyLimit = appSettings.globalHourlyLimit || 50;
+            const dailyLimit = appSettings.globalDailyLimit || 100;
+            const taskLimit = task.limit || 10;
+            const hourlyCount = currentUser.globalTaskHistory?.hourly?.[hourKey] || 0;
+            if (hourlyCount >= hourlyLimit) {
+                return `Hourly limit of ${hourlyLimit} tasks reached. Please try again next hour.`;
+            }
+            const dailyCount = currentUser.globalTaskHistory?.daily?.[dateKey] || 0;
+            if (dailyCount >= dailyLimit) {
+                return `Daily limit of ${dailyLimit} tasks reached. Please try again tomorrow.`;
+            }
+            const taskDailyCount = currentUser.taskHistory?.[taskId]?.daily?.[dateKey] || 0;
+            if (taskDailyCount >= taskLimit) {
+                return `You have completed this task ${taskLimit} times today. Please try another task.`;
+            }
+            return null; // No limit reached
+        }
+
         function handleTaskClick(taskId) {
             const task = tasks[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             if (!task || !taskButton || taskButton.disabled) return;
-
             const limitError = checkTaskLimits(taskId, task);
             if (limitError) {
                 return showToast(limitError, 'error');
             }
-
             taskButton.disabled = true;
             taskButton.textContent = 'Loading Ad...';
-            
-            // Dummy Ad Logic - Replace with your actual Ad SDK calls
+            // Here you would call your ad network's function. We simulate it with a timeout.
             setTimeout(() => {
                 const rewardBTD = parseFloat(task.rewardBTD) || 0;
                 const updates = {};
-                
                 if (rewardBTD > 0) {
                     updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
                 }
-                
                 const now = new Date();
-                const dateKey = now.toISOString().split('T')[0]; // YYYY-MM-DD
+                const dateKey = now.toISOString().split('T')[0];
                 const hourKey = `${dateKey}T${now.getUTCHours()}`;
-
                 updates[`/users/${currentUser.id}/taskHistory/${taskId}/lastClicked`] = firebase.database.ServerValue.TIMESTAMP;
                 updates[`/users/${currentUser.id}/taskHistory/${taskId}/daily/${dateKey}`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${currentUser.id}/globalTaskHistory/daily/${dateKey}`] = firebase.database.ServerValue.increment(1);
@@ -426,34 +443,26 @@
                     taskButton.disabled = false;
                     taskButton.textContent = 'Start Task';
                 });
-            }, 2000); // Simulating ad load time
+            }, 2000); // Simulating ad network call and success
         }
-        
-        function checkTaskLimits(taskId, task) {
-            const now = new Date();
-            const dateKey = now.toISOString().split('T')[0];
-            const hourKey = `${dateKey}T${now.getUTCHours()}`;
 
-            const hourlyLimit = appSettings.globalHourlyLimit || 50;
-            const dailyLimit = appSettings.globalDailyLimit || 100;
-            const taskLimit = task.limit || 10;
-            
-            const hourlyCount = currentUser.globalTaskHistory?.hourly?.[hourKey] || 0;
-            if (hourlyCount >= hourlyLimit) {
-                return `Hourly limit of ${hourlyLimit} tasks reached. Please try again next hour.`;
+        function updateAllTimers() {
+            const now = Date.now();
+            for (const taskId in taskTimers) {
+                const endTime = taskTimers[taskId];
+                const taskButton = document.getElementById(`taskBtn_${taskId}`);
+                if (taskButton) {
+                    if (endTime > now) {
+                        const secondsLeft = Math.ceil((endTime - now) / 1000);
+                        taskButton.textContent = `Wait ${secondsLeft}s`;
+                        taskButton.disabled = true;
+                    } else {
+                        taskButton.textContent = 'Start Task';
+                        taskButton.disabled = false;
+                        delete taskTimers[taskId];
+                    }
+                }
             }
-
-            const dailyCount = currentUser.globalTaskHistory?.daily?.[dateKey] || 0;
-            if (dailyCount >= dailyLimit) {
-                return `Daily limit of ${dailyLimit} tasks reached. Please try again tomorrow.`;
-            }
-            
-            const taskDailyCount = currentUser.taskHistory?.[taskId]?.daily?.[dateKey] || 0;
-            if (taskDailyCount >= taskLimit) {
-                return `You have completed this task ${taskLimit} times today. Please try another task.`;
-            }
-
-            return null; // No limit reached
         }
         
         async function loadWithdrawHistory() { 
