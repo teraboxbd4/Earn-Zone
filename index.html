@@ -63,32 +63,23 @@
         .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
-        .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
-        .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
-        .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
         .spinner { width: 45px; height: 45px; border: 3px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; margin: 15px auto; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
-        .ad-timer-display { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); margin-top: 10px; }
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 30px; z-index: 1000; opacity: 0; transition: all 0.3s ease; } .toast.show { opacity: 1; bottom: 90px; }
         .verified-icon { color: #40A7E3; margin-left: 5px; font-size: 0.8em; }
         /* Social Tasks Page Styles */
-        .social-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .social-card { background: var(--bg-light); border-radius: var(--border-radius); padding: 20px; text-align: center; cursor: pointer; transition: var(--transition); border: 1px solid var(--border-color); }
-        body.dark-mode .social-card { background: var(--input-bg); }
-        .social-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .social-card i { font-size: 2.5rem; margin-bottom: 15px; }
-        .social-card h3 { font-size: 1.1rem; color: var(--text-primary); margin-bottom: 5px; }
-        .social-card p { font-size: 0.8rem; color: var(--text-secondary); }
+        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .grid-card { background: var(--bg-light); border-radius: var(--border-radius); padding: 20px; text-align: center; cursor: pointer; transition: var(--transition); border: 1px solid var(--border-color); }
+        body.dark-mode .grid-card { background: var(--input-bg); }
+        .grid-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .grid-card i { font-size: 2.5rem; margin-bottom: 15px; }
+        .grid-card h3 { font-size: 1.1rem; color: var(--text-primary); margin-bottom: 5px; }
+        .grid-card p { font-size: 0.8rem; color: var(--text-secondary); }
         .fa-youtube { color: #FF0000; } .fa-facebook { color: #1877F2; } .fa-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%,#d6249f 60%,#285AEB 90%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
         .fa-telegram { color: #2AABEE; } .fa-tiktok { color: #010101; } .fa-twitter { color: #1DA1F2; } .fa-discord { color: #5865F2; } .fa-reddit-alien { color: #FF4500; }
         body.dark-mode .fa-tiktok { color: #FFFFFF; }
         .btn-link { background: none; border: none; color: var(--primary-color); font-size: 1.2rem; margin-right: 10px; cursor: pointer; padding: 0;}
-        .subcategory-list { list-style: none; margin-top: 15px; }
-        .subcategory-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; margin-bottom: 10px; background: var(--bg-light); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); cursor: pointer; transition: var(--transition); }
-        body.dark-mode .subcategory-item { background: var(--input-bg); }
-        .subcategory-item:hover { border-color: var(--primary-color); }
-        .subcategory-item i { margin-right: 15px; color: var(--primary-color); }
-        .subcategory-item span { font-weight: 500; }
-        .subcategory-item .badge { background-color: var(--primary-color); color: white; padding: 3px 8px; border-radius: 20px; font-size: 0.7rem; }
+        .notice-card { background-color: rgba(74, 144, 226, 0.1); border-left: 4px solid var(--primary-color); padding: 15px; border-radius: var(--border-radius-sm); margin-bottom: 20px; }
+        .notice-card p { margin: 0; color: var(--primary-color); font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -125,13 +116,6 @@
             <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
             <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
         </div>
-        <div class="ad-modal-overlay" id="adModal">
-            <div class="ad-modal">
-                <h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3>
-                <div class="spinner"></div>
-                <div class="ad-timer-display" id="adTimerDisplay"></div>
-            </div>
-        </div>
         <div class="toast" id="toast"></div>
     </div>
 
@@ -161,7 +145,7 @@
         let currentUser = {};
         let appSettings = {};
         let tasks = {};
-        let taskTimers = {};
+        let socialTasksData = {};
         const mainContent = document.getElementById('mainContent');
 
         auth.onAuthStateChanged(user => {
@@ -198,7 +182,6 @@
                 });
                 document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
                 document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
-                setInterval(updateAllTimers, 1000);
 
             }).catch(error => {
                 loadingScreen.innerHTML = `<p style="color: red; padding:20px; text-align:center;">${error.message}</p>`;
@@ -214,12 +197,12 @@
                 appSettings = adminData.settings || {};
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
+                socialTasksData = adminData.socialTasks || {};
                 
                 const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
                 
-                const snapshot = await userRef.once('value');
-                let userData = snapshot.val();
+                let userData = (await userRef.once('value')).val();
                 
                 if (!userData) {
                     const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
@@ -231,13 +214,9 @@
 
                 currentUser = { id: userId, ...userData };
                 
-                if (currentUser.isBanned) {
-                    throw new Error("This account has been banned.");
-                }
+                if (currentUser.isBanned) { throw new Error("This account has been banned."); }
                 
-                if (!localStorage.getItem('preferredCurrency')) {
-                    localStorage.setItem('preferredCurrency', 'USD');
-                }
+                if (!localStorage.getItem('preferredCurrency')) { localStorage.setItem('preferredCurrency', 'USD'); }
                 currentUser.preferredCurrency = localStorage.getItem('preferredCurrency');
                 
                 updateUI();
@@ -247,8 +226,7 @@
                     const dbUser = snap.val();
                     if (!dbUser) return;
                     const preferredCurrency = currentUser.preferredCurrency;
-                    currentUser = { ...dbUser, id: userId };
-                    currentUser.preferredCurrency = preferredCurrency;
+                    currentUser = { ...dbUser, id: userId, preferredCurrency };
                     updateUI();
                 });
             } catch (error) {
@@ -267,13 +245,12 @@
         function navigateTo(page, forceRender = false, data = null) {
             const currentActive = document.querySelector('.nav-item.active');
             if (!forceRender && currentActive && currentActive.dataset.page === page && !data) return;
-
-            const isSubPage = !!data; // Check if we are navigating to a sub-page
-
+            
+            const isSubPage = !!data;
             if (!isSubPage) {
                 document.querySelectorAll('.nav-item.active')?.forEach(el => el.classList.remove('active'));
                 const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
-                if(newActive) newActive.classList.add('active');
+                if (newActive) newActive.classList.add('active');
             }
             
             const pages = { 
@@ -294,9 +271,7 @@
             currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
 
             let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
-            if (currentUser.isVerified) {
-                profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
-            }
+            if (currentUser.isVerified) { profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>'; }
             document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
             
@@ -328,11 +303,12 @@
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`;
-            updateAllTimers();
         }
 
         function renderSocialTasksPage(data = null) {
             let contentHtml = '';
+            
+            // This is a dummy structure. In future, this will come from `socialTasksData` from Firebase.
             const platforms = {
                 youtube: { name: 'YouTube', icon: 'fa-youtube', jobs: 15, subcategories: [ {id: 'likes', name: 'Likes', icon: 'fa-thumbs-up'}, {id: 'views', name: 'Views', icon: 'fa-eye'}, {id: 'comments', name: 'Comments', icon: 'fa-comment'}, {id: 'subscribers', name: 'Subscribers', icon: 'fa-user-plus'} ]},
                 facebook: { name: 'Facebook', icon: 'fa-facebook', jobs: 12, subcategories: [ {id: 'page-likes', name: 'Page Likes', icon: 'fa-thumbs-up'}, {id: 'post-likes', name: 'Post Likes', icon: 'fa-heart'}, {id: 'shares', name: 'Shares', icon: 'fa-share'} ]},
@@ -344,25 +320,29 @@
                 reddit: { name: 'Reddit', icon: 'fa-reddit-alien', jobs: 6, subcategories: [ {id: 'upvotes', name: 'Upvotes', icon: 'fa-arrow-up'}, {id: 'subreddit-join', name: 'Subreddit Joins', icon: 'fa-users'} ]}
             };
 
-            if (!data) {
-                contentHtml = `<div class="task-card"><h2 class="section-title"><i class="fas fa-share-square"></i> Choose a Platform</h2><p>Select a social media platform to find available tasks.</p></div><div class="social-grid">`;
+            if (!data) { // Main Social Tasks Page
+                contentHtml = `<div class="task-card"><h2 class="section-title"><i class="fas fa-share-square"></i> Choose a Platform</h2><p>Select a social media platform to find available tasks.</p></div><div class="grid-container">`;
                 for (const key in platforms) {
                     const platform = platforms[key];
-                    contentHtml += `<div class="social-card" onclick="navigateTo('social', true, '${key}')"><i class="fab ${platform.icon}"></i><h3>${platform.name}</h3><p>${platform.jobs} Jobs Available</p></div>`;
+                    contentHtml += `<div class="grid-card" onclick="navigateTo('social', true, '${key}')"><i class="fab ${platform.icon}"></i><h3>${platform.name}</h3><p>${platform.jobs} Jobs Available</p></div>`;
                 }
                 contentHtml += `</div>`;
-            } else if (platforms[data] && !data.includes('_')) {
+            } else if (platforms[data] && !data.includes('_')) { // Platform Subcategory Page
                 const platform = platforms[data];
-                contentHtml = `<div class="task-card"><h2 class="section-title"><button class="btn-link" onclick="navigateTo('social', true)"><i class="fas fa-arrow-left"></i></button><i class="fab ${platform.icon} fa-fw" style="margin: 0 10px;"></i> ${platform.name} Tasks</h2><p>Select a category to see the available jobs.</p><ul class="subcategory-list">`;
+                contentHtml = `<div class="task-card"><h2 class="section-title"><button class="btn-link" onclick="navigateTo('social', true)"><i class="fas fa-arrow-left"></i></button><i class="fab ${platform.icon} fa-fw" style="margin: 0 10px;"></i> ${platform.name} Tasks</h2><p>Select a category to see the available jobs.</p></div><div class="grid-container">`;
                 platform.subcategories.forEach(sub => {
-                    contentHtml += `<li class="subcategory-item" onclick="navigateTo('social', true, '${data}_${sub.id}')"><i class="fas ${sub.icon} fa-fw"></i><span>${sub.name}</span><span class="badge">10+</span></li>`;
+                    contentHtml += `<div class="grid-card" onclick="navigateTo('social', true, '${data}_${sub.id}')"><i class="fas ${sub.icon}"></i><h3>${sub.name}</h3><p>10+ Jobs</p></div>`;
                 });
-                contentHtml += `</ul></div>`;
-            } else if (data.includes('_')) {
+                contentHtml += `</div>`;
+            } else if (data.includes('_')) { // Job List Page
                 const [platformKey, subcatKey] = data.split('_');
                 const platform = platforms[platformKey];
                 const subcategory = platform.subcategories.find(s => s.id === subcatKey);
-                contentHtml = `<div class="task-card"><h2 class="section-title"><button class="btn-link" onclick="navigateTo('social', true, '${platformKey}')"><i class="fas fa-arrow-left"></i></button>${subcategory.name} Jobs</h2><p style="text-align: center; margin-top: 30px;">This is where the list of ${subcategory.name} jobs will appear. <br><br><strong>This feature is under development and will be available soon!</strong></p></div>`;
+                contentHtml = `<div class="task-card">
+                    <h2 class="section-title"><button class="btn-link" onclick="navigateTo('social', true, '${platformKey}')"><i class="fas fa-arrow-left"></i></button>${subcategory.name} Jobs</h2>
+                    <div class="notice-card"><p><b>Instructions:</b> Please follow the task instructions carefully. Submit the required proof to get your reward.</p></div>
+                    <p style="text-align: center; margin-top: 30px;">This is where the list of ${subcategory.name} jobs will appear. <br><br><strong>This feature is under development and will be available soon!</strong></p>
+                </div>`;
             }
             mainContent.innerHTML = contentHtml;
         }
@@ -406,7 +386,6 @@
         }
 
         function handleTaskClick(taskId) { /* Your ad logic here... */ }
-        
         function updateAllTimers() { /* Your timer logic here... */ }
         
         async function loadWithdrawHistory() { 
@@ -489,11 +468,9 @@
             const verifyBtn = document.getElementById('verifyReferralBtn');
             const codeInput = document.getElementById('referralCodeInput');
             const enteredCode = codeInput.value.trim().toUpperCase();
-
             if (!enteredCode) { return showToast("Please enter a referral code.", "error"); }
             if (enteredCode === currentUser.referralCode) { return showToast("You cannot use your own referral code.", "error"); }
             if (currentUser.referralApplied) { return showToast("You have already applied a referral code.", "error"); }
-
             verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying...';
             try {
                 const usersRef = database.ref('users');
@@ -502,7 +479,6 @@
                 let referrerId;
                 snapshot.forEach(childSnapshot => { referrerId = childSnapshot.key; });
                 if (referrerId === currentUser.id) { throw new Error("You cannot use your own referral code."); }
-                
                 const refereeBonus = appSettings.referralBonus?.refereeBTD || 0;
                 const referrerBonus = appSettings.referralBonus?.referrerBTD || 0;
                 const updates = {};
@@ -528,9 +504,14 @@
             }
         }
         
-        function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
-        function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
-        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
+        function showToast(message, type = 'success', duration = 3000) { 
+            const toast = document.getElementById('toast'); 
+            if(toast){ 
+                toast.textContent = message; 
+                toast.className = `toast show ${type}`;
+                setTimeout(() => toast.className = 'toast', duration); 
+            } 
+        }
 
     </script>
 </body>
