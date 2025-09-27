@@ -63,14 +63,9 @@
         .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
-        .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
-        .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
-        .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
         .spinner { width: 45px; height: 45px; border: 3px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; margin: 15px auto; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
-        .ad-timer-display { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); margin-top: 10px; }
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 30px; z-index: 1000; opacity: 0; transition: all 0.3s ease; } .toast.show { opacity: 1; bottom: 90px; }
         .verified-icon { color: #40A7E3; margin-left: 5px; font-size: 0.8em; }
-        
         /* Social Tasks Page Styles */
         .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .grid-card { background: var(--bg-light); border-radius: var(--border-radius); padding: 20px; text-align: center; cursor: pointer; transition: var(--transition); border: 1px solid var(--border-color); }
@@ -121,13 +116,6 @@
             <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
             <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
         </div>
-        <div class="ad-modal-overlay" id="adModal">
-            <div class="ad-modal">
-                <h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3>
-                <div class="spinner"></div>
-                <div class="ad-timer-display" id="adTimerDisplay"></div>
-            </div>
-        </div>
         <div class="toast" id="toast"></div>
     </div>
 
@@ -157,8 +145,7 @@
         let currentUser = {};
         let appSettings = {};
         let tasks = {};
-        let socialTasksData = {}; // To store social task categories from Firebase
-        let taskTimers = {};
+        let socialTasksData = {};
         const mainContent = document.getElementById('mainContent');
 
         auth.onAuthStateChanged(user => {
@@ -195,8 +182,7 @@
                 });
                 document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
                 document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
-                setInterval(updateAllTimers, 1000);
-
+                
             }).catch(error => {
                 loadingScreen.innerHTML = `<p style="color: red; padding:20px; text-align:center;">${error.message}</p>`;
             });
@@ -222,7 +208,7 @@
                     const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
                     const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
                     const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    userData = { name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0 }, taskStats: { clicksToday: 0, dailyBonusClaimed: false }};
+                    userData = { name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0 }, taskStats: { clicksToday: 0, dailyBonusClaimed: false }, taskHistory: {}, globalTaskHistory: {} };
                     await userRef.set(userData);
                 }
 
@@ -317,23 +303,13 @@
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`;
-            updateAllTimers();
         }
 
         function renderSocialTasksPage(data = null) {
             let contentHtml = '';
-            const platforms = socialTasksData.platforms || { // Use data from Firebase, or fallback to dummy data
-                youtube: { name: 'YouTube', icon: 'fa-youtube', jobs: 15, subcategories: [ {id: 'likes', name: 'Likes', icon: 'fa-thumbs-up'}, {id: 'views', name: 'Views', icon: 'fa-eye'}, {id: 'comments', name: 'Comments', icon: 'fa-comment'}, {id: 'subscribers', name: 'Subscribers', icon: 'fa-user-plus'} ]},
-                facebook: { name: 'Facebook', icon: 'fa-facebook', jobs: 12, subcategories: [ {id: 'page-likes', name: 'Page Likes', icon: 'fa-thumbs-up'}, {id: 'post-likes', name: 'Post Likes', icon: 'fa-heart'}, {id: 'shares', name: 'Shares', icon: 'fa-share'} ]},
-                instagram: { name: 'Instagram', icon: 'fa-instagram', jobs: 8, subcategories: [ {id: 'followers', name: 'Followers', icon: 'fa-user-plus'}, {id: 'post-likes', name: 'Post Likes', icon: 'fa-heart'} ]},
-                telegram: { name: 'Telegram', icon: 'fa-telegram', jobs: 20, subcategories: [ {id: 'channel-join', name: 'Channel Joins', icon: 'fa-user-friends'}, {id: 'post-views', name: 'Post Views', icon: 'fa-eye'} ]},
-                tiktok: { name: 'TikTok', icon: 'fa-tiktok', jobs: 5, subcategories: [ {id: 'followers', name: 'Followers', icon: 'fa-user-plus'}, {id: 'video-likes', name: 'Video Likes', icon: 'fa-heart'} ]},
-                twitter: { name: 'Twitter (X)', icon: 'fa-twitter', jobs: 7, subcategories: [ {id: 'followers', name: 'Followers', icon: 'fa-user-plus'}, {id: 'retweets', name: 'Retweets', icon: 'fa-retweet'} ]},
-                discord: { name: 'Discord', icon: 'fa-discord', jobs: 4, subcategories: [ {id: 'server-join', name: 'Server Joins', icon: 'fa-user-friends'} ]},
-                reddit: { name: 'Reddit', icon: 'fa-reddit-alien', jobs: 6, subcategories: [ {id: 'upvotes', name: 'Upvotes', icon: 'fa-arrow-up'}, {id: 'subreddit-join', name: 'Subreddit Joins', icon: 'fa-users'} ]}
-            };
+            const platforms = socialTasksData.platforms || {};
 
-            if (!data) { // Main Social Tasks Page
+            if (!data) {
                 contentHtml = `<div class="task-card"><h2 class="section-title"><i class="fas fa-share-square"></i> Choose a Platform</h2><p>${socialTasksData.mainNotice || 'Select a social media platform to find available tasks.'}</p></div><div class="grid-container">`;
                 for (const key in platforms) {
                     const platform = platforms[key];
@@ -342,7 +318,7 @@
                     }
                 }
                 contentHtml += `</div>`;
-            } else if (platforms[data] && !data.includes('_')) { // Platform Subcategory Page
+            } else if (platforms[data] && !data.includes('_')) {
                 const platform = platforms[data];
                 contentHtml = `<div class="task-card"><h2 class="section-title"><button class="btn-link" onclick="navigateTo('social', true)"><i class="fas fa-arrow-left"></i></button><i class="fab ${platform.icon} fa-fw" style="margin: 0 10px;"></i> ${platform.name} Tasks</h2><p>${platform.subcategoryNotice || 'Select a category to see the available jobs.'}</p></div><div class="grid-container">`;
                 if(platform.subcategories){
@@ -354,7 +330,7 @@
                     }
                 }
                 contentHtml += `</div>`;
-            } else if (data.includes('_')) { // Job List Page
+            } else if (data.includes('_')) {
                 const [platformKey, subcatKey] = data.split('_');
                 const platform = platforms[platformKey];
                 const subcategory = platform.subcategories[subcatKey];
@@ -409,60 +385,75 @@
             const task = tasks[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             if (!task || !taskButton || taskButton.disabled) return;
+
+            const limitError = checkTaskLimits(taskId, task);
+            if (limitError) {
+                return showToast(limitError, 'error');
+            }
+
             taskButton.disabled = true;
             taskButton.textContent = 'Loading Ad...';
-            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
-            let adPromise;
-            try {
-                switch(task.network) {
-                    case 'Monetag': adPromise = window.show_9797628 && window.show_9797628(); break;
-                    case 'Gigapub': adPromise = window.showGiga && window.showGiga(); break;
-                    case 'Adexora': adPromise = window.showAdexora && window.showAdexora(); break;
-                    case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
-                    default: adPromise = Promise.reject('Unknown network');
-                }
-                if (!adPromise || typeof adPromise.then !== 'function') { throw new Error(`SDK for ${task.network} failed.`); }
-            } catch (e) { adPromise = Promise.reject(e); }
-            Promise.resolve(adPromise).then(() => {
+            
+            // Dummy Ad Logic - Replace with your actual Ad SDK calls
+            setTimeout(() => {
                 const rewardBTD = parseFloat(task.rewardBTD) || 0;
+                const updates = {};
+                
                 if (rewardBTD > 0) {
-                    database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
+                    updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardBTD);
+                }
+                
+                const now = new Date();
+                const dateKey = now.toISOString().split('T')[0]; // YYYY-MM-DD
+                const hourKey = `${dateKey}T${now.getUTCHours()}`;
+
+                updates[`/users/${currentUser.id}/taskHistory/${taskId}/lastClicked`] = firebase.database.ServerValue.TIMESTAMP;
+                updates[`/users/${currentUser.id}/taskHistory/${taskId}/daily/${dateKey}`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${currentUser.id}/globalTaskHistory/daily/${dateKey}`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${currentUser.id}/globalTaskHistory/hourly/${hourKey}`] = firebase.database.ServerValue.increment(1);
+
+                database.ref().update(updates).then(() => {
                     showToast(`+${rewardBTD.toFixed(2)} BTD!`);
-                }
-                const timerSeconds = parseInt(task.timer) || 0;
-                if (timerSeconds > 0) {
-                    taskTimers[taskId] = Date.now() + timerSeconds * 1000;
-                } else {
+                    const timerSeconds = parseInt(task.timer) || 0;
+                    if (timerSeconds > 0) {
+                        taskTimers[taskId] = Date.now() + timerSeconds * 1000;
+                    } else {
+                        taskButton.disabled = false;
+                        taskButton.textContent = 'Start Task';
+                    }
+                }).catch(err => {
+                    showToast("Error updating data. Try again.", "error");
                     taskButton.disabled = false;
                     taskButton.textContent = 'Start Task';
-                }
-            }).catch(err => {
-                showToast("Ad failed. Please try again.", "error");
-                delete taskTimers[taskId];
-                if (taskButton) {
-                    taskButton.disabled = false;
-                    taskButton.textContent = 'Start Task';
-                }
-            });
+                });
+            }, 2000); // Simulating ad load time
         }
         
-        function updateAllTimers() {
-            const now = Date.now();
-            for (const taskId in taskTimers) {
-                const endTime = taskTimers[taskId];
-                const taskButton = document.getElementById(`taskBtn_${taskId}`);
-                if (taskButton) {
-                    if (endTime > now) {
-                        const secondsLeft = Math.ceil((endTime - now) / 1000);
-                        taskButton.textContent = `Wait ${secondsLeft}s`;
-                        taskButton.disabled = true;
-                    } else {
-                        taskButton.textContent = 'Start Task';
-                        taskButton.disabled = false;
-                        delete taskTimers[taskId];
-                    }
-                }
+        function checkTaskLimits(taskId, task) {
+            const now = new Date();
+            const dateKey = now.toISOString().split('T')[0];
+            const hourKey = `${dateKey}T${now.getUTCHours()}`;
+
+            const hourlyLimit = appSettings.globalHourlyLimit || 50;
+            const dailyLimit = appSettings.globalDailyLimit || 100;
+            const taskLimit = task.limit || 10;
+            
+            const hourlyCount = currentUser.globalTaskHistory?.hourly?.[hourKey] || 0;
+            if (hourlyCount >= hourlyLimit) {
+                return `Hourly limit of ${hourlyLimit} tasks reached. Please try again next hour.`;
             }
+
+            const dailyCount = currentUser.globalTaskHistory?.daily?.[dateKey] || 0;
+            if (dailyCount >= dailyLimit) {
+                return `Daily limit of ${dailyLimit} tasks reached. Please try again tomorrow.`;
+            }
+            
+            const taskDailyCount = currentUser.taskHistory?.[taskId]?.daily?.[dateKey] || 0;
+            if (taskDailyCount >= taskLimit) {
+                return `You have completed this task ${taskLimit} times today. Please try another task.`;
+            }
+
+            return null; // No limit reached
         }
         
         async function loadWithdrawHistory() { 
