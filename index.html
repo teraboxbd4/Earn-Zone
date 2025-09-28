@@ -15,7 +15,7 @@
     <script src='//libtl.com/sdk.js' data-zone='9797628' data-sdk='show_9797628'></script>
     <style>
         :root {
-            --primary-color: #4A90E2; --primary-dark: #357ABD; --secondary-color: #50E3C2; --accent-color: #F5A623; --bg-light: #F7F7F7; --bg-dark: #2C3E50; --card-bg-light: #FFFFFF; --card-bg-dark: #34495E; --text-dark: #333333; --text-light: #F7F7F7; --border-color-light: #E0E0E0; --border-color-dark: #4A657D; --border-radius: 12px; --border-radius-sm: 8px; --transition: all 0.3s ease-in-out;
+            --primary-color: #4A90E2; --primary-dark: #357ABD; --secondary-color: #50E3C2; --accent-color: #F5A623; --bg-light: #F7F7F7; --bg-dark: #2C3E50; --card-bg-light: #FFFFFF; --card-bg-dark: #34495E; --text-dark: #333333; --text-light: #F7F7F7; --border-color-light: #E0E0E0; --border-color-dark: #4A657D; --border-radius: 12px; --border-radius-sm: 8px; --transition: all 0.3s ease-in-out; --error-color: #e74c3c;
         }
         body.dark-mode {
             background-color: var(--bg-dark); color: var(--text-light); --header-bg: linear-gradient(135deg, var(--bg-dark), #1A2530); --card-bg: var(--card-bg-dark); --text-primary: var(--text-light); --text-secondary: #B0B0B0; --border-color: var(--border-color-dark); --input-bg: #4A657D; --input-border: #5A7E9C; --button-bg-secondary: #4A657D; --button-text-secondary: var(--secondary-color); --toggle-bg: #4A657D;
@@ -131,6 +131,7 @@
         let tasks = {};
         let bonusChannels = {};
         let taskTimers = {};
+        let isInitialLoad = true;
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -187,7 +188,7 @@
                         userData = {
                             name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, btdWallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, totalClicks: 0, dailyBonusClaimed: false }, claimedBonuses: [], isVerified: false
                         };
-                        userRef.set(userData); // This will only run once for a new user
+                        userRef.set(userData);
                     }
                     
                     currentUser = { id: userId, ...userData };
@@ -198,9 +199,10 @@
                     }
                     
                     updateUI();
-                    // Initial page load only once
-                    if (!document.querySelector('.nav-item.active')) {
+                    
+                    if (isInitialLoad) {
                         navigateTo('home', true);
+                        isInitialLoad = false;
                     }
                 }, (error) => {
                     console.error("Firebase Read Failed:", error);
@@ -439,32 +441,79 @@
                 historyEl.innerHTML = '<p style="text-align: center; color: var(--error-color);">Could not load history.</p>';
             }
         }
+        
+        // NEW HELPER FUNCTION TO CHECK LEADERBOARD
+        async function checkIfUserIsInTop10() {
+            try {
+                const pointsQuery = database.ref('users').orderByChild('btdBalance').limitToLast(10);
+                const referralQuery = database.ref('users').orderByChild('referrals/count').limitToLast(10);
 
-        function handleSubmitWithdrawal() {
+                const [pointsSnapshot, referralSnapshot] = await Promise.all([pointsQuery.once('value'), referralQuery.once('value')]);
+                
+                const topUsers = new Set();
+                
+                if (pointsSnapshot.exists()) {
+                    pointsSnapshot.forEach(child => { topUsers.add(child.key); });
+                }
+                if (referralSnapshot.exists()) {
+                    referralSnapshot.forEach(child => { topUsers.add(child.key); });
+                }
+                
+                return topUsers.has(currentUser.id);
+
+            } catch (error) {
+                console.error("Could not check leaderboard:", error);
+                return false; // Default to false on error
+            }
+        }
+
+        // UPDATED SUBMIT WITHDRAWAL FUNCTION
+        async function handleSubmitWithdrawal() {
+            const submitBtn = document.getElementById('submit-withdraw');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Checking eligibility...';
+
+            const isEligible = await checkIfUserIsInTop10();
+            
+            if (!isEligible) {
+                const notice = appSettings.notices?.withdrawRestrictionNotice || "Withdrawal is currently limited to top 10 users in the leaderboard.";
+                showToast(notice, "error", 5000);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Request';
+                return;
+            }
+            
+            submitBtn.textContent = 'Submitting...';
+
             const method = document.getElementById('withdraw-method').value;
             const amountStr = document.getElementById('withdraw-amount').value;
             const account = document.getElementById('withdraw-account').value.trim();
-            const submitBtn = document.getElementById('submit-withdraw');
-            
             const amount = parseFloat(amountStr);
+            
             if (!method || !amountStr || isNaN(amount) || amount <= 0 || !account) {
-                return showToast("Please fill all fields correctly.", "error");
+                showToast("Please fill all fields correctly.", "error");
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Request';
+                return;
             }
 
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             const amountInBTD = amount;
             const amountInUSD = amountInBTD * btdToUsdRate;
 
-            const minWithdrawPoints = (appSettings.minWithdrawUSD || 0) / btdToUsdRate;
+            const minWithdrawPoints = (appSettings.minWithdrawUSD || 0) / (btdToUsdRate || 0.01);
             if (amountInBTD < minWithdrawPoints) {
-                return showToast(`Minimum withdrawal is ${minWithdrawPoints.toFixed(0)} Points.`, "error");
+                showToast(`Minimum withdrawal is ${minWithdrawPoints.toFixed(0)} Points.`, "error");
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Request';
+                return;
             }
             if (amountInBTD > (currentUser.btdBalance || 0)) {
-                return showToast("Insufficient balance.", "error");
+                showToast("Insufficient balance.", "error");
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Request';
+                return;
             }
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
 
             const requestData = {
                 userId: currentUser.id, userName: currentUser.name, amount: amountInUSD, btdAmount: amountInBTD, currency: "USD", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
@@ -496,7 +545,8 @@
             
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
             
-            const users = Object.values(data).map(user => ({
+            const users = Object.entries(data).map(([id, user]) => ({
+                id: id,
                 name: user.name,
                 score: type === 'btd' ? (user.btdBalance || 0) : (user.referrals?.count || 0)
             }));
@@ -592,7 +642,7 @@
             const toast = document.getElementById('toast'); 
             if(toast){ 
                 toast.textContent = message; 
-                toast.style.backgroundColor = type === 'error' ? 'var(--error-color)' : '#333';
+                toast.style.backgroundColor = type === 'error' ? 'var(--error-color)' : 'rgba(0,0,0,0.8)';
                 toast.classList.add('show'); 
                 setTimeout(() => toast.classList.remove('show'), duration); 
             } 
