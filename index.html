@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Ad Network SDKs -->
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
     <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c273eb631018e08b894.js"></script>
@@ -29,14 +30,7 @@
         .initial-loading-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
-        .tg-verified-icon { width: 24px; height: 24px; margin-left: 8px; color: #40A7E3; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
-        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
-        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
-        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
-        .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
-        body.dark-mode .currency-selector .btn { color: var(--text-light); }
-        body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
@@ -56,8 +50,6 @@
         .input-field, .select-field { width: 100%; padding: 10px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); font-size: 0.95rem; margin-bottom: 10px; }
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
-        .history-item:last-child { border-bottom: none; } 
-        .history-item span:first-child { font-weight: 500; display: flex; align-items: center; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .leaderboard-badge { font-size: 1.2rem; margin-right: 8px; width: 25px; text-align: center;}
         .leaderboard-header { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 10px; padding: 0 15px; color: var(--text-secondary); font-size: 0.8rem; }
         .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
@@ -270,7 +262,7 @@
         function renderTasksPage() { 
             let tasksHtml = Object.entries(tasks).map(([taskId, task]) => { 
                 if (!task.enabled) return '';
-                let rewardDisplay = `${(task.rewardBTD || 0).toFixed(2)} Points`;
+                let rewardDisplay = `${(task.rewardPoints || 0).toFixed(2)} Points`;
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
             }).join(''); 
@@ -319,9 +311,11 @@
             const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); 
             const methods = methodsSnap.val() || {}; 
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
-            const minWithdrawPoints = (appSettings.minWithdrawUSD || 0) / (appSettings.btdToUsdRate || 0.01);
+            const pointsToBdtRate = appSettings.pointsToBdtRate || 0.1;
+            const minWithdrawBdt = appSettings.minWithdrawBdt || 50;
+            const minWithdrawPoints = minWithdrawBdt / pointsToBdtRate;
             let currentBalanceForWithdraw = (currentUser.btdBalance || 0).toFixed(2);
-            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw Points</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawPoints.toFixed(2)} Points.</p><p>Your balance: ${currentBalanceForWithdraw} Points.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
+            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw Points</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawBdt} BDT (${minWithdrawPoints.toFixed(0)} Points).</p><p>Your balance: ${currentBalanceForWithdraw} Points.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
         }
@@ -373,7 +367,7 @@
                 // Dummy Ad Logic - you can replace this with your ad network's functions
                 console.log(`Starting ad for task: ${task.name}, Network: ${task.network}`);
                 setTimeout(() => { // Simulating ad success
-                    const rewardPoints = parseFloat(task.rewardBTD) || 0;
+                    const rewardPoints = parseFloat(task.rewardPoints) || 0;
                     const updates = {};
                     if (rewardPoints > 0) {
                         updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardPoints);
@@ -429,16 +423,19 @@
             if (!method || !amountStr || isNaN(amountInPoints) || amountInPoints <= 0 || !account) {
                 return showToast("Please fill all fields correctly.", "error");
             }
-            const minWithdrawPoints = (appSettings.minWithdrawUSD || 0) / (appSettings.btdToUsdRate || 0.01);
+            const pointsToBdtRate = appSettings.pointsToBdtRate || 0.1;
+            const minWithdrawBdt = appSettings.minWithdrawBdt || 50;
+            const minWithdrawPoints = minWithdrawBdt / pointsToBdtRate;
+
             if (amountInPoints < minWithdrawPoints) {
-                return showToast(`Minimum withdrawal is ${minWithdrawPoints.toFixed(2)} Points.`, 'error');
+                return showToast(`Minimum withdrawal is ${minWithdrawPoints.toFixed(0)} Points.`, 'error');
             }
             if (amountInPoints > (currentUser.btdBalance || 0)) {
                 return showToast("Insufficient balance.", 'error');
             }
-            const amountInUSD = amountInPoints * (appSettings.btdToUsdRate || 0.01);
+            const amountInBDT = amountInPoints * pointsToBdtRate;
             const requestData = {
-                userId: currentUser.id, userName: currentUser.name, amount: amountInUSD, btdAmount: amountInPoints, currency: "Points", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
+                userId: currentUser.id, userName: currentUser.name, amount: amountInBDT, btdAmount: amountInPoints, currency: "BDT", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
             };
             database.ref('withdrawRequests').push(requestData).then(() => {
                 database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountInPoints));
@@ -486,8 +483,8 @@
                 let referrerId;
                 snapshot.forEach(childSnapshot => { referrerId = childSnapshot.key; });
                 if (referrerId === currentUser.id) { throw new Error("You cannot use your own referral code."); }
-                const refereeBonus = appSettings.referralBonus?.refereeBTD || 0;
-                const referrerBonus = appSettings.referralBonus?.referrerBTD || 0;
+                const refereeBonus = appSettings.referralBonus?.refereePoints || 0;
+                const referrerBonus = appSettings.referralBonus?.referrerPoints || 0;
                 const updates = {};
                 updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(refereeBonus);
                 updates[`/users/${currentUser.id}/referralApplied`] = true;
@@ -503,7 +500,7 @@
 
         function handleDailyBonus() { 
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Already claimed today."); 
-            const rewardPoints = appSettings.dailyBonus?.rewardBTD || 0;
+            const rewardPoints = appSettings.dailyBonus?.rewardPoints || 0;
             if (rewardPoints > 0) {
                 database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
                 database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
