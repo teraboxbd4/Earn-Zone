@@ -30,12 +30,6 @@
         .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .tg-verified-icon { width: 24px; height: 24px; margin-left: 8px; color: #40A7E3; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
-        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
-        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
-        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
-        .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
-        body.dark-mode .currency-selector .btn { color: var(--text-light); }
-        body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
@@ -77,10 +71,6 @@
     <div class="app-container">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
-            <div class="currency-selector">
-                <button id="showUsdBtn" class="btn">USD</button>
-                <button id="showBtdBtn" class="btn">BTD</button>
-            </div>
             <h1 class="header-title">Earn Zone <svg class="tg-verified-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,9.6L11.4,14.4L7.8,10.8L9.2,9.4L11.4,11.6L14.8,8.2L16.2,9.6Z"/></svg></h1>
         </div>
         <div class="profile-section">
@@ -89,6 +79,7 @@
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
                 <div class="main-balance-display" id="mainBalanceDisplay"></div>
                 <div class="stats-display">
+                    <div class="stat-item"><div class="stat-value" id="totalClicks">0</div><div class="stat-label">Total Clicks</div></div>
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
                     <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
                 </div>
@@ -166,14 +157,6 @@
                 item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
 
-            if (!localStorage.getItem('preferredCurrency')) {
-                localStorage.setItem('preferredCurrency', 'USD');
-            }
-            currentUser.preferredCurrency = localStorage.getItem('preferredCurrency');
-            
-            document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
-            document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
-
             loadInitialData(tgUser);
             setInterval(updateAllTimers, 1000);
         }
@@ -200,7 +183,7 @@
                     const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
                     const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                     userData = {
-                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, usdBalance: 0, btdWallet: 0, usdWallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0, incomeUSD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: [], isVerified: false
+                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, btdWallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, totalClicks: 0, dailyBonusClaimed: false }, claimedBonuses: [], isVerified: false
                     };
                     await userRef.set(userData);
                 }
@@ -212,21 +195,12 @@
                     return;
                 }
                 
-                currentUser.preferredCurrency = localStorage.getItem('preferredCurrency');
                 updateUI();
                 navigateTo('home', true);
 
                 userRef.on('value', (snap) => {
                     const dbUser = snap.val();
-                    const preferredCurrency = currentUser.preferredCurrency;
                     currentUser = { ...dbUser, id: userId };
-                    currentUser.preferredCurrency = preferredCurrency;
-                    
-                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-                    currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
-                    if (currentUser.referrals) {
-                         currentUser.referrals.incomeUSD = (currentUser.referrals.incomeBTD || 0) * btdToUsdRate;
-                    }
                     updateUI();
                 });
 
@@ -235,13 +209,6 @@
             }
         }
         
-        function setPreferredCurrency(currency) {
-            localStorage.setItem('preferredCurrency', currency);
-            currentUser.preferredCurrency = currency;
-            updateUI();
-            navigateTo(document.querySelector('.nav-item.active')?.dataset.page || 'home', true);
-        }
-
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
             if (!forceRender && currentActive && currentActive.dataset.page === page) return;
@@ -265,16 +232,11 @@
             document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
             
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+            
             const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
-            const showUsdBtn = document.getElementById('showUsdBtn');
-            const showBtdBtn = document.getElementById('showBtdBtn');
-            showUsdBtn.classList.toggle('active', currentUser.preferredCurrency === 'USD');
-            showBtdBtn.classList.toggle('active', currentUser.preferredCurrency !== 'USD');
-            if (currentUser.preferredCurrency === 'USD') {
-                mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${(currentUser.usdBalance || 0).toFixed(4)} USD`;
-            } else {
-                mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(2)} BTD`;
-            }
+            mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(0)} Points`;
+            
+            document.getElementById('totalClicks').textContent = currentUser.taskStats?.totalClicks || 0;
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
         }
@@ -283,13 +245,12 @@
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
         function checkVpnRequirement() { if (appSettings.vpnRequired) { tg.showAlert(appSettings.vpnNotice || "VPN is required."); return false; } return true; }
         
-        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('btd', '#leaderboard-list'); }
+        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('btd', '#leaderboard-list'); }
         
         function renderTasksPage() { 
-            const btdToUsdRate = appSettings.btdToUsdRate || 0.01; 
             let tasksHtml = Object.keys(tasks).map(taskId => { 
                 const task = tasks[taskId]; 
-                let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`;
+                let rewardDisplay = `${(task.rewardBTD || 0).toFixed(0)} Points`;
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
                 return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>` : ''; 
             }).join(''); 
@@ -298,11 +259,10 @@
         }
 
         function renderBonusPage() { 
-            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
             let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
                 const claimedBonuses = currentUser.claimedBonuses || [];
                 const isClaimed = claimedBonuses.includes(id); 
-                let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `+${((channel.rewardBTD || 0) * btdToUsdRate).toFixed(4)} USD` : `+${(channel.rewardBTD || 0).toFixed(2)} BTD`;
+                let rewardDisplay = `+${(channel.rewardBTD || 0).toFixed(0)} Points`;
                 const buttonText = isClaimed ? 'Claimed' : 'Join & Claim';
                 const buttonAction = isClaimed ? '' : `handleBonusClickAndVerify('${id}', '${channel.link}')`;
                 return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span><button class="btn" onclick="${buttonAction}" ${isClaimed ? 'disabled' : ''} id="bonusBtn_${id}">${buttonText}</button></li>` : ''; 
@@ -315,24 +275,18 @@
             const methods = methodsSnap.val() || {}; 
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
             const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
-            let minWithdrawDisplay = currentUser.preferredCurrency === 'USD' ? `${minWithdrawUSD.toFixed(2)} USD` : `${(minWithdrawUSD / (appSettings.btdToUsdRate || 0.01)).toFixed(2)} BTD`;
-            let currentBalanceForWithdraw = currentUser.preferredCurrency === 'USD' ? (currentUser.usdBalance || 0).toFixed(2) : (currentUser.btdBalance || 0).toFixed(2);
-            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw ${currentUser.preferredCurrency}</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawDisplay}.</p><p>Your balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in ${currentUser.preferredCurrency}" class="input-field" step="0.01"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            let minWithdrawDisplay = `${(minWithdrawUSD / btdToUsdRate).toFixed(0)} Points`;
+            let currentBalanceForWithdraw = (currentUser.btdBalance || 0).toFixed(0);
+            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw Points</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawDisplay}.</p><p>Your balance: ${currentBalanceForWithdraw} Points.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
         }
 
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
-            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-            let earnedDisplayBTD = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
-            let earnedDisplayUSD = ((currentUser.referrals?.incomeBTD || 0) * btdToUsdRate).toFixed(4);
-            let incomeStatHtml;
-            if (currentUser.preferredCurrency === 'USD') {
-                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayUSD} USD</div><div class="stat-label">USD Earned</div></div>`;
-            } else {
-                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayBTD} BTD</div><div class="stat-label">BTD Earned</div></div>`;
-            }
+            let earnedDisplayPoints = (currentUser.referrals?.incomeBTD || 0).toFixed(0);
+            let incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayPoints} Points</div><div class="stat-label">Points Earned</div></div>`;
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
             const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link directly with friends.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div><button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button></div>`;
@@ -355,7 +309,10 @@
             if (!task || !taskButton || taskButton.disabled) return;
             taskButton.disabled = true;
             taskButton.textContent = 'Loading Ad...';
+
             database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
+            database.ref(`users/${currentUser.id}/taskStats/totalClicks`).set(firebase.database.ServerValue.increment(1));
+
             let adPromise;
             try {
                 switch(task.network) {
@@ -373,7 +330,7 @@
                 const rewardBTD = parseFloat(task.rewardBTD) || 0;
                 if (rewardBTD > 0) {
                     database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
-                    showToast(`+${rewardBTD.toFixed(2)} BTD!`);
+                    showToast(`+${rewardBTD.toFixed(0)} Points!`);
                 }
                 const timerSeconds = parseInt(task.timer) || 0;
                 if (timerSeconds > 0) {
@@ -432,7 +389,7 @@
             database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
             claimedBonuses.push(channelId);
             database.ref(`users/${currentUser.id}/claimedBonuses`).set(claimedBonuses);
-            showToast(`+${rewardBTD.toFixed(2)} BTD Bonus!`);
+            showToast(`+${rewardBTD.toFixed(0)} Points Bonus!`);
             navigateTo('bonus', true);
         }
 
@@ -448,9 +405,8 @@
                 return; 
             } 
             historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
-                let displayAmount = currentUser.preferredCurrency === 'USD' ? (req.amount || 0).toFixed(2) : ((req.btdAmount || 0)).toFixed(2);
-                let displayCurrency = currentUser.preferredCurrency === 'USD' ? 'USD' : 'BTD';
-                return `<div class="history-item"><span>${displayAmount} ${displayCurrency} - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
+                let displayAmount = (req.btdAmount || 0).toFixed(0);
+                return `<div class="history-item"><span>${displayAmount} Points - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
             }).join(''); 
         }
 
@@ -463,10 +419,11 @@
                 return showToast("Please fill all fields correctly.");
             }
             const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
-            const amountInUSD = currentUser.preferredCurrency === 'USD' ? amount : amount * btdToUsdRate;
-            const amountInBTD = amountInUSD / btdToUsdRate;
+            const amountInBTD = amount; // Input is in Points (BTD)
+            const amountInUSD = amountInBTD * btdToUsdRate;
+
             if (amountInUSD < (appSettings.minWithdrawUSD || 0)) {
-                return showToast(`Minimum withdrawal is ${appSettings.minWithdrawUSD || 0} USD.`);
+                return showToast(`Minimum withdrawal is ${(appSettings.minWithdrawUSD / btdToUsdRate).toFixed(0)} Points.`);
             }
             if (amountInBTD > (currentUser.btdBalance || 0)) {
                 return showToast("Insufficient balance.");
@@ -483,7 +440,6 @@
             });
         }
 
-        // ########## লিডারবোর্ডের জন্য আপডেট করা ফাংশন ##########
         async function loadLeaderboard(type, elementId) { 
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
@@ -503,24 +459,19 @@
                 score: type === 'btd' ? (user.btdBalance || 0) : (user.referrals?.count || 0)
             }));
             
-            let headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'BALANCE' : 'REFERRALS'}</span></div>`;
+            let headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'POINTS' : 'REFERRALS'}</span></div>`;
 
             listEl.innerHTML = headerHtml + users.sort((a, b) => b.score - a.score).map((user, i) => {
                 let displayScore;
                 if (type === 'btd') {
-                    displayScore = currentUser.preferredCurrency === 'USD' 
-                        ? `${(user.score * (appSettings.btdToUsdRate || 0.01)).toFixed(4)} USD` 
-                        : `${user.score.toFixed(2)} BTD`;
+                    displayScore = `${user.score.toFixed(0)} Points`;
                 } else {
                     displayScore = `${user.score} Referrals`;
                 }
                 
                 let rankDisplay;
                 const rankNumber = i + 1;
-                const stylishRanks = {
-                    1: '🏆', 2: '🥈', 3: '🥉', 4: '❹', 5: '❺', 6: '❻', 7: '❼', 8: '❽', 9: '❾', 10: '❿'
-                };
-
+                const stylishRanks = { 1: '🏆', 2: '🥈', 3: '🥉', 4: '❹', 5: '❺', 6: '❻', 7: '❼', 8: '❽', 9: '❾', 10: '❿' };
                 if (stylishRanks[rankNumber]) {
                     rankDisplay = `<span class="leaderboard-badge">${stylishRanks[rankNumber]}</span>`;
                 } else {
@@ -541,7 +492,7 @@
             if (rewardBTD > 0) {
                 database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
                 database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
-                showToast(`+${rewardBTD.toFixed(2)} BTD Daily Bonus!`);
+                showToast(`+${rewardBTD.toFixed(0)} Points Daily Bonus!`);
             }
         }
         
