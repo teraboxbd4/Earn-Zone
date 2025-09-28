@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Ad Network SDKs -->
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
     <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c273eb631018e08b894.js"></script>
@@ -32,6 +31,12 @@
         .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .tg-verified-icon { width: 24px; height: 24px; margin-left: 8px; color: #40A7E3; }
         .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
+        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
+        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
+        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
+        .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
+        body.dark-mode .currency-selector .btn { color: var(--text-light); }
+        body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
@@ -132,11 +137,11 @@
         const tg = window.Telegram.WebApp;
         const BOT_USERNAME = "earn_zone_user_bot";
         
+        // Global variables
         let currentUser = {};
         let appSettings = {};
         let tasks = {};
         let socialTasksData = {};
-        let taskTimers = {};
         const mainContent = document.getElementById('mainContent');
 
         auth.onAuthStateChanged(user => {
@@ -192,13 +197,9 @@
                     await userRef.set(userData);
                 }
 
-                // Daily click reset logic
                 const today = new Date().toISOString().split('T')[0];
                 if (!userData.taskStats || userData.taskStats.lastResetDate !== today) {
-                    await userRef.child('taskStats').update({
-                        clicksToday: 0,
-                        lastResetDate: today
-                    });
+                    await userRef.child('taskStats').update({ clicksToday: 0, lastResetDate: today });
                     userData.taskStats.clicksToday = 0;
                     userData.taskStats.lastResetDate = today;
                 }
@@ -370,7 +371,6 @@
             taskButton.textContent = 'Loading Ad...';
             try {
                 // Dummy Ad Logic - you can replace this with your ad network's functions
-                // e.g., if(task.network === 'Monetag') window.show_9797628();
                 console.log(`Starting ad for task: ${task.name}, Network: ${task.network}`);
                 setTimeout(() => { // Simulating ad success
                     const rewardPoints = parseFloat(task.rewardBTD) || 0;
@@ -503,11 +503,11 @@
 
         function handleDailyBonus() { 
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Already claimed today."); 
-            const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
-            if (rewardBTD > 0) {
-                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
+            const rewardPoints = appSettings.dailyBonus?.rewardBTD || 0;
+            if (rewardPoints > 0) {
+                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
                 database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
-                showToast(`+${rewardBTD.toFixed(2)} Points Daily Bonus!`);
+                showToast(`+${rewardPoints.toFixed(2)} Points Daily Bonus!`);
             }
         }
         
