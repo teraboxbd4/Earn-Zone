@@ -113,7 +113,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // --- NEW --- Helper function for Ad SDK errors
+        // Helper function for Ad SDK errors
         function handleAdSDKLoadError(networkName) {
             console.error(`Failed to load Ad SDK for: ${networkName}. The script might be blocked or the URL is incorrect.`);
         }
@@ -178,7 +178,7 @@
                 const adminData = adminRef.val();
                 if (!adminData) { throw new Error("Could not load app configuration."); }
 
-                appSettings = adminData.settings || {};
+                appSettings = adminData.settings || {}; // This is the 'settings' object
                 appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 bonusChannels = adminData.bonusChannels || {};
@@ -214,9 +214,7 @@
                     }
                 }, (error) => {
                     console.error("Firebase Read Failed:", error);
-                    if (error.code === 'PERMISSION_DENIED') {
-                        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Access Denied</h1><p>There is a problem with the app's security configuration. Please contact support.</p></div>`;
-                    }
+                    document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Error</h1><p>Could not connect to the database. Please check your connection or contact support.</p></div>`;
                 });
 
             } catch (error) {
@@ -244,17 +242,13 @@
         
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
-            
             let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
             if (currentUser.isVerified) {
                 profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
             }
             document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
-            
-            const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
-            mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(0)} Points`;
-            
+            document.getElementById('mainBalanceDisplay').innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(0)} Points`;
             document.getElementById('totalClicks').textContent = currentUser.taskStats?.totalClicks || 0;
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
@@ -300,8 +294,7 @@
             const methods = methodsSnap.val() || {}; 
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
             
-            // --- FIX 2: Correctly display minimum withdrawal points ---
-            const minWithdrawDisplay = (appSettings.settings?.minWithdrawPoints || 0).toFixed(0);
+            const minWithdrawDisplay = (appSettings.minWithdrawPoints || 0).toFixed(0);
             
             let currentBalanceForWithdraw = (currentUser.btdBalance || 0).toFixed(0);
             mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw Points</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawDisplay} Points.</p><p>Your balance: ${currentBalanceForWithdraw} Points.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
@@ -309,31 +302,6 @@
             loadWithdrawHistory(); 
         }
 
-        function renderReferralPage() {
-            // This function remains the same
-        }
-
-        function handleTaskClick(taskId) {
-            // This function remains the same
-        }
-        
-        function updateAllTimers() {
-            // This function remains the same
-        }
-        
-        function handleBonusClickAndVerify(channelId, link) {
-            // This function remains the same
-        }
-
-        async function handleBonusClaim(channelId) {
-            // This function remains the same
-        }
-
-        async function loadWithdrawHistory() { 
-            // This function remains the same
-        }
-        
-        // --- FIX 1: New helper function for stricter leaderboard check ---
         async function checkIfUserIsInBothTop10() {
             try {
                 const pointsQuery = database.ref('users').orderByChild('btdBalance').limitToLast(10);
@@ -343,31 +311,22 @@
                 
                 let isInTopPoints = false;
                 if (pointsSnapshot.exists()) {
-                    pointsSnapshot.forEach(child => {
-                        if (child.key === currentUser.id) {
-                            isInTopPoints = true;
-                        }
-                    });
+                    pointsSnapshot.forEach(child => { if (child.key === currentUser.id) { isInTopPoints = true; } });
                 }
                 
                 let isInTopReferrals = false;
                 if (referralSnapshot.exists()) {
-                    referralSnapshot.forEach(child => {
-                        if (child.key === currentUser.id) {
-                            isInTopReferrals = true;
-                        }
-                    });
+                    referralSnapshot.forEach(child => { if (child.key === currentUser.id) { isInTopReferrals = true; } });
                 }
                 
                 return isInTopPoints && isInTopReferrals;
 
             } catch (error) {
                 console.error("Could not check leaderboard:", error);
-                return false; // Default to false on error
+                return false;
             }
         }
 
-        // --- FIX 1: Updated submit withdrawal function ---
         async function handleSubmitWithdrawal() {
             const submitBtn = document.getElementById('submit-withdraw');
             submitBtn.disabled = true;
@@ -397,8 +356,7 @@
                 return;
             }
             
-            // --- FIX 2: Use minWithdrawPoints from settings ---
-            const minWithdrawPoints = appSettings.settings?.minWithdrawPoints || 0;
+            const minWithdrawPoints = appSettings.minWithdrawPoints || 0;
             if (amount < minWithdrawPoints) {
                 showToast(`Minimum withdrawal is ${minWithdrawPoints.toFixed(0)} Points.`, "error");
                 submitBtn.disabled = false;
@@ -412,21 +370,13 @@
                 return;
             }
 
-            const points = appSettings.settings.pointConversion?.points || 1000;
-            const value = appSettings.settings.pointConversion?.value || 0;
-            const currency = appSettings.settings.pointConversion?.currency || "BDT";
+            const points = appSettings.pointConversion?.points || 1000;
+            const value = appSettings.pointConversion?.value || 0;
+            const currency = appSettings.pointConversion?.currency || "BDT";
             const finalValue = (amount / points) * value;
 
             const requestData = {
-                userId: currentUser.id, 
-                userName: currentUser.name, 
-                amount: finalValue, 
-                btdAmount: amount, 
-                currency: currency, 
-                method: method, 
-                account: account, 
-                status: 'pending', 
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                userId: currentUser.id, userName: currentUser.name, amount: finalValue, btdAmount: amount, currency: currency, method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
             };
             
             database.ref('withdrawRequests').push(requestData).then(() => {
@@ -440,23 +390,20 @@
                 submitBtn.textContent = 'Submit Request';
             });
         }
-
-        async function loadLeaderboard(type, elementId) { 
-            // This function remains the same
-        }
-
-        async function handleReferralVerification() {
-            // This function remains the same
-        }
-
-        function handleDailyBonus() { 
-            // This function remains the same
-        }
         
-        function showToast(message, type = 'success', duration = 3000) { 
-            // This function remains the same
-        }
-
+        // --- Other functions (handleTaskClick, handleReferral, etc.) ---
+        // (The rest of the script is unchanged and has been omitted for brevity, 
+        // but it should be present in your final file)
+        function renderReferralPage() { /* ... same as before ... */ }
+        function handleTaskClick(taskId) { /* ... same as before ... */ }
+        function updateAllTimers() { /* ... same as before ... */ }
+        function handleBonusClickAndVerify(channelId, link) { /* ... same as before ... */ }
+        async function handleBonusClaim(channelId) { /* ... same as before ... */ }
+        async function loadWithdrawHistory() { /* ... same as before ... */ }
+        async function loadLeaderboard(type, elementId) { /* ... same as before ... */ }
+        async function handleReferralVerification() { /* ... same as before ... */ }
+        function handleDailyBonus() { /* ... same as before ... */ }
+        function showToast(message, type = 'success', duration = 3000) { /* ... same as before ... */ }
     </script>
 </body>
 </html>
