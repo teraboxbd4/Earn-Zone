@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Ad Network SDKs -->
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
     <script async src="https://partner.adextra.io/jt/46b7db10880cb066d0b70c273eb631018e08b894.js"></script>
@@ -26,19 +25,24 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; transition: background-color var(--transition), color var(--transition); }
-        .app-container { max-width: 480px; margin: 0 auto; position: relative; display: none; }
-        .initial-loading-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
+        .app-container { max-width: 480px; margin: 0 auto; position: relative; }
         .header { height: 180px; background: var(--header-bg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
-        .header-title { display: inline-flex; align-items: center; font-size: 1.5rem; font-weight: 700; z-index: 2; }
-        .tg-verified-icon { width: 22px; height: 22px; margin-left: 6px; color: #40A7E3; }
-        .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; border: 1px solid var(--border-color); }
+        .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
+        .tg-verified-icon { width: 24px; height: 24px; margin-left: 8px; color: #40A7E3; }
+        .theme-toggle { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: var(--toggle-bg); display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid var(--border-color); }
+        .currency-selector { position: absolute; top: 20px; left: 20px; display: flex; background: var(--toggle-bg); border: 1px solid var(--border-color); border-radius: 50px; overflow: hidden; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: var(--transition); }
+        .currency-selector .btn { padding: 5px 12px; font-size: 0.75rem; font-weight: 500; border: none; background: none; color: var(--text-primary); transition: var(--transition); line-height: 1; }
+        .currency-selector .btn.active { background: var(--primary-color); color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
+        .currency-selector .btn:first-child { border-right: 1px solid var(--border-color); }
+        body.dark-mode .currency-selector .btn { color: var(--text-light); }
+        body:not(.dark-mode) .currency-selector .btn { color: var(--text-dark); }
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
         .profile-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; color: var(--text-primary); }
         .main-balance-display { display: inline-flex; align-items: center; background: rgba(74, 144, 226, 0.1); padding: 6px 15px; border-radius: 50px; font-weight: 600; color: var(--primary-color); font-size: 0.9rem; margin-top: 8px; }
-        .stats-display { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
-        .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center;}
+        .stats-display { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+        .stat-item { background: var(--bg-light); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); min-width: 70px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;}
         body.dark-mode .stat-item { background: var(--input-bg); }
         .stat-value { font-weight: 600; color: var(--text-primary); font-size: 1rem; }
         .stat-label { font-size: 0.7rem; color: var(--text-secondary); }
@@ -50,39 +54,33 @@
         .btn:disabled { background: #ccc; color: #888; cursor: not-allowed; }
         .input-field, .select-field { width: 100%; padding: 10px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-primary); font-size: 0.95rem; margin-bottom: 10px; }
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+        .channel-list { list-style: none; }
+        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); } .channel-item:last-child { border-bottom: none; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
+        .history-item:last-child { border-bottom: none; } 
+        .history-item span:first-child { font-weight: 500; display: flex; align-items: center; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .leaderboard-badge { font-size: 1.2rem; margin-right: 8px; width: 25px; text-align: center;}
         .leaderboard-header { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 10px; padding: 0 15px; color: var(--text-secondary); font-size: 0.8rem; }
         .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
+        .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; } .ad-modal-overlay.show { opacity: 1; pointer-events: all; }
+        .ad-modal { background: var(--card-bg); border-radius: var(--border-radius); width: 90%; max-width: 380px; padding: 25px; text-align: center; }
+        .ad-modal-title { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary-color); font-weight: 600; }
         .spinner { width: 45px; height: 45px; border: 3px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; margin: 15px auto; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+        .ad-timer-display { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); margin-top: 10px; }
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 30px; z-index: 1000; opacity: 0; transition: all 0.3s ease; } .toast.show { opacity: 1; bottom: 90px; }
         .verified-icon { color: #40A7E3; margin-left: 5px; font-size: 0.8em; }
-        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .grid-card { background: var(--bg-light); border-radius: var(--border-radius); padding: 20px; text-align: center; cursor: pointer; transition: var(--transition); border: 1px solid var(--border-color); }
-        body.dark-mode .grid-card { background: var(--input-bg); }
-        .grid-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .grid-card i { font-size: 2.5rem; margin-bottom: 15px; }
-        .grid-card h3 { font-size: 1.1rem; color: var(--text-primary); margin-bottom: 5px; }
-        .grid-card p { font-size: 0.8rem; color: var(--text-secondary); }
-        .fa-youtube { color: #FF0000; } .fa-facebook { color: #1877F2; } .fa-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%,#d6249f 60%,#285AEB 90%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .fa-telegram { color: #2AABEE; } .fa-tiktok { color: #010101; } .fa-twitter { color: #1DA1F2; } .fa-discord { color: #5865F2; } .fa-reddit-alien { color: #FF4500; }
-        body.dark-mode .fa-tiktok { color: #FFFFFF; }
-        .btn-link { background: none; border: none; color: var(--primary-color); font-size: 1.2rem; margin-right: 10px; cursor: pointer; padding: 0;}
-        .notice-card { background-color: rgba(74, 144, 226, 0.1); border-left: 4px solid var(--primary-color); padding: 15px; border-radius: var(--border-radius-sm); margin-bottom: 20px; }
-        .notice-card p { margin: 0; color: var(--primary-color); font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div id="initial-loading-screen" class="initial-loading-screen">
-        <div class="spinner"></div>
-        <p style="margin-top: 15px; color: var(--primary-color);">Loading App...</p>
-    </div>
-
     <div class="app-container">
         <div class="header">
             <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
+            <div class="currency-selector">
+                <button id="showUsdBtn" class="btn">USD</button>
+                <button id="showBtdBtn" class="btn">BTD</button>
+            </div>
             <h1 class="header-title">Earn Zone <svg class="tg-verified-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,9.6L11.4,14.4L7.8,10.8L9.2,9.4L11.4,11.6L14.8,8.2L16.2,9.6Z"/></svg></h1>
         </div>
         <div class="profile-section">
@@ -92,7 +90,6 @@
                 <div class="main-balance-display" id="mainBalanceDisplay"></div>
                 <div class="stats-display">
                     <div class="stat-item"><div class="stat-value" id="clicksToday">0</div><div class="stat-label">Clicks Today</div></div>
-                    <div class="stat-item"><div class="stat-value" id="totalClicks">0</div><div class="stat-label">Total Clicks</div></div>
                     <div class="stat-item"><div class="stat-value" id="ref-count">0</div><div class="stat-label">Referrals</div></div>
                 </div>
             </div>
@@ -101,9 +98,16 @@
         <div class="bottom-nav" id="bottomNav">
             <a href="#" class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
             <a href="#" class="nav-item" data-page="tasks"><i class="fas fa-tasks"></i><span>Tasks</span></a>
-            <a href="#" class="nav-item" data-page="social"><i class="fas fa-share-square"></i><span>Social Tasks</span></a>
+            <a href="#" class="nav-item" data-page="bonus"><i class="fas fa-gift"></i><span>Bonus</span></a>
             <a href="#" class="nav-item" data-page="withdraw"><i class="fas fa-wallet"></i><span>Withdraw</span></a>
             <a href="#" class="nav-item" data-page="referral"><i class="fas fa-share-alt"></i><span>Referral</span></a>
+        </div>
+        <div class="ad-modal-overlay" id="adModal">
+            <div class="ad-modal">
+                <h3 class="ad-modal-title" id="adModalTitle">Loading Ad...</h3>
+                <div class="spinner"></div>
+                <div class="ad-timer-display" id="adTimerDisplay"></div>
+            </div>
         </div>
         <div class="toast" id="toast"></div>
     </div>
@@ -129,202 +133,206 @@
         const database = firebase.database();
         const tg = window.Telegram.WebApp;
         const BOT_USERNAME = "earn_zone_user_bot";
-        
-        // Global variables
+
         let currentUser = {};
         let appSettings = {};
         let tasks = {};
-        let socialTasksData = {};
-        const mainContent = document.getElementById('mainContent');
+        let bonusChannels = {};
+        let taskTimers = {};
 
         auth.onAuthStateChanged(user => {
             if (user) {
                 initializeAppLogic(); 
             } else {
-                auth.signInAnonymously().catch(error => { document.body.innerHTML = `<p style="text-align:center;">Could not connect to server.</p>`; });
+                auth.signInAnonymously().catch(error => {
+                    document.body.innerHTML = `<p style="text-align:center;">Could not connect.</p>`;
+                });
             }
         });
 
         function initializeAppLogic() {
             tg.ready();
             tg.expand();
+            
             const tgUser = tg.initDataUnsafe?.user;
-            if (!tgUser) { document.body.innerHTML = "<p style='text-align:center;'>Please access through Telegram.</p>"; return; }
+            if (!tgUser) {
+                document.body.innerHTML = "<p style='text-align:center;'>Not in Telegram.</p>";
+                return;
+            }
 
-            const loadingScreen = document.getElementById('initial-loading-screen');
-            const appContainer = document.querySelector('.app-container');
-
-            loadInitialData(tgUser).then(() => {
-                loadingScreen.style.display = 'none';
-                appContainer.style.display = 'block';
-                applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
-                document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-                document.querySelectorAll('.nav-item').forEach(item => {
-                    item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
-                });
-            }).catch(error => {
-                loadingScreen.innerHTML = `<p style="color: red; padding:20px; text-align:center;">${error.message}</p>`;
+            applyTheme(localStorage.getItem('earnZoneTheme') || 'light');
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
             });
+
+            if (!localStorage.getItem('preferredCurrency')) {
+                localStorage.setItem('preferredCurrency', 'USD');
+            }
+            currentUser.preferredCurrency = localStorage.getItem('preferredCurrency');
+            
+            document.getElementById('showUsdBtn').addEventListener('click', () => setPreferredCurrency('USD'));
+            document.getElementById('showBtdBtn').addEventListener('click', () => setPreferredCurrency('BTD'));
+
+            loadInitialData(tgUser);
+            setInterval(updateAllTimers, 1000);
         }
 
         async function loadInitialData(tgUser) {
             try {
                 const adminRef = await database.ref('admin').once('value');
                 const adminData = adminRef.val();
-                if (!adminData) { throw new Error("Could not load app configuration. Please try again later."); }
+                if (!adminData) { throw new Error("Admin config not found."); }
 
                 appSettings = adminData.settings || {};
+                appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
-                socialTasksData = adminData.socialTasks || {};
+                bonusChannels = adminData.bonusChannels || {};
                 
                 const userId = tgUser.id.toString();
                 const userRef = database.ref('users/' + userId);
                 
-                let userData = (await userRef.once('value')).val();
+                const snapshot = await userRef.once('value');
+                let userData = snapshot.val();
                 
                 if (!userData) {
                     const currentTgName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`;
                     const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
                     const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                    userData = { name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0 }, taskStats: { clicksToday: 0, totalClicks: 0, lastResetDate: new Date().toISOString().split('T')[0] }, taskHistory: {}, globalTaskHistory: {} };
+                    userData = {
+                        name: currentTgName, photoUrl: currentTgPhoto, btdBalance: 0, usdBalance: 0, btdWallet: 0, usdWallet: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomeBTD: 0, incomeUSD: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, dailyBonusClaimed: false }, claimedBonuses: [], isVerified: false
+                    };
                     await userRef.set(userData);
-                }
-
-                const today = new Date().toISOString().split('T')[0];
-                if (!userData.taskStats || userData.taskStats.lastResetDate !== today) {
-                    await userRef.child('taskStats').update({ clicksToday: 0, lastResetDate: today });
-                    userData.taskStats.clicksToday = 0;
-                    userData.taskStats.lastResetDate = today;
                 }
 
                 currentUser = { id: userId, ...userData };
                 
-                if (currentUser.isBanned) { throw new Error("This account has been banned."); }
+                if (currentUser.isBanned) {
+                    document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;"><h1>Account Banned</h1></div>`;
+                    return;
+                }
                 
+                currentUser.preferredCurrency = localStorage.getItem('preferredCurrency');
                 updateUI();
                 navigateTo('home', true);
 
                 userRef.on('value', (snap) => {
                     const dbUser = snap.val();
-                    if (!dbUser) return;
-                    currentUser = { ...currentUser, ...dbUser };
+                    const preferredCurrency = currentUser.preferredCurrency;
+                    currentUser = { ...dbUser, id: userId };
+                    currentUser.preferredCurrency = preferredCurrency;
+                    
+                    const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+                    currentUser.usdBalance = (currentUser.btdBalance || 0) * btdToUsdRate;
+                    if (currentUser.referrals) {
+                         currentUser.referrals.incomeUSD = (currentUser.referrals.incomeBTD || 0) * btdToUsdRate;
+                    }
                     updateUI();
                 });
+
             } catch (error) {
-                console.error("Initialization failed:", error);
-                throw error;
+                document.body.innerHTML = `<p style="color: red; padding:20px;">${error.message}</p>`;
             }
         }
         
-        function navigateTo(page, forceRender = false, data = null) {
+        function setPreferredCurrency(currency) {
+            localStorage.setItem('preferredCurrency', currency);
+            currentUser.preferredCurrency = currency;
+            updateUI();
+            navigateTo(document.querySelector('.nav-item.active')?.dataset.page || 'home', true);
+        }
+
+        function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
-            if (!forceRender && currentActive && currentActive.dataset.page === page && !data) return;
+            if (!forceRender && currentActive && currentActive.dataset.page === page) return;
+
+            document.querySelector('.nav-item.active')?.classList.remove('active');
+            document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
             
-            const isSubPage = !!data;
-            if (!isSubPage) {
-                document.querySelectorAll('.nav-item.active')?.forEach(el => el.classList.remove('active'));
-                const newActive = document.querySelector(`.nav-item[data-page="${page}"]`);
-                if (newActive) newActive.classList.add('active');
-            }
-            
-            const pages = { 
-                home: renderHomePage, 
-                tasks: renderTasksPage, 
-                social: renderSocialTasksPage,
-                withdraw: renderWithdrawPage, 
-                referral: renderReferralPage 
-            };
+            const pages = { home: renderHomePage, tasks: renderTasksPage, bonus: renderBonusPage, withdraw: renderWithdrawPage, referral: renderReferralPage };
             if (pages[page]) {
-                pages[page](data);
+                pages[page]();
             }
         }
         
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
-
+            
             let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
-            if (currentUser.isVerified) { profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>'; }
+            if (currentUser.isVerified) {
+                profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
+            }
             document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
+            
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
-            
             const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
-            mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(2)} Points`;
-            
+            const showUsdBtn = document.getElementById('showUsdBtn');
+            const showBtdBtn = document.getElementById('showBtdBtn');
+            showUsdBtn.classList.toggle('active', currentUser.preferredCurrency === 'USD');
+            showBtdBtn.classList.toggle('active', currentUser.preferredCurrency !== 'USD');
+            if (currentUser.preferredCurrency === 'USD') {
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-dollar-sign"></i> ${(currentUser.usdBalance || 0).toFixed(4)} USD`;
+            } else {
+                mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.btdBalance || 0).toFixed(2)} BTD`;
+            }
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
-            document.getElementById('totalClicks').textContent = currentUser.taskStats?.totalClicks || 0;
             document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
         }
 
         function applyTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; localStorage.setItem('earnZoneTheme', theme); }
         function toggleTheme() { applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'); }
+        function checkVpnRequirement() { if (appSettings.vpnRequired) { tg.showAlert(appSettings.vpnNotice || "VPN is required."); return false; } return true; }
         
-        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('btd', '#leaderboard-list'); }
+        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> BTD Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('btd', '#leaderboard-list'); }
         
         function renderTasksPage() { 
-            let tasksHtml = Object.entries(tasks).map(([taskId, task]) => { 
-                if (!task.enabled) return '';
-                let rewardDisplay = `${(task.rewardPoints || 0).toFixed(2)} Points`;
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01; 
+            let tasksHtml = Object.keys(tasks).map(taskId => { 
+                const task = tasks[taskId]; 
+                let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `${(task.rewardBTD * btdToUsdRate).toFixed(4)} USD` : `${(task.rewardBTD || 0).toFixed(2)} BTD`;
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button>`;
-                return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
+                return task.enabled ? `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>` : ''; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p style="text-align:center;">No tasks available.</p>'}`;
+            updateAllTimers();
         }
 
-        function renderSocialTasksPage(data = null) {
-            let contentHtml = '';
-            const platforms = socialTasksData.platforms || {};
-
-            if (!data) {
-                contentHtml = `<div class="task-card"><h2 class="section-title"><i class="fas fa-share-square"></i> Choose a Platform</h2><p>${socialTasksData.mainNotice || 'Select a social media platform to find available tasks.'}</p></div><div class="grid-container">`;
-                for (const key in platforms) {
-                    const platform = platforms[key];
-                    if(platform.enabled){
-                        contentHtml += `<div class="grid-card" onclick="navigateTo('social', true, '${key}')"><i class="fab ${platform.icon}"></i><h3>${platform.name}</h3><p>${platform.jobs || 0} Jobs Available</p></div>`;
-                    }
-                }
-                contentHtml += `</div>`;
-            } else if (platforms[data] && !data.includes('_')) {
-                const platform = platforms[data];
-                contentHtml = `<div class="task-card"><h2 class="section-title"><button class="btn-link" onclick="navigateTo('social', true)"><i class="fas fa-arrow-left"></i></button><i class="fab ${platform.icon} fa-fw" style="margin: 0 10px;"></i> ${platform.name} Tasks</h2><p>${platform.subcategoryNotice || 'Select a category to see the available jobs.'}</p></div><div class="grid-container">`;
-                if(platform.subcategories){
-                    for (const key in platform.subcategories){
-                        const sub = platform.subcategories[key];
-                        if(sub.enabled){
-                           contentHtml += `<div class="grid-card" onclick="navigateTo('social', true, '${data}_${key}')"><i class="fas ${sub.icon}"></i><h3>${sub.name}</h3><p>${sub.jobs || 0}+ Jobs</p></div>`;
-                        }
-                    }
-                }
-                contentHtml += `</div>`;
-            } else if (data.includes('_')) {
-                const [platformKey, subcatKey] = data.split('_');
-                const platform = platforms[platformKey];
-                const subcategory = platform.subcategories[subcatKey];
-                contentHtml = `<div class="task-card">
-                    <h2 class="section-title"><button class="btn-link" onclick="navigateTo('social', true, '${platformKey}')"><i class="fas fa-arrow-left"></i></button>${subcategory.name} Jobs</h2>
-                    <div class="notice-card"><p><b>Instructions:</b> ${subcategory.jobNotice || 'Please follow the task instructions carefully. Submit the required proof to get your reward.'}</p></div>
-                    <p style="text-align: center; margin-top: 30px;">This is where the list of ${subcategory.name} jobs will appear. <br><br><strong>This feature is under development and will be available soon!</strong></p>
-                </div>`;
-            }
-            mainContent.innerHTML = contentHtml;
+        function renderBonusPage() { 
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            let channelsHtml = Object.entries(bonusChannels).map(([id, channel]) => { 
+                const claimedBonuses = currentUser.claimedBonuses || [];
+                const isClaimed = claimedBonuses.includes(id); 
+                let rewardDisplay = currentUser.preferredCurrency === 'USD' ? `+${((channel.rewardBTD || 0) * btdToUsdRate).toFixed(4)} USD` : `+${(channel.rewardBTD || 0).toFixed(2)} BTD`;
+                const buttonText = isClaimed ? 'Claimed' : 'Join & Claim';
+                const buttonAction = isClaimed ? '' : `handleBonusClickAndVerify('${id}', '${channel.link}')`;
+                return channel.enabled ? `<li class="channel-item"><span><i class="${channel.icon || 'fas fa-gift'}"></i> ${channel.name} (${rewardDisplay})</span><button class="btn" onclick="${buttonAction}" ${isClaimed ? 'disabled' : ''} id="bonusBtn_${id}">${buttonText}</button></li>` : ''; 
+            }).join(''); 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.bonus || 'Join channels for extra rewards!'}</p></div><div class="task-card"><h2><i class="fas fa-award"></i> Bonus Rewards</h2><ul class="channel-list" style="margin-top:15px;">${channelsHtml || '<p>No bonuses available.</p>'}</ul></div>`; 
         }
 
         async function renderWithdrawPage() { 
             const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); 
             const methods = methodsSnap.val() || {}; 
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
-            const pointsToBdtRate = appSettings.pointsToBdtRate || 0.1;
-            const minWithdrawBdt = appSettings.minWithdrawBdt || 50;
-            const minWithdrawPoints = minWithdrawBdt / pointsToBdtRate;
-            let currentBalanceForWithdraw = (currentUser.btdBalance || 0).toFixed(2);
-            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw Points</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawBdt} BDT (${minWithdrawPoints.toFixed(0)} Points).</p><p>Your balance: ${currentBalanceForWithdraw} Points.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in Points" class="input-field"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
+            const minWithdrawUSD = appSettings.minWithdrawUSD || 0;
+            let minWithdrawDisplay = currentUser.preferredCurrency === 'USD' ? `${minWithdrawUSD.toFixed(2)} USD` : `${(minWithdrawUSD / (appSettings.btdToUsdRate || 0.01)).toFixed(2)} BTD`;
+            let currentBalanceForWithdraw = currentUser.preferredCurrency === 'USD' ? (currentUser.usdBalance || 0).toFixed(2) : (currentUser.btdBalance || 0).toFixed(2);
+            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title">Withdraw ${currentUser.preferredCurrency}</h2><p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawDisplay}.</p><p>Your balance: ${currentBalanceForWithdraw} ${currentUser.preferredCurrency}.</p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in ${currentUser.preferredCurrency}" class="input-field" step="0.01"><input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit Request</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
         }
 
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
-            let earnedDisplayPoints = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
-            let incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayPoints} Points</div><div class="stat-label">Points Earned</div></div>`;
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            let earnedDisplayBTD = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
+            let earnedDisplayUSD = ((currentUser.referrals?.incomeBTD || 0) * btdToUsdRate).toFixed(4);
+            let incomeStatHtml;
+            if (currentUser.preferredCurrency === 'USD') {
+                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayUSD} USD</div><div class="stat-label">USD Earned</div></div>`;
+            } else {
+                incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayBTD} BTD</div><div class="stat-label">BTD Earned</div></div>`;
+            }
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
             const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link directly with friends.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div><button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button></div>`;
@@ -340,70 +348,98 @@
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
-        function checkTaskLimits(taskId, task) {
-            const now = new Date();
-            const dateKey = now.toISOString().split('T')[0];
-            const hourKey = `${dateKey}T${now.getUTCHours()}`;
-            const hourlyLimit = appSettings.globalHourlyLimit || 999;
-            const dailyLimit = appSettings.globalDailyLimit || 999;
-            const taskLimit = task.limit || 999;
-            const hourlyCount = currentUser.globalTaskHistory?.hourly?.[hourKey] || 0;
-            if (hourlyCount >= hourlyLimit) { return `Hourly limit of ${hourlyLimit} tasks reached. Please try again next hour.`; }
-            const dailyCount = currentUser.globalTaskHistory?.daily?.[dateKey] || 0;
-            if (dailyCount >= dailyLimit) { return `Daily limit of ${dailyLimit} tasks reached. Please try again tomorrow.`; }
-            const taskDailyCount = currentUser.taskHistory?.[taskId]?.daily?.[dateKey] || 0;
-            if (taskDailyCount >= taskLimit) { return `You have completed this task ${taskLimit} times today. Please try another task.`; }
-            return null;
-        }
-
         function handleTaskClick(taskId) {
+            if (!checkVpnRequirement()) return;
             const task = tasks[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             if (!task || !taskButton || taskButton.disabled) return;
-            const limitError = checkTaskLimits(taskId, task);
-            if (limitError) { return showToast(limitError, 'error'); }
             taskButton.disabled = true;
             taskButton.textContent = 'Loading Ad...';
+            database.ref(`users/${currentUser.id}/taskStats/clicksToday`).set(firebase.database.ServerValue.increment(1));
+            let adPromise;
             try {
-                // Dummy Ad Logic - you can replace this with your ad network's functions
-                console.log(`Starting ad for task: ${task.name}, Network: ${task.network}`);
-                setTimeout(() => { // Simulating ad success
-                    const rewardPoints = parseFloat(task.rewardPoints) || 0;
-                    const updates = {};
-                    if (rewardPoints > 0) {
-                        updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardPoints);
-                    }
-                    const now = new Date();
-                    const dateKey = now.toISOString().split('T')[0];
-                    const hourKey = `${dateKey}T${now.getUTCHours()}`;
-                    updates[`/users/${currentUser.id}/taskHistory/${taskId}/lastClicked`] = firebase.database.ServerValue.TIMESTAMP;
-                    updates[`/users/${currentUser.id}/taskHistory/${taskId}/daily/${dateKey}`] = firebase.database.ServerValue.increment(1);
-                    updates[`/users/${currentUser.id}/globalTaskHistory/daily/${dateKey}`] = firebase.database.ServerValue.increment(1);
-                    updates[`/users/${currentUser.id}/globalTaskHistory/hourly/${hourKey}`] = firebase.database.ServerValue.increment(1);
-                    updates[`/users/${currentUser.id}/taskStats/clicksToday`] = firebase.database.ServerValue.increment(1);
-                    updates[`/users/${currentUser.id}/taskStats/totalClicks`] = firebase.database.ServerValue.increment(1);
-                    
-                    database.ref().update(updates).then(() => {
-                        showToast(`+${rewardPoints.toFixed(2)} Points!`);
-                        taskButton.disabled = false;
-                        taskButton.textContent = 'Start Task';
-                    }).catch(err => {
-                        showToast("Error updating data. Try again.", "error");
-                        taskButton.disabled = false;
-                        taskButton.textContent = 'Start Task';
-                    });
-                }, 2000);
+                switch(task.network) {
+                    case 'Monetag': adPromise = window.show_9797628 && window.show_9797628(); break;
+                    case 'Gigapub': adPromise = window.showGiga && window.showGiga(); break;
+                    case 'Adexora': adPromise = window.showAdexora && window.showAdexora(); break;
+                    case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
+                    default: adPromise = Promise.reject('Unknown network');
+                }
+                if (!adPromise || typeof adPromise.then !== 'function') { throw new Error(`SDK for ${task.network} failed.`); }
             } catch (e) {
-                showToast("Ad failed to load. Please try again.", "error");
-                taskButton.disabled = false;
-                taskButton.textContent = 'Start Task';
+                adPromise = Promise.reject(e);
+            }
+            Promise.resolve(adPromise).then(() => {
+                const rewardBTD = parseFloat(task.rewardBTD) || 0;
+                if (rewardBTD > 0) {
+                    database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
+                    showToast(`+${rewardBTD.toFixed(2)} BTD!`);
+                }
+                const timerSeconds = parseInt(task.timer) || 0;
+                if (timerSeconds > 0) {
+                    taskTimers[taskId] = Date.now() + timerSeconds * 1000;
+                    updateAllTimers();
+                } else {
+                    taskButton.disabled = false;
+                    taskButton.textContent = 'Start Task';
+                }
+            }).catch(err => {
+                showToast("Ad failed. Please try again.");
+                delete taskTimers[taskId];
+                if (taskButton) {
+                    taskButton.disabled = false;
+                    taskButton.textContent = 'Start Task';
+                }
+            });
+        }
+        
+        function updateAllTimers() {
+            const now = Date.now();
+            for (const taskId in taskTimers) {
+                const endTime = taskTimers[taskId];
+                const taskButton = document.getElementById(`taskBtn_${taskId}`);
+                if (taskButton) {
+                    if (endTime > now) {
+                        const secondsLeft = Math.ceil((endTime - now) / 1000);
+                        taskButton.textContent = `Wait ${secondsLeft}s`;
+                        taskButton.disabled = true;
+                    } else {
+                        taskButton.textContent = 'Start Task';
+                        taskButton.disabled = false;
+                        delete taskTimers[taskId];
+                    }
+                }
             }
         }
         
+        function handleBonusClickAndVerify(channelId, link) {
+            tg.openTelegramLink(link);
+            showToast("After joining, click the 'Claim' button.", 5000);
+            const bonusBtn = document.getElementById(`bonusBtn_${channelId}`);
+            if(bonusBtn) {
+                bonusBtn.textContent = 'Claim';
+                bonusBtn.setAttribute('onclick', `handleBonusClaim('${channelId}')`);
+            }
+        }
+
+        function handleBonusClaim(channelId) {
+            const claimedBonuses = currentUser.claimedBonuses || [];
+            if(claimedBonuses.includes(channelId)) {
+                showToast("Already claimed!");
+                return;
+            }
+            const rewardBTD = bonusChannels[channelId].rewardBTD || 0;
+            database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
+            claimedBonuses.push(channelId);
+            database.ref(`users/${currentUser.id}/claimedBonuses`).set(claimedBonuses);
+            showToast(`+${rewardBTD.toFixed(2)} BTD Bonus!`);
+            navigateTo('bonus', true);
+        }
+
         async function loadWithdrawHistory() { 
             const historyEl = document.getElementById('withdraw-history'); 
             if(!historyEl) return; 
-            historyEl.innerHTML = '<div class="spinner"></div>'; 
+            historyEl.innerHTML = '<p>Loading...</p>'; 
             const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); 
             const snapshot = await historyRef.once('value'); 
             const historyData = snapshot.val() || {}; 
@@ -412,7 +448,9 @@
                 return; 
             } 
             historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
-                return `<div class="history-item"><span>${(req.btdAmount || 0).toFixed(2)} Points - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
+                let displayAmount = currentUser.preferredCurrency === 'USD' ? (req.amount || 0).toFixed(2) : ((req.btdAmount || 0)).toFixed(2);
+                let displayCurrency = currentUser.preferredCurrency === 'USD' ? 'USD' : 'BTD';
+                return `<div class="history-item"><span>${displayAmount} ${displayCurrency} - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
             }).join(''); 
         }
 
@@ -420,107 +458,97 @@
             const method = document.getElementById('withdraw-method').value;
             const amountStr = document.getElementById('withdraw-amount').value;
             const account = document.getElementById('withdraw-account').value.trim();
-            const amountInPoints = parseFloat(amountStr);
-            if (!method || !amountStr || isNaN(amountInPoints) || amountInPoints <= 0 || !account) {
-                return showToast("Please fill all fields correctly.", "error");
+            const amount = parseFloat(amountStr);
+            if (!method || !amountStr || isNaN(amount) || amount <= 0 || !account) {
+                return showToast("Please fill all fields correctly.");
             }
-            const pointsToBdtRate = appSettings.pointsToBdtRate || 0.1;
-            const minWithdrawBdt = appSettings.minWithdrawBdt || 50;
-            const minWithdrawPoints = minWithdrawBdt / pointsToBdtRate;
-
-            if (amountInPoints < minWithdrawPoints) {
-                return showToast(`Minimum withdrawal is ${minWithdrawPoints.toFixed(0)} Points.`, 'error');
+            const btdToUsdRate = appSettings.btdToUsdRate || 0.01;
+            const amountInUSD = currentUser.preferredCurrency === 'USD' ? amount : amount * btdToUsdRate;
+            const amountInBTD = amountInUSD / btdToUsdRate;
+            if (amountInUSD < (appSettings.minWithdrawUSD || 0)) {
+                return showToast(`Minimum withdrawal is ${appSettings.minWithdrawUSD || 0} USD.`);
             }
-            if (amountInPoints > (currentUser.btdBalance || 0)) {
-                return showToast("Insufficient balance.", 'error');
+            if (amountInBTD > (currentUser.btdBalance || 0)) {
+                return showToast("Insufficient balance.");
             }
-            const amountInBDT = amountInPoints * pointsToBdtRate;
             const requestData = {
-                userId: currentUser.id, userName: currentUser.name, amount: amountInBDT, btdAmount: amountInPoints, currency: "BDT", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
+                userId: currentUser.id, userName: currentUser.name, amount: amountInUSD, btdAmount: amountInBTD, currency: "USD", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
             };
             database.ref('withdrawRequests').push(requestData).then(() => {
-                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountInPoints));
+                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountInBTD));
                 showToast("Withdrawal request submitted!");
                 navigateTo('withdraw', true);
             }).catch(err => {
-                showToast("Error submitting request.", 'error');
+                showToast("Error submitting request.");
             });
         }
 
+        // ########## লিডারবোর্ডের জন্য আপডেট করা ফাংশন ##########
         async function loadLeaderboard(type, elementId) { 
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
-            listEl.innerHTML = '<div class="spinner"></div>'; 
-            const query = (type === 'btd') ? database.ref('users').orderByChild('btdBalance') : database.ref('users').orderByChild('referrals/count');
+            listEl.innerHTML = "<p>Loading...</p>"; 
+            
+            const query = (type === 'btd') 
+                ? database.ref('users').orderByChild('btdBalance') 
+                : database.ref('users').orderByChild('referrals/count');
+                
             const snapshot = await query.limitToLast(10).once('value'); 
             const data = snapshot.val(); 
+            
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
+            
             const users = Object.values(data).map(user => ({
                 name: user.name,
                 score: type === 'btd' ? (user.btdBalance || 0) : (user.referrals?.count || 0)
             }));
-            let headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'POINTS' : 'REFERRALS'}</span></div>`;
+            
+            let headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'BALANCE' : 'REFERRALS'}</span></div>`;
+
             listEl.innerHTML = headerHtml + users.sort((a, b) => b.score - a.score).map((user, i) => {
-                let displayScore = (type === 'btd') ? `${user.score.toFixed(2)} Points` : `${user.score} Referrals`;
+                let displayScore;
+                if (type === 'btd') {
+                    displayScore = currentUser.preferredCurrency === 'USD' 
+                        ? `${(user.score * (appSettings.btdToUsdRate || 0.01)).toFixed(4)} USD` 
+                        : `${user.score.toFixed(2)} BTD`;
+                } else {
+                    displayScore = `${user.score} Referrals`;
+                }
+                
+                let rankDisplay;
                 const rankNumber = i + 1;
-                const stylishRanks = { 1: '🏆', 2: '🥈', 3: '🥉', 4: '❹', 5: '❺', 6: '❻', 7: '❼', 8: '❽', 9: '❾', 10: '❿' };
-                let rankDisplay = stylishRanks[rankNumber] ? `<span class="leaderboard-badge">${stylishRanks[rankNumber]}</span>` : `<b style="width:25px;text-align:center;margin-right:8px;">#${rankNumber}</b>`;
+                const stylishRanks = {
+                    1: '🏆', 2: '🥈', 3: '🥉', 4: '❹', 5: '❺', 6: '❻', 7: '❼', 8: '❽', 9: '❾', 10: '❿'
+                };
+
+                if (stylishRanks[rankNumber]) {
+                    rankDisplay = `<span class="leaderboard-badge">${stylishRanks[rankNumber]}</span>`;
+                } else {
+                    rankDisplay = `<b style="width: 25px; text-align: center; margin-right: 8px;">#${rankNumber}</b>`;
+                }
+                
                 return `<div class="history-item"><span>${rankDisplay} ${user.name}</span><span>${displayScore}</span></div>`;
             }).join(''); 
         }
-        
+
         async function handleReferralVerification() {
-            const verifyBtn = document.getElementById('verifyReferralBtn');
-            const codeInput = document.getElementById('referralCodeInput');
-            const enteredCode = codeInput.value.trim().toUpperCase();
-            if (!enteredCode) { return showToast("Please enter a referral code.", "error"); }
-            if (enteredCode === currentUser.referralCode) { return showToast("You cannot use your own referral code.", "error"); }
-            if (currentUser.referralApplied) { return showToast("You have already applied a referral code.", "error"); }
-            verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying...';
-            try {
-                const usersRef = database.ref('users');
-                const snapshot = await usersRef.orderByChild('referralCode').equalTo(enteredCode).once('value');
-                if (!snapshot.exists()) { throw new Error("Invalid or non-existent referral code."); }
-                let referrerId;
-                snapshot.forEach(childSnapshot => { referrerId = childSnapshot.key; });
-                if (referrerId === currentUser.id) { throw new Error("You cannot use your own referral code."); }
-                const refereeBonus = appSettings.referralBonus?.refereePoints || 0;
-                const referrerBonus = appSettings.referralBonus?.referrerPoints || 0;
-                const updates = {};
-                updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(refereeBonus);
-                updates[`/users/${currentUser.id}/referralApplied`] = true;
-                updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(referrerBonus);
-                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
-                updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(referrerBonus);
-                await database.ref().update(updates);
-                showToast(`Success! You received ${refereeBonus} Points as a bonus!`, 'success');
-                document.getElementById('referralVerifyBox').style.display = 'none';
-            } catch (error) { showToast(error.message, "error");
-            } finally { verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; }
+            // Your referral verification logic here
         }
 
         function handleDailyBonus() { 
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Already claimed today."); 
-            const rewardPoints = appSettings.dailyBonus?.rewardPoints || 0;
-            if (rewardPoints > 0) {
-                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
+            const rewardBTD = appSettings.dailyBonus?.rewardBTD || 0;
+            if (rewardBTD > 0) {
+                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(rewardBTD));
                 database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
-                showToast(`+${rewardPoints.toFixed(2)} Points Daily Bonus!`);
+                showToast(`+${rewardBTD.toFixed(2)} BTD Daily Bonus!`);
             }
         }
         
-        function showToast(message, type = 'success', duration = 3000) { 
-            const toast = document.getElementById('toast'); 
-            if(toast){ 
-                toast.textContent = message; 
-                toast.className = `toast show ${type}`;
-                setTimeout(() => { toast.className = 'toast'; }, duration); 
-            } 
-        }
+        function openAdModal(title) { document.getElementById('adModalTitle').textContent = title; document.getElementById('adModal').classList.add('show'); }
+        function closeAdModal() { document.getElementById('adModal').classList.remove('show'); }
+        function showToast(message, duration = 3000) { const toast = document.getElementById('toast'); if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } }
 
-    </script>
-</body>
-</html>
     </script>
 </body>
 </html>
