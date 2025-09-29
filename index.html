@@ -73,7 +73,7 @@
         
         /* Iframe Task Styles */
         .iframe-task-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--card-bg); z-index: 2000; display: flex; flex-direction: column; }
-        .iframe-task-header { padding: 10px; background: var(--primary-color); color: white; text-align: center; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .iframe-task-header { padding: 10px; background: var(--primary-color); color: white; text-align: center; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.2); position: relative; z-index: 1; }
         .iframe-task-header .timer { font-size: 1.2rem; }
         #task-iframe { flex-grow: 1; border: none; }
     </style>
@@ -308,14 +308,13 @@
                             </div>
                         </div>`;
             }).join('');
-            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-star"></i> Special Tasks</h2><p>Click on a task, wait for the timer to finish, and earn rewards!</p></div>${tasksHtml || '<p style="text-align:center;">No special tasks available right now.</p>'}`;
+            mainContent.innerHTML = `<div class="task-card"><h2 class="section-title"><i class="fas fa-star"></i> Special Tasks</h2><p>Click on a task to view it inside the app.</p></div>${tasksHtml || '<p style="text-align:center;">No special tasks available right now.</p>'}`;
         }
 
         function handleSpecialTaskClick(taskId) {
             const task = specialTasks[taskId];
             if (!task || !task.link) return showToast("Task link is missing.", "error");
 
-            // Hide main app view and show iframe container
             const appContainer = document.querySelector('.app-container');
             const iframeContainer = document.createElement('div');
             iframeContainer.className = 'iframe-task-container';
@@ -342,12 +341,12 @@
                     clearInterval(specialTaskInterval);
                     specialTaskInterval = null;
                     
-                    // Reward user
                     database.ref(`users/${currentUser.id}/pointsBalance`).set(firebase.database.ServerValue.increment(task.rewardPoints));
                     showToast(`+${task.rewardPoints.toFixed(2)} Points rewarded!`, 'success');
                     
-                    // Remove iframe and show app again
-                    document.body.removeChild(iframeContainer);
+                    if (document.body.contains(iframeContainer)) {
+                        document.body.removeChild(iframeContainer);
+                    }
                     appContainer.style.display = 'block';
                     navigateTo('special-tasks', true);
                 }
