@@ -68,6 +68,12 @@
         .notification-item:last-child { border-bottom: none; }
         .notification-item.unread p:first-child { font-weight: bold; color: var(--text-primary); }
         .notification-item small { font-size: 0.75rem; color: var(--text-secondary); }
+        /* Referral Stats New Design */
+        .referral-stats-container { display: flex; flex-direction: column; gap: 10px; }
+        .referral-stat-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); padding: 12px 15px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); }
+        body.dark-mode .referral-stat-item { background: var(--input-bg); }
+        .referral-stat-item .label { font-weight: 500; color: var(--text-secondary); }
+        .referral-stat-item .value { font-weight: 600; color: var(--text-primary); }
     </style>
 </head>
 <body>
@@ -375,15 +381,49 @@
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
             let earnedDisplayPoints = (currentUser.referrals?.incomeBTD || 0).toFixed(2);
-            let incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayPoints} Points</div><div class="stat-label">Points Earned</div></div>`;
-            const referralCode = currentUser.referralCode || '';
-            const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
-            const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link directly with friends.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div><button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button></div>`;
-            const referralCodeBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2><p style="margin-bottom: 15px;">Or, have friends enter this code manually.</p><div class="input-group"><input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold;"><button class="btn" id="copyReferralCodeBtn">Copy</button></div></div>`;
-            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2 class="section-title">Referral Verify Box</h2><p style="margin-bottom: 15px;">Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
-            mainContent.innerHTML = `${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}${referralLinkBox}${referralCodeBox}${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>${incomeStatHtml}</div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
+            const referralLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.referralCode}`;
+            
+            mainContent.innerHTML = `
+                <div class="task-card">
+                    <p>${appSettings.notices?.referral || 'Share your code with friends. When they verify it, you both earn bonus points!'}</p>
+                </div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
+                    <div class="input-group">
+                        <input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly>
+                        <button class="btn" id="copyReferralLinkBtn">Copy</button>
+                    </div>
+                    <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button>
+                </div>
+                ${!currentUser.referralApplied ? `
+                <div class="task-card" id="referralVerifyBox">
+                    <h2 class="section-title">Referral Verify Box</h2>
+                    <p>Enter a friend's code to get a bonus!</p>
+                    <div class="input-group">
+                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
+                        <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
+                    </div>
+                </div>` : ''}
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
+                    <div class="referral-stats-container">
+                        <div class="referral-stat-item">
+                            <span class="label">Total Referrals</span>
+                            <span class="value">${refCount}</span>
+                        </div>
+                        <div class="referral-stat-item">
+                            <span class="label">Points Earned</span>
+                            <span class="value">${earnedDisplayPoints} Points</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
+                    <div id="ref-leaderboard-list"></div>
+                </div>
+            `;
+            
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')); });
-            document.getElementById('copyReferralCodeBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralCode).then(() => showToast('Code copied!')); });
             document.getElementById('shareReferralBtn').addEventListener('click', () => { tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join and earn rewards!")}`); });
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
