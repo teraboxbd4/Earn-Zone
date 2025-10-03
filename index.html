@@ -11,7 +11,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <!-- ======================================================= -->
-    <!-- ============== ৪টি Ad Network-এর SDK ================= -->
+    <!-- ============= 4 Ad Network SDKs Included ============== -->
     <!-- ======================================================= -->
     <script src="https://ad.gigapub.tech/script?id=2868"></script>
     <script src="https://adexora.com/cdn/ads.js?id=159"></script>
@@ -64,9 +64,7 @@
         .notification-item:last-child { border-bottom: none; }
         .notification-item.unread p:first-child { font-weight: bold; }
         .notification-item small { font-size: 0.75rem; color: #6c757d; }
-        .referral-stat-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); padding: 12px 15px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color-light); }
-        .referral-stat-item .label { font-weight: 500; color: #6c757d; }
-        .referral-stat-item .value { font-weight: 600; }
+        .referral-stat-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); padding: 12px 15px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color-light); margin-top: 10px;}
     </style>
 </head>
 <body>
@@ -121,7 +119,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // --- Firebase Configuration ---
+        // --- Firebase Configuration & Global Variables ---
         const firebaseConfig = {
             apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
             authDomain: "earn-zone-a6dce.firebaseapp.com",
@@ -137,36 +135,27 @@
         const database = firebase.database();
         const tg = window.Telegram.WebApp;
         
-        // --- Global Variables ---
-        let currentUser = {};
-        let adminData = {};
+        let currentUser = {}, adminData = {}, userIpInfo = null;
         const mainContent = document.getElementById('mainContent');
         const loadingScreen = document.getElementById('initial-loading-screen');
         const appContainer = document.querySelector('.app-container');
 
         // --- App Initialization ---
         auth.onAuthStateChanged(user => {
-            if (user) {
-                initializeAppLogic(); 
-            } else {
-                auth.signInAnonymously().catch(error => {
-                    document.body.innerHTML = `<p style="text-align:center; padding: 20px;">Could not connect to server. Please try again.</p>`;
-                });
-            }
+            if (user) initializeAppLogic(); 
+            else auth.signInAnonymously().catch(handleFatalError);
         });
         
         async function initializeAppLogic() {
+            await fetchUserIpInfo();
             tg.ready();
             tg.expand();
             const tgUser = tg.initDataUnsafe?.user;
-            if (!tgUser) {
-                document.body.innerHTML = "<p style='text-align:center; padding: 20px;'>Please access this app through Telegram.</p>"; 
-                return; 
-            }
+            if (!tgUser) return handleFatalError("Please access this app through Telegram.");
 
             try {
                 const adminRef = await database.ref('admin').once('value');
-                if (!adminRef.exists()) { throw new Error("App configuration is missing. Contact support."); }
+                if (!adminRef.exists()) throw new Error("App configuration is missing. Contact support.");
                 adminData = adminRef.val();
                 
                 const userId = tgUser.id.toString();
@@ -194,10 +183,10 @@
                 }
 
                 currentUser = { id: userId, ...userData };
-                if (currentUser.isBanned) { throw new Error("This account has been banned by the admin."); }
+                if (currentUser.isBanned) throw new Error("This account has been banned by the admin.");
 
                 userRef.on('value', snap => {
-                    if(snap.exists()){
+                    if(snap.exists()) {
                         currentUser = { id: userId, ...snap.val() };
                         updateUI();
                     }
@@ -209,14 +198,41 @@
                 navigateTo('home');
 
             } catch (error) {
-                loadingScreen.innerHTML = `<p style="color: red; padding:20px; text-align:center;">Error: ${error.message}</p>`;
+                handleFatalError(error.message);
+            }
+        }
+        
+        async function fetchUserIpInfo() {
+            try {
+                const response = await fetch('http://ip-api.com/json');
+                if (!response.ok) throw new Error('Network response was not ok');
+                userIpInfo = await response.json();
+                console.log("User IP Info:", userIpInfo);
+            } catch (error) {
+                console.warn("Could not fetch user IP info. VPN check might be unreliable.", error);
+                userIpInfo = null;
+            }
+        }
+        
+        function isVpnCheckPassed() {
+            if (!adminData.settings?.vpnRequired) {
+                return true;
+            }
+            if (!userIpInfo) {
+                console.warn("Skipping VPN check because IP info is unavailable.");
+                return true; 
+            }
+            const allowedCountries = ['US', 'GB', 'CA'];
+            const isAllowedCountry = allowedCountries.includes(userIpInfo.countryCode);
+            if (isAllowedCountry) {
+                return true;
+            } else {
+                showToast("VPN Required! Please use a VPN set to USA, UK, or Canada.", "error");
+                return false;
             }
         }
 
         // --- UI and Navigation ---
-        function updateUI() { /* ... unchanged ... */ }
-        function navigateTo(page) { /* ... unchanged ... */ }
-        // (Previous unchanged code for updateUI and navigateTo goes here)
         function updateUI() {
             if (!currentUser) return;
             document.getElementById('profileNameDisplay').innerHTML = `${currentUser.name || ''} ${currentUser.isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : ''}`;
@@ -241,69 +257,34 @@
         }
 
         // --- Page Rendering Functions ---
-        function renderHomePage() { /* ... unchanged ... */ }
-        function renderTasksPage() { /* ... unchanged ... */ }
-        function renderSpecialTasksPage() { /* ... unchanged ... */ }
-        async function renderWithdrawPage() { /* ... unchanged ... */ }
-        function renderReferralPage() {
-            const refLink = `https://t.me/${adminData.settings.botUsername || 'your_bot_username'}?start=${currentUser.referralCode}`;
-            mainContent.innerHTML = `
-                <div class="task-card"><p>${adminData.notices?.referral || 'Share your code with friends and earn bonus points!'}</p></div>
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
-                    <div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${refLink}" readonly><button class="btn btn-primary" id="copyReferralLinkBtn" style="width: auto;"><i class="fas fa-copy"></i></button></div>
-                    <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button>
-                </div>
-                ${!currentUser.referralApplied ? `
-                <div class="task-card" id="referralVerifyBox">
-                    <h2 class="section-title"><i class="fas fa-user-check"></i> Apply Referral Code</h2>
-                    <p>Enter a friend's code to get a bonus!</p>
-                    <div class="input-group" style="margin-top: 15px;">
-                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
-                        <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
-                    </div>
-                </div>` : ''}
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
-                    <div class="referral-stat-item"><span class="label">Total Referrals</span><span class="value">${currentUser.referrals?.count || 0}</span></div>
-                    <div class="referral-stat-item" style="margin-top: 10px;"><span class="label">Points Earned</span><span class="value">${(currentUser.referrals?.incomeBTD || 0).toFixed(2)} Points</span></div>
-                </div>
-                <div class="task-card">
-                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
-                    <div id="ref-leaderboard-list"><div class="spinner"></div></div>
-                </div>`;
-            document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(refLink); showToast('Link copied!'); });
-            document.getElementById('shareReferralBtn').addEventListener('click', () => tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(refLink)}`));
-            if (!currentUser.referralApplied) document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
-            loadLeaderboard('referrals', '#ref-leaderboard-list');
-        }
-        function renderNotificationsPage() { /* ... unchanged ... */ }
-        // (Previous unchanged code for page rendering goes here)
-        renderHomePage = () => {
+        function renderHomePage() {
              mainContent.innerHTML = `
                 <div class="task-card"><p>${adminData.notices?.home || 'Welcome! Complete tasks and invite friends to earn points.'}</p></div>
                 <div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>
                 <div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"><div class="spinner"></div></div></div>`;
             document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus);
             loadLeaderboard('btd', '#leaderboard-list');
-        };
-        renderTasksPage = () => {
+        }
+
+        function renderTasksPage() {
             const tasks = adminData.tasks || {};
             let tasksHtml = Object.keys(tasks).length > 0 ? Object.entries(tasks).map(([taskId, task]) => {
                 if (!task.enabled) return '';
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${task.rewardPoints.toFixed(2)} Points!</p><div style="margin-top:15px;"><button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button></div></div>`;
             }).join('') : '<div class="task-card" style="text-align:center;"><p>No ad tasks available now. Please check back later.</p></div>';
             mainContent.innerHTML = `<div class="task-card"><p>${adminData.notices?.taskRules || 'Complete tasks to earn. Make sure to follow the task instructions carefully.'}</p></div>${tasksHtml}`;
-        };
-        renderSpecialTasksPage = () => {
+        }
+        
+        function renderSpecialTasksPage() {
             const tasks = adminData.specialTasks || {};
             let tasksHtml = Object.keys(tasks).length > 0 ? Object.entries(tasks).map(([taskId, task]) => {
                 if (!task.enabled) return '';
-                return `<div class="task-card"><h3><i class="fas fa-star"></i> ${task.name}</h3><p>Earn ${task.rewardPoints.toFixed(2)} Points! You must wait on the opened page until timer ends.</p><div style="margin-top:15px;"><button class="btn btn-primary" onclick="handleSpecialTaskClick('${taskId}')">Start Special Task</button></div></div>`;
+                return `<div class="task-card"><h3><i class="fas fa-star"></i> ${task.name}</h3><p>Earn ${task.rewardPoints.toFixed(2)} Points! You must wait on the page until timer ends.</p><div style="margin-top:15px;"><button class="btn btn-primary" onclick="handleSpecialTaskClick('${taskId}')">Start Special Task</button></div></div>`;
             }).join('') : '<div class="task-card" style="text-align:center;"><p>No special tasks available now.</p></div>';
             mainContent.innerHTML = tasksHtml;
-        };
-        renderWithdrawPage = async () => {
+        }
+
+        async function renderWithdrawPage() {
             const methods = adminData.withdrawMethods || {};
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join('');
             const minWithdraw = adminData.settings.minWithdrawBdt || 50;
@@ -322,15 +303,59 @@
                 <div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"><div class="spinner"></div></div></div>`;
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal);
             loadWithdrawHistory();
-        };
+        }
 
-        // =======================================================
-        // ========== ৪টি নেটওয়ার্ক সহ নতুন Ad Waterfall ===========
-        // =======================================================
+        function renderReferralPage() {
+            const refLink = `https://t.me/${adminData.settings.botUsername || 'your_bot_username'}?start=${currentUser.referralCode}`;
+            mainContent.innerHTML = `
+                <div class="task-card"><p>${adminData.notices?.referral || 'Share your code and link with friends!'}</p></div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
+                    <div class="input-group">
+                        <input type="text" id="referralLinkDisplay" class="input-field" value="${refLink}" readonly>
+                        <button class="btn btn-primary" id="copyReferralLinkBtn" style="width: auto;"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <h2 class="section-title" style="margin-top: 20px;"><i class="fas fa-barcode"></i> Your Referral Code</h2>
+                    <input type="text" class="input-field" value="${currentUser.referralCode}" readonly style="text-align: center; font-weight: bold; letter-spacing: 2px;">
+                    <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button>
+                </div>
+                ${!currentUser.referralApplied ? `
+                <div class="task-card" id="referralVerifyBox">
+                    <h2 class="section-title"><i class="fas fa-user-check"></i> Apply Referral Code</h2>
+                    <p>Enter a friend's code to get a bonus!</p>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code">
+                        <button class="btn btn-primary" id="verifyReferralBtn">Verify</button>
+                    </div>
+                </div>` : ''}
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2>
+                    <div class="referral-stat-item"><span class="label">Total Referrals</span><span class="value">${currentUser.referrals?.count || 0}</span></div>
+                    <div class="referral-stat-item"><span class="label">Points Earned</span><span class="value">${(currentUser.referrals?.incomeBTD || 0).toFixed(2)} Points</span></div>
+                </div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2>
+                    <div id="ref-leaderboard-list"><div class="spinner"></div></div>
+                </div>`;
+            document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(refLink); showToast('Link copied!'); });
+            document.getElementById('shareReferralBtn').addEventListener('click', () => tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(refLink)}`));
+            if (!currentUser.referralApplied) document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
+            loadLeaderboard('referrals', '#ref-leaderboard-list');
+        }
+        
+        function renderNotificationsPage() { /* This function can be added if needed */ }
+
+        // --- Ad Waterfall Logic ---
         function handleTaskClick(taskId) {
             const task = adminData.tasks[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             if (!task || !taskButton || taskButton.disabled) return;
+            
+            if (!isVpnCheckPassed()) {
+                taskButton.disabled = false;
+                taskButton.textContent = 'Start Task';
+                return;
+            }
             
             const limitError = checkTaskLimits(taskId, task);
             if (limitError) return showToast(limitError, 'error');
@@ -393,11 +418,10 @@
                 } catch(e) { console.error('Libtl Error:', e); runNextAd(); }
             }
 
-            runNextAd(); // Waterfall শুরু
+            runNextAd();
         }
 
         function grantReward(taskId, task, taskButton) {
-            // ... (The grantReward function remains the same as the previous full code)
             showToast("Ad completed! Awarding points...", "success");
             const rewardPoints = parseFloat(task.rewardPoints) || 0;
             const updates = {};
@@ -418,21 +442,8 @@
             });
         }
         
-        // --- Other Core Logic Functions (unchanged from the previous full code) ---
-        function checkTaskLimits(taskId, task) { /* ... */ }
-        function handleSpecialTaskClick(taskId) { /* ... */ }
-        function handleDailyBonus() { /* ... */ }
-        async function handleSubmitWithdrawal() { /* ... */ }
-        async function handleReferralVerification() { /* ... */ }
-        async function loadWithdrawHistory() { /* ... */ }
-        async function loadLeaderboard(type, elementId) { /* ... */ }
-        
-        // --- Event Listeners and Helpers (unchanged from the previous full code) ---
-        function setupEventListeners() { /* ... */ }
-        function showToast(message, type = 'success') { /* ... */ }
-
-        // --- Full implementation of other functions ---
-        checkTaskLimits = (taskId, task) => {
+        // --- Other Core Logic Functions ---
+        function checkTaskLimits(taskId, task) {
             const dailyLimit = adminData.settings?.globalDailyLimit || 999;
             if ((currentUser.taskStats?.clicksToday || 0) >= dailyLimit) { return `You have reached the daily limit of ${dailyLimit} tasks.`; }
             const taskLimit = task.limit || 999;
@@ -440,8 +451,9 @@
             const taskDailyCount = currentUser.taskHistory?.[taskId]?.daily?.[dateKey] || 0;
             if (taskDailyCount >= taskLimit) { return `You have completed this specific task for today.`; }
             return null;
-        };
-        handleSpecialTaskClick = (taskId) => {
+        }
+        
+        function handleSpecialTaskClick(taskId) {
             const task = adminData.specialTasks[taskId]; if (!task) return;
             const waitingPage = document.getElementById('waiting-page-container'); const timerDisplay = document.getElementById('waitingTimer');
             window.open(task.link, '_blank'); appContainer.style.display = 'none'; waitingPage.style.display = 'flex';
@@ -456,8 +468,9 @@
                     showToast(`+${reward.toFixed(2)} Points!`, 'success');
                 }
             }, 1000);
-        };
-        handleDailyBonus = () => {
+        }
+        
+        function handleDailyBonus() {
             if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Already claimed today.", "info"); 
             const reward = adminData.settings.dailyBonus?.rewardPoints || 0;
             if (reward > 0) {
@@ -465,8 +478,9 @@
                 database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
                 showToast(`+${reward.toFixed(2)} Points Daily Bonus!`, 'success');
             }
-        };
-        handleSubmitWithdrawal = async () => {
+        }
+        
+        async function handleSubmitWithdrawal() {
             const method = document.getElementById('withdraw-method').value; const amountPoints = parseFloat(document.getElementById('withdraw-amount').value);
             const account = document.getElementById('withdraw-account').value.trim();
             if (!method || isNaN(amountPoints) || amountPoints <= 0 || !account) return showToast("Please fill all fields.", "error");
@@ -478,8 +492,9 @@
             await database.ref('withdrawRequests').push(requestData);
             await database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountPoints));
             showToast("Withdrawal request submitted!", "success"); navigateTo('withdraw');
-        };
-        handleReferralVerification = async () => {
+        }
+        
+        async function handleReferralVerification() {
             const codeInput = document.getElementById('referralCodeInput'); const enteredCode = codeInput.value.trim().toUpperCase();
             if (!enteredCode || enteredCode === currentUser.referralCode) return showToast("Invalid code.", "error");
             const snapshot = await database.ref('users').orderByChild('referralCode').equalTo(enteredCode).once('value');
@@ -495,14 +510,16 @@
             await database.ref().update(updates);
             showToast(`Success! You received ${bonuses.refereePoints || 0} Points!`, 'success');
             document.getElementById('referralVerifyBox').style.display = 'none';
-        };
-        loadWithdrawHistory = async () => {
+        }
+        
+        async function loadWithdrawHistory() {
             const historyEl = document.getElementById('withdraw-history');
             const snapshot = await database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10).once('value');
             if (!snapshot.exists()) return historyEl.innerHTML = '<p>No history found.</p>';
             historyEl.innerHTML = Object.values(snapshot.val()).reverse().map(req => `<div class="history-item"><span>${req.btdAmount.toFixed(0)} Pts - ${req.method}</span><span class="status-${req.status.toLowerCase()}">${req.status.charAt(0).toUpperCase() + req.status.slice(1)}</span></div>`).join('');
-        };
-        loadLeaderboard = async (type, elementId) => {
+        }
+        
+        async function loadLeaderboard(type, elementId) {
             const listEl = document.querySelector(elementId);
             const query = (type === 'btd') ? database.ref('users').orderByChild('btdBalance') : database.ref('users').orderByChild('referrals/count');
             const snapshot = await query.limitToLast(10).once('value');
@@ -510,18 +527,25 @@
             const users = Object.values(snapshot.val()).sort((a,b) => (type === 'btd' ? (b.btdBalance||0)-(a.btdBalance||0) : (b.referrals?.count||0)-(a.referrals?.count||0)));
             const header = `<div class="leaderboard-header"><span>USER</span><span>${type==='btd'?'POINTS':'REFS'}</span></div>`;
             listEl.innerHTML = header + users.map((user, i) => `<div class="history-item"><span>${i+1}. ${user.name}</span><span>${type==='btd'?(user.btdBalance||0).toFixed(2):(user.referrals?.count||0)}</span></div>`).join('');
-        };
-        setupEventListeners = () => {
+        }
+        
+        // --- Helpers and Event Listeners ---
+        function setupEventListeners() {
             document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', e => { e.preventDefault(); navigateTo(e.currentTarget.dataset.page); }));
             document.getElementById('notificationBtn').addEventListener('click', () => navigateTo('notifications'));
-        };
-        showToast = (message, type = 'success') => {
+        }
+        
+        function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.style.backgroundColor = type === 'error' ? '#e74c3c' : (type === 'info' ? '#3498db' : '#27ae60');
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
-        };
+        }
+
+        function handleFatalError(message) {
+            loadingScreen.innerHTML = `<p style="color: red; padding: 20px; text-align: center;">${message}</p>`;
+        }
     </script>
 </body>
 </html>
