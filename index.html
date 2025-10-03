@@ -150,68 +150,65 @@
                 initializeAppLogic(); 
             } else {
                 auth.signInAnonymously().catch(error => {
-                    document.body.innerHTML = `<p style="text-align:center; padding: 20px;">Could not connect. Please try again. Error: ${error.message}</p>`;
+                    document.body.innerHTML = `<p style="text-align:center; padding: 20px;">Could not connect. Please try again.</p>`;
                 });
             }
         });
         
-        function initializeAppLogic() {
+        async function initializeAppLogic() {
             tg.ready();
             tg.expand();
             const tgUser = tg.initDataUnsafe?.user;
             if (!tgUser) {
-                document.body.innerHTML = "<p style='text-align:center; padding: 20px;'>Please access this app through your Telegram bot.</p>"; 
+                document.body.innerHTML = "<p style='text-align:center; padding: 20px;'>Please access this app through Telegram.</p>"; 
                 return; 
             }
 
-            loadInitialData(tgUser).then(() => {
+            try {
+                const adminRef = await database.ref('admin').once('value');
+                if (!adminRef.exists()) { throw new Error("App configuration is missing. Contact support."); }
+                adminData = adminRef.val();
+                
+                const userId = tgUser.id.toString();
+                const userRef = database.ref('users/' + userId);
+                let userSnapshot = await userRef.once('value');
+                
+                if (!userSnapshot.exists()) {
+                    const newUser = {
+                        name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`,
+                        photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                        btdBalance: 0, referralCode: 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                        referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(),
+                        referrals: { count: 0, incomeBTD: 0 },
+                        taskStats: { clicksToday: 0, totalClicks: 0, lastResetDate: new Date().toISOString().split('T')[0] }
+                    };
+                    await userRef.set(newUser);
+                    userSnapshot = await userRef.once('value');
+                }
+
+                let userData = userSnapshot.val();
+                const today = new Date().toISOString().split('T')[0];
+                if (!userData.taskStats || userData.taskStats.lastResetDate !== today) {
+                    await userRef.child('taskStats').update({ clicksToday: 0, lastResetDate: today, dailyBonusClaimed: false });
+                    userData.taskStats = { ...userData.taskStats, clicksToday: 0, lastResetDate: today, dailyBonusClaimed: false };
+                }
+
+                currentUser = { id: userId, ...userData };
+                if (currentUser.isBanned) { throw new Error("This account has been banned by the admin."); }
+
+                userRef.on('value', snap => {
+                    currentUser = { id: userId, ...snap.val() };
+                    updateUI();
+                });
+                
                 loadingScreen.style.display = 'none';
                 appContainer.style.display = 'block';
                 setupEventListeners();
-                navigateTo('home', true);
-            }).catch(error => {
+                navigateTo('home');
+
+            } catch (error) {
                 loadingScreen.innerHTML = `<p style="color: red; padding:20px; text-align:center;">Error: ${error.message}</p>`;
-            });
-        }
-        
-        async function loadInitialData(tgUser) {
-            const adminRef = await database.ref('admin').once('value');
-            if (!adminRef.exists()) { throw new Error("App configuration is missing. Contact support."); }
-            adminData = adminRef.val();
-            
-            const userId = tgUser.id.toString();
-            const userRef = database.ref('users/' + userId);
-            let userSnapshot = await userRef.once('value');
-            
-            if (!userSnapshot.exists()) {
-                const newUser = {
-                    name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || tgUser.username || `User_${userId}`,
-                    photoUrl: tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
-                    btdBalance: 0, referralCode: 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-                    referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(),
-                    referrals: { count: 0, incomeBTD: 0 },
-                    taskStats: { clicksToday: 0, totalClicks: 0, lastResetDate: new Date().toISOString().split('T')[0] }
-                };
-                await userRef.set(newUser);
-                userSnapshot = await userRef.once('value');
             }
-
-            let userData = userSnapshot.val();
-            const today = new Date().toISOString().split('T')[0];
-            if (userData.taskStats.lastResetDate !== today) {
-                await userRef.child('taskStats').update({ clicksToday: 0, lastResetDate: today, dailyBonusClaimed: false });
-                userData.taskStats.clicksToday = 0;
-                userData.taskStats.lastResetDate = today;
-                userData.taskStats.dailyBonusClaimed = false;
-            }
-
-            currentUser = { id: userId, ...userData };
-            if (currentUser.isBanned) { throw new Error("This account has been banned."); }
-
-            userRef.on('value', snap => {
-                currentUser = { id: userId, ...snap.val() };
-                updateUI();
-            });
         }
 
         // --- UI and Navigation ---
@@ -225,16 +222,11 @@
             document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
         }
 
-        function navigateTo(page, forceRender = false) {
-            const currentActive = document.querySelector('.nav-item.active');
-            if (!forceRender && currentActive && currentActive.dataset.page === page) return;
-            
-            if (page !== 'notifications') {
-                document.querySelectorAll('.nav-item.active').forEach(el => el.classList.remove('active'));
-                document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
-            }
-
+        function navigateTo(page) {
+            document.querySelectorAll('.nav-item.active').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
             mainContent.innerHTML = '';
+
             const pages = { 
                 home: renderHomePage, tasks: renderTasksPage, 'special-tasks': renderSpecialTasksPage,
                 withdraw: renderWithdrawPage, referral: renderReferralPage, notifications: renderNotificationsPage
@@ -245,7 +237,7 @@
         // --- Page Rendering Functions ---
         function renderHomePage() {
              mainContent.innerHTML = `
-                <div class="task-card"><p>${adminData.notices?.home || 'Welcome!'}</p></div>
+                <div class="task-card"><p>${adminData.notices?.home || 'Welcome! Complete tasks and invite friends to earn points.'}</p></div>
                 <div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>
                 <div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"><div class="spinner"></div></div></div>`;
             document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus);
@@ -257,15 +249,15 @@
             let tasksHtml = Object.keys(tasks).length > 0 ? Object.entries(tasks).map(([taskId, task]) => {
                 if (!task.enabled) return '';
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><p>Complete this task to earn ${task.rewardPoints.toFixed(2)} Points!</p><div style="margin-top:15px;"><button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}')">Start Task</button></div></div>`;
-            }).join('') : '<div class="task-card" style="text-align:center;"><p>No ad tasks available now.</p></div>';
-            mainContent.innerHTML = `<div class="task-card"><p>${adminData.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml}`;
+            }).join('') : '<div class="task-card" style="text-align:center;"><p>No ad tasks available now. Please check back later.</p></div>';
+            mainContent.innerHTML = `<div class="task-card"><p>${adminData.notices?.taskRules || 'Complete tasks to earn. Make sure to follow the task instructions carefully.'}</p></div>${tasksHtml}`;
         }
         
         function renderSpecialTasksPage() {
             const tasks = adminData.specialTasks || {};
             let tasksHtml = Object.keys(tasks).length > 0 ? Object.entries(tasks).map(([taskId, task]) => {
                 if (!task.enabled) return '';
-                return `<div class="task-card"><h3><i class="fas fa-star"></i> ${task.name}</h3><p>Earn ${task.rewardPoints.toFixed(2)} Points! You must wait on the page until timer ends.</p><div style="margin-top:15px;"><button class="btn btn-primary" onclick="handleSpecialTaskClick('${taskId}')">Start Special Task</button></div></div>`;
+                return `<div class="task-card"><h3><i class="fas fa-star"></i> ${task.name}</h3><p>Earn ${task.rewardPoints.toFixed(2)} Points! You must wait on the opened page until timer ends.</p><div style="margin-top:15px;"><button class="btn btn-primary" onclick="handleSpecialTaskClick('${taskId}')">Start Special Task</button></div></div>`;
             }).join('') : '<div class="task-card" style="text-align:center;"><p>No special tasks available now.</p></div>';
             mainContent.innerHTML = tasksHtml;
         }
@@ -278,7 +270,7 @@
             const minPoints = minWithdraw / rate;
             mainContent.innerHTML = `<div class="task-card">
                 <h2 class="section-title"><i class="fas fa-money-check-alt"></i> Withdraw Points</h2>
-                <p style="margin-bottom: 15px;">${adminData.notices?.withdraw || `Minimum: ${minWithdraw} BDT (${minPoints.toFixed(0)} Points)`}</p>
+                <p style="margin-bottom: 15px;">${adminData.notices?.withdraw || `Minimum withdrawal is ${minWithdraw} BDT (${minPoints.toFixed(0)} Points).`}</p>
                 <p><strong>Your balance:</strong> ${(currentUser.btdBalance || 0).toFixed(2)} Points.</p>
                 <div style="margin-top: 20px;">
                     <select id="withdraw-method" class="input-field"><option value="">Select Method</option>${optionsHtml}</select>
@@ -286,20 +278,20 @@
                     <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
                     <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
                 </div></div>
-                <div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"><div class="spinner"></div></div></div>`;
+                <div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2><div id="withdraw-history"><div class="spinner"></div></div></div>`;
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal);
             loadWithdrawHistory();
         }
 
         function renderReferralPage() {
-            const refLink = `https://t.me/${adminData.settings.botUsername}?start=${currentUser.referralCode}`;
-            mainContent.innerHTML = `<div class="task-card"><p>${adminData.notices?.referral || 'Share your code with friends!'}</p></div>
+            const refLink = `https://t.me/${adminData.settings.botUsername || 'your_bot_username'}?start=${currentUser.referralCode}`;
+            mainContent.innerHTML = `<div class="task-card"><p>${adminData.notices?.referral || 'Share your code with friends and earn bonus points!'}</p></div>
                 <div class="task-card">
                     <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
                     <div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${refLink}" readonly><button class="btn btn-primary" id="copyReferralLinkBtn" style="width: auto;"><i class="fas fa-copy"></i></button></div>
                     <button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button>
                 </div>
-                ${!currentUser.referralApplied ? `<div class="task-card" id="referralVerifyBox"><h2 class="section-title"><i class="fas fa-user-check"></i> Apply Referral Code</h2><div class="input-group" style="margin-top: 15px;"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>` : ''}
+                ${!currentUser.referralApplied ? `<div class="task-card" id="referralVerifyBox"><h2 class="section-title"><i class="fas fa-user-check"></i> Apply Referral Code</h2><p>Enter a friend's code to get a bonus!</p><div class="input-group" style="margin-top: 15px;"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>` : ''}
                 <div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="referral-stat-item"><span class="label">Total Referrals</span><span class="value">${currentUser.referrals?.count || 0}</span></div><div class="referral-stat-item"><span class="label">Points Earned</span><span class="value">${(currentUser.referrals?.incomeBTD || 0).toFixed(2)} Points</span></div></div>
                 <div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"><div class="spinner"></div></div></div>`;
             document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(refLink); showToast('Link copied!'); });
@@ -307,11 +299,9 @@
             if (!currentUser.referralApplied) document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
+        
+        function renderNotificationsPage() { /* ... This function can be added if needed ... */ }
 
-        function renderNotificationsPage() { /* ... unchanged ... */ }
-        
-        // --- Core Logic Functions ---
-        
         // =======================================================
         // ========== ৪টি নেটওয়ার্ক সহ নতুন Ad Waterfall ===========
         // =======================================================
@@ -319,7 +309,9 @@
             const task = adminData.tasks[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             if (!task || !taskButton || taskButton.disabled) return;
-            if (checkTaskLimits(taskId, task)) return showToast(checkTaskLimits(taskId, task), 'error');
+            
+            const limitError = checkTaskLimits(taskId, task);
+            if (limitError) return showToast(limitError, 'error');
 
             taskButton.disabled = true;
             taskButton.innerHTML = '<div class="spinner" style="width:20px; height:20px; border-width:2px; margin:0 auto;"></div>';
@@ -333,7 +325,7 @@
                     adNetworks[currentAdIndex++]();
                 } else {
                     console.log("All ad networks failed.");
-                    showToast("Sorry, no ads available right now. Try again later.", "error");
+                    showToast("Sorry, no ads available right now. Please try again later.", "error");
                     taskButton.disabled = false;
                     taskButton.textContent = 'Start Task';
                 }
@@ -343,72 +335,196 @@
             
             function tryAdexora() {
                 console.log("Attempt 1: Trying Adexora...");
-                if (typeof adexora !== 'undefined') adexora.showAd({ ad_slot: "159", onComplete: adSuccess, onError: runNextAd });
-                else runNextAd();
+                if (typeof adexora !== 'undefined' && adexora.showAd) {
+                    adexora.showAd({ ad_slot: "159", onComplete: adSuccess, onError: runNextAd });
+                } else runNextAd();
             }
 
             function tryGigapub() {
                 console.log("Attempt 2: Trying Gigapub...");
-                if (typeof gigapub !== 'undefined') gigapub.showBannerAd({ zoneId: "2868", onSuccess: adSuccess, onError: runNextAd });
-                else runNextAd();
+                if (typeof gigapub !== 'undefined' && gigapub.showBannerAd) {
+                    gigapub.showBannerAd({ zoneId: "2868", onSuccess: adSuccess, onError: runNextAd });
+                } else runNextAd();
             }
 
             function tryAdextra() {
                 console.log("Attempt 3: Trying Adextra...");
                 if (typeof adextra !== 'undefined' && adextra.show) {
-                    // Adextra সাধারণত নিজে থেকেই বিজ্ঞাপন দেখায়, এর 성공/실패 callback নেই।
-                    // আমরা ধরে নেব এটি সফল হয়েছে এবং একটি টাইমআউট দিয়ে রিওয়ার্ড দেব।
                     adextra.show();
-                    setTimeout(() => adSuccess(), 3000); // ৩ সেকেন্ড পর রিওয়ার্ড
+                    setTimeout(adSuccess, 3000); // 3-second delay to assume completion
                 } else runNextAd();
             }
             
             function tryLibtl() {
                 console.log("Attempt 4: Trying Libtl...");
                 if (typeof TL !== 'undefined' && TL.ads.create) {
-                    // Libtl-এরও সরাসরি callback নেই, এটি একটি iframe তৈরি করে।
-                    // আমরা ধরে নেব এটি সফল হয়েছে।
                     TL.ads.create();
-                    setTimeout(() => adSuccess(), 3000); // ৩ সেকেন্ড পর রিওয়ার্ড
+                    setTimeout(adSuccess, 3000); // 3-second delay to assume completion
                 } else runNextAd();
             }
 
-            runNextAd(); // Waterfall শুরু
+            runNextAd(); // Start the waterfall
         }
 
         function grantReward(taskId, task, taskButton) {
             showToast("Ad completed! Awarding points...", "success");
             const rewardPoints = parseFloat(task.rewardPoints) || 0;
             const updates = {};
+            const dateKey = new Date().toISOString().split('T')[0];
+            
             updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(rewardPoints);
             updates[`/users/${currentUser.id}/taskStats/clicksToday`] = firebase.database.ServerValue.increment(1);
             updates[`/users/${currentUser.id}/taskStats/totalClicks`] = firebase.database.ServerValue.increment(1);
-            updates[`/users/${currentUser.id}/taskHistory/${taskId}/daily/${new Date().toISOString().split('T')[0]}`] = firebase.database.ServerValue.increment(1);
+            updates[`/users/${currentUser.id}/taskHistory/${taskId}/daily/${dateKey}`] = firebase.database.ServerValue.increment(1);
             
             database.ref().update(updates).then(() => {
                 showToast(`+${rewardPoints.toFixed(2)} Points!`, 'success');
+            }).catch(err => {
+                showToast("Error updating points. Contact support.", "error");
             }).finally(() => {
                 taskButton.disabled = false;
                 taskButton.textContent = 'Start Task';
             });
         }
-        // =======================================================
         
-        function checkTaskLimits(taskId, task) { /* ... unchanged ... */ }
-        function handleSpecialTaskClick(taskId) { /* ... unchanged ... */ }
-        function handleDailyBonus() { /* ... unchanged ... */ }
-        function handleSubmitWithdrawal() { /* ... unchanged ... */ }
-        async function handleReferralVerification() { /* ... unchanged ... */ }
-        async function loadWithdrawHistory() { /* ... unchanged ... */ }
-        async function loadLeaderboard(type, elementId) { /* ... unchanged ... */ }
+        function checkTaskLimits(taskId, task) {
+            const dailyLimit = adminData.settings?.globalDailyLimit || 999;
+            if ((currentUser.taskStats?.clicksToday || 0) >= dailyLimit) {
+                return `You have reached the daily limit of ${dailyLimit} tasks.`;
+            }
+            const taskLimit = task.limit || 999;
+            const dateKey = new Date().toISOString().split('T')[0];
+            const taskDailyCount = currentUser.taskHistory?.[taskId]?.daily?.[dateKey] || 0;
+            if (taskDailyCount >= taskLimit) {
+                return `You have completed this specific task for today.`;
+            }
+            return null; // No limit reached
+        }
+        
+        // --- Other Core Logic Functions ---
+
+        function handleSpecialTaskClick(taskId) {
+            const task = adminData.specialTasks[taskId];
+            if (!task) return;
+            const waitingPage = document.getElementById('waiting-page-container');
+            const timerDisplay = document.getElementById('waitingTimer');
+            window.open(task.link, '_blank');
+            appContainer.style.display = 'none';
+            waitingPage.style.display = 'flex';
+            let secondsLeft = task.timer;
+            const timerInterval = setInterval(() => {
+                timerDisplay.textContent = new Date(secondsLeft * 1000).toISOString().substr(14, 5);
+                if (--secondsLeft < 0) {
+                    clearInterval(timerInterval);
+                    const reward = parseFloat(task.rewardPoints) || 0;
+                    database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(reward));
+                    waitingPage.style.display = 'none';
+                    appContainer.style.display = 'block';
+                    showToast(`+${reward.toFixed(2)} Points for special task!`, 'success');
+                }
+            }, 1000);
+        }
+
+        function handleDailyBonus() {
+            if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Already claimed today.", "info"); 
+            const reward = adminData.settings.dailyBonus?.rewardPoints || 0;
+            if (reward > 0) {
+                database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(reward));
+                database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
+                showToast(`+${reward.toFixed(2)} Points Daily Bonus!`, 'success');
+            }
+        }
+        
+        async function handleSubmitWithdrawal() {
+            const method = document.getElementById('withdraw-method').value;
+            const amountPoints = parseFloat(document.getElementById('withdraw-amount').value);
+            const account = document.getElementById('withdraw-account').value.trim();
+            if (!method || isNaN(amountPoints) || amountPoints <= 0 || !account) return showToast("Please fill all fields correctly.", "error");
+
+            const rate = adminData.settings.pointsToBdtRate || 0.1;
+            const minBdt = adminData.settings.minWithdrawBdt || 50;
+            const minPoints = minBdt / rate;
+
+            if (amountPoints < minPoints) return showToast(`Minimum withdrawal is ${minPoints.toFixed(0)} Points.`, 'error');
+            if (amountPoints > currentUser.btdBalance) return showToast("Insufficient balance.", 'error');
+
+            const amountBdt = amountPoints * rate;
+            const requestData = {
+                userId: currentUser.id, userName: currentUser.name, amount: amountBdt, btdAmount: amountPoints,
+                method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
+            };
+            await database.ref('withdrawRequests').push(requestData);
+            await database.ref(`users/${currentUser.id}/btdBalance`).set(firebase.database.ServerValue.increment(-amountPoints));
+            showToast("Withdrawal request submitted!", "success");
+            navigateTo('withdraw');
+        }
+
+        async function handleReferralVerification() {
+            const codeInput = document.getElementById('referralCodeInput');
+            const enteredCode = codeInput.value.trim().toUpperCase();
+            if (!enteredCode || enteredCode === currentUser.referralCode) return showToast("Invalid code.", "error");
+
+            const usersRef = database.ref('users');
+            const snapshot = await usersRef.orderByChild('referralCode').equalTo(enteredCode).once('value');
+            if (!snapshot.exists()) return showToast("Referral code not found.", "error");
+            
+            let referrerId;
+            snapshot.forEach(child => { referrerId = child.key; });
+
+            const bonuses = adminData.settings.referralBonus || {};
+            const refereeBonus = bonuses.refereePoints || 0;
+            const referrerBonus = bonuses.referrerPoints || 0;
+
+            const updates = {};
+            updates[`/users/${currentUser.id}/btdBalance`] = firebase.database.ServerValue.increment(refereeBonus);
+            updates[`/users/${currentUser.id}/referralApplied`] = true;
+            updates[`/users/${referrerId}/btdBalance`] = firebase.database.ServerValue.increment(referrerBonus);
+            updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+            updates[`/users/${referrerId}/referrals/incomeBTD`] = firebase.database.ServerValue.increment(referrerBonus);
+            
+            await database.ref().update(updates);
+            showToast(`Success! You received ${refereeBonus} Points!`, 'success');
+            document.getElementById('referralVerifyBox').style.display = 'none';
+        }
+
+        async function loadWithdrawHistory() {
+            const historyEl = document.getElementById('withdraw-history');
+            const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10);
+            const snapshot = await historyRef.once('value');
+            if (!snapshot.exists()) return historyEl.innerHTML = '<p>No history found.</p>';
+            historyEl.innerHTML = Object.values(snapshot.val()).reverse().map(req => `<div class="history-item">
+                <span>${req.btdAmount.toFixed(0)} Points - ${req.method}</span>
+                <span class="status-${req.status.toLowerCase()}">${req.status.charAt(0).toUpperCase() + req.status.slice(1)}</span>
+            </div>`).join('');
+        }
+
+        async function loadLeaderboard(type, elementId) {
+            const listEl = document.querySelector(elementId);
+            const query = (type === 'btd') ? database.ref('users').orderByChild('btdBalance') : database.ref('users').orderByChild('referrals/count');
+            const snapshot = await query.limitToLast(10).once('value');
+            if (!snapshot.exists()) return listEl.innerHTML = '<p>No data available.</p>';
+            
+            const users = Object.values(snapshot.val()).sort((a, b) => (type === 'btd' ? (b.btdBalance || 0) - (a.btdBalance || 0) : (b.referrals?.count || 0) - (a.referrals?.count || 0)));
+            const headerHtml = `<div class="leaderboard-header"><span>USER</span><span>${type === 'btd' ? 'POINTS' : 'REFERRALS'}</span></div>`;
+            listEl.innerHTML = headerHtml + users.map((user, i) => `<div class="history-item">
+                <span>${i + 1}. ${user.name}</span>
+                <span>${type === 'btd' ? (user.btdBalance || 0).toFixed(2) : (user.referrals?.count || 0)}</span>
+            </div>`).join('');
+        }
 
         // --- Event Listeners and Helpers ---
         function setupEventListeners() {
-            document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', e => navigateTo(e.currentTarget.dataset.page)));
+            document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', e => { e.preventDefault(); navigateTo(e.currentTarget.dataset.page); }));
             document.getElementById('notificationBtn').addEventListener('click', () => navigateTo('notifications'));
         }
-        function showToast(message, type = 'success') { /* ... unchanged ... */ }
         
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.backgroundColor = type === 'error' ? '#e74c3c' : (type === 'info' ? '#3498db' : '#27ae60');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
     </script>
 </body>
 </html>
