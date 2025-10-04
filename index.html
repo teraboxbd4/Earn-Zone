@@ -91,13 +91,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
-        // --- All the Javascript code for the User Panel ---
-        // This is the full and final version.
-        // Copy everything from here to the end of the file.
         const firebaseConfig = {
-            apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
-            authDomain: "earn-zone-a6dce.firebaseapp.com",
-            databaseURL: "https://earn-zone-a6dce-default-rtdb.asia-southeast1.firebasedatabase.app",
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
         };
         firebase.initializeApp(firebaseConfig);
         
@@ -243,9 +240,7 @@
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
             const minWithdrawBDT = appSettings.minWithdrawBDT || 50;
             const rate = appSettings.pointToBdtRate || 0.1;
-
             mainContent.innerHTML = `<div class="task-card"><h2>Withdraw Balance</h2><p>Minimum: ${minWithdrawBDT} BDT.</p><p>Your balance: ${(currentUser.pointBalance || 0).toFixed(2)} Points</p><p><small>Rate: 1 BDT = ${1/rate} Points</small></p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in BDT" class="input-field" step="1"><input type="text" id="withdraw-account" placeholder="Account Number" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit</button></div><div class="task-card"><h2>History</h2><div id="withdraw-history"></div></div>`; 
-            
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
         }
@@ -253,11 +248,10 @@
         function renderReferralPage() {
             const refCount = currentUser.referrals?.count || 0;
             let earnedDisplayPoints = (currentUser.referrals?.incomePoints || 0).toFixed(2);
-            let incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayPoints}</div><div class="stat-label">Points Earned</div></div>`;
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${tg.initDataUnsafe.bot_username}?start=${referralCode}`;
             const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2>Referral Code</h2><p>Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.referral || ''}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Referrals</div></div>${incomeStatHtml}</div></div>`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.referral || ''}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div>${refCount}</div><div>Referrals</div></div><div class="stat-item"><div>${earnedDisplayPoints}</div><div>Points Earned</div></div></div></div>`;
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
@@ -268,15 +262,9 @@
             const task = taskSource[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
             if (!task || !taskButton || taskButton.disabled) return;
-
             taskButton.disabled = true;
             taskButton.textContent = 'Loading...';
-
-            database.ref(`users/${currentUser.id}/taskStats`).update({
-                clicksToday: firebase.database.ServerValue.increment(1),
-                totalClicks: firebase.database.ServerValue.increment(1)
-            });
-
+            database.ref(`users/${currentUser.id}/taskStats`).update({ clicksToday: firebase.database.ServerValue.increment(1), totalClicks: firebase.database.ServerValue.increment(1) });
             if (type === 'regular') {
                 let adPromise;
                 try {
@@ -289,7 +277,6 @@
                     }
                     if (!adPromise?.then) throw new Error(`SDK for ${task.network} failed.`);
                 } catch (e) { adPromise = Promise.reject(e); }
-
                 Promise.resolve(adPromise).then(() => {
                     const rewardPoints = parseFloat(task.rewardPoints) || 0;
                     if (rewardPoints > 0) {
@@ -307,12 +294,8 @@
                 }).catch(err => {
                     showToast("Ad failed. Try again.");
                     delete taskTimers[taskId];
-                    if (taskButton) {
-                        taskButton.disabled = false;
-                        taskButton.textContent = `Start Task (${(task.rewardPoints || 0)} P)`;
-                    }
+                    if (taskButton) { taskButton.disabled = false; taskButton.textContent = `Start Task (${(task.rewardPoints || 0)} P)`; }
                 });
-
             } else if (type === 'special') {
                 if (task.link) { tg.openLink(task.link); }
                 const rewardPoints = parseFloat(task.rewardPoints) || 0;
@@ -387,29 +370,22 @@
         async function handleReferralVerification() {
             const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
             if (!enteredCode || enteredCode === currentUser.referralCode || currentUser.referralApplied) { return showToast(currentUser.referralApplied ? "Already applied a code." : "Invalid code."); }
-
             try {
                 const snapshot = await database.ref('users').orderByChild('referralCode').equalTo(enteredCode).once('value');
                 if (!snapshot.exists()) return showToast("Invalid referral code.");
-
                 const referrerData = snapshot.val();
                 const referrerId = Object.keys(referrerData)[0];
                 const referrer = referrerData[referrerId];
-
                 if (referrer.isBanned) return showToast("This referral code is not active.");
-                
                 const refereeBonus = appSettings.referralBonus?.refereePoints || 0;
                 const referrerBonus = appSettings.referralBonus?.referrerPoints || 0;
-
                 const updates = {};
                 updates[`/users/${currentUser.id}/referralApplied`] = true;
                 updates[`/users/${currentUser.id}/pointBalance`] = firebase.database.ServerValue.increment(refereeBonus);
                 updates[`/users/${referrerId}/pointBalance`] = firebase.database.ServerValue.increment(referrerBonus);
                 updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${referrerId}/referrals/incomePoints`] = firebase.database.ServerValue.increment(referrerBonus);
-
                 await database.ref().update(updates);
-                
                 showToast(`Code applied! You received ${refereeBonus} points.`);
                 navigateTo('referral', true);
             } catch (error) { showToast("An error occurred."); }
@@ -423,7 +399,6 @@
                     database.ref('admin/notifications/inactive').once('value')
                 ]);
                 Object.values(globalSnap.val() || {}).forEach(n => allNotifications.push(n));
-                
                 const inactivityThreshold = (appSettings.inactivityThresholdDays || 7) * 86400000;
                 if (Date.now() - new Date(currentUser.lastActive).getTime() > inactivityThreshold) {
                      Object.values(inactiveSnap.val() || {}).forEach(n => allNotifications.push(n));
