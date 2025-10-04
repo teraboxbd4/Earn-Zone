@@ -22,9 +22,7 @@
         .app-container { max-width: 480px; margin: 0 auto; position: relative; }
         .header { height: 180px; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
-        .tg-verified-icon { width: 24px; height: 24px; margin-left: 8px; color: #40A7E3; }
         .notification-btn { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid rgba(255,255,255,0.3); }
-        .notification-btn .badge { position: absolute; top: -3px; right: -3px; background-color: #e74c3c; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: bold; }
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
@@ -36,22 +34,18 @@
         .stat-value { font-weight: 600; color: var(--text-dark); font-size: 1rem; }
         .stat-label { font-size: 0.7rem; color: var(--text-secondary); }
         .content-section { padding: 20px; margin-bottom: 80px; }
-        .section-title { display: flex; align-items: center; margin-bottom: 18px; font-size: 1.2rem; font-weight: 600; color: var(--text-dark); }
         .task-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); border: 1px solid var(--border-color); }
         .btn { display: block; width: 100%; padding: 12px; border-radius: var(--border-radius-sm); border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; text-align: center; text-decoration: none; }
         .btn-primary { background: var(--primary-color); color: white; }
         .btn:disabled { background: #ccc; color: #888; cursor: not-allowed; }
         .input-field, .select-field { width: 100%; padding: 10px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: #F0F0E0; color: var(--text-dark); font-size: 0.95rem; margin-bottom: 10px; }
         .input-group { display: flex; } .input-group .btn { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--bg-light); border-radius: var(--border-radius-sm); margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); } 
-        .status-pending { color: var(--accent-color); } .status-approved { color: var(--secondary-color); } .status-rejected { color: #e74c3c; }
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.08); z-index: 100; border-top: 1px solid var(--border-color); border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none; font-size: 0.7rem; font-weight: 500; flex: 1; } .nav-item i { font-size: 1.3rem; margin-bottom: 3px; } .nav-item.active { color: var(--primary-color); }
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 30px; z-index: 1000; opacity: 0; transition: all 0.3s ease; } .toast.show { opacity: 1; bottom: 90px; }
-        .verified-icon { color: #40A7E3; margin-left: 5px; font-size: 0.8em; }
-        .page-cooldown-overlay { background: rgba(255, 255, 255, 0.8); text-align: center; padding: 30px; border-radius: var(--border-radius); }
+        .page-cooldown-overlay { text-align: center; padding: 30px; }
         .page-cooldown-overlay h3 { color: var(--primary-color); }
-        .page-cooldown-overlay p { font-size: 1.5rem; font-weight: 600; color: var(--accent-color); margin-top: 10px; }
+        .page-cooldown-overlay p { font-size: 1.8rem; font-weight: 600; color: var(--accent-color); margin-top: 10px; }
         .notification-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-light); z-index: 200; transform: translateX(100%); transition: transform 0.3s ease-in-out; overflow-y: auto; }
         .notification-modal.show { transform: translateX(0); }
         .notification-header { display: flex; align-items: center; padding: 15px; background: var(--primary-color); color: white; }
@@ -68,7 +62,7 @@
     <div class="app-container">
         <div class="header">
             <button class="notification-btn" id="notificationBtn"><i class="fas fa-bell"></i></button>
-            <h1 class="header-title">Earn Zone <svg class="tg-verified-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,9.6L11.4,14.4L7.8,10.8L9.2,9.4L11.4,11.6L14.8,8.2L16.2,9.6Z"/></svg></h1>
+            <h1 class="header-title">Earn Zone</h1>
         </div>
         <div class="profile-section">
             <div class="profile-card">
@@ -92,7 +86,6 @@
         </div>
         <div class="toast" id="toast"></div>
         
-        <!-- Notification Modal -->
         <div class="notification-modal" id="notificationModal">
             <div class="notification-header">
                 <button class="close-btn" id="closeNotificationBtn">&times;</button>
@@ -191,7 +184,7 @@
                     const currentTgPhoto = tgUser.photo_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
                     const generateReferralCode = () => 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase();
                     userData = {
-                        name: currentTgName, photoUrl: currentTgPhoto, pointBalance: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomePoints: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, totalClicks: 0, dailyBonusClaimed: false }, isVerified: false
+                        name: currentTgName, photoUrl: currentTgPhoto, chat_id: tgUser.id.toString(), pointBalance: 0, referralCode: generateReferralCode(), referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(), referrals: { count: 0, incomePoints: 0 }, taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, totalClicks: 0, dailyBonusClaimed: false }, isVerified: false
                     };
                     await userRef.set(userData);
                 }
@@ -233,24 +226,21 @@
         
         function updateUI() {
             if (!currentUser || !document.getElementById('profileNameDisplay')) return;
-            
             let profileNameHtml = currentUser.name || `User ${currentUser.id}`;
-            if (currentUser.isVerified) {
-                profileNameHtml += ' <i class="fas fa-check-circle verified-icon"></i>';
-            }
+            if (currentUser.isVerified) { profileNameHtml += ' <i class="fas fa-check-circle" style="color:#40A7E3;"></i>'; }
             document.getElementById('profileNameDisplay').innerHTML = profileNameHtml;
-            
             document.getElementById('profilePic').src = currentUser.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
-            
-            const mainBalanceDisplay = document.getElementById('mainBalanceDisplay');
-            mainBalanceDisplay.innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.pointBalance || 0).toFixed(2)} Points`;
-            
+            document.getElementById('mainBalanceDisplay').innerHTML = `<i class="fas fa-coins"></i> ${(currentUser.pointBalance || 0).toFixed(2)} Points`;
             document.getElementById('clicksToday').textContent = currentUser.taskStats?.clicksToday || 0;
             document.getElementById('totalClicks').textContent = currentUser.taskStats?.totalClicks || 0;
             document.getElementById('ref-count').textContent = currentUser.referrals?.count || 0;
         }
 
-        function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
+        function renderHomePage() { 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; 
+            document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); 
+            loadLeaderboard('points', '#leaderboard-list'); 
+        }
         
         function renderTasksPage() {
             let tasksHtml = Object.keys(tasks).map(taskId => { 
@@ -266,13 +256,23 @@
         function renderSpecialTasksPage() {
             if (taskPageCooldownUntil > Date.now()) {
                 renderPageCooldown('special-tasks');
+                const interval = setInterval(() => {
+                    const timeLeft = Math.ceil((taskPageCooldownUntil - Date.now()) / 1000);
+                    const cooldownText = document.getElementById('cooldownTimerDisplay');
+                    if (cooldownText) {
+                        cooldownText.textContent = `Please wait ${timeLeft}s`;
+                    }
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                    }
+                }, 1000);
                 return;
             }
             let tasksHtml = Object.keys(specialTasks).map(taskId => { 
                 const task = specialTasks[taskId]; 
                 let rewardDisplay = `${(task.rewardPoints || 0).toFixed(2)} Points`;
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}', 'special')">Start Special Task</button>`;
-                return task.enabled ? `<div class="task-card"><h3><i class="fas fa-star"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><p><small>Link: ${task.link}</small></p><div style="margin-top:15px;">${buttonHtml}</div></div>` : ''; 
+                return task.enabled ? `<div class="task-card"><h3><i class="fas fa-star"></i> ${task.name}</h3><p>Complete this task to earn ${rewardDisplay}!</p><div style="margin-top:15px;">${buttonHtml}</div></div>` : ''; 
             }).join(''); 
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.specialTaskNotice || 'Complete special tasks for bigger rewards!'}</p></div>${tasksHtml || '<p style="text-align:center;">No special tasks available.</p>'}`;
             updateAllTimers();
@@ -282,10 +282,10 @@
             const timeLeft = Math.ceil((taskPageCooldownUntil - Date.now()) / 1000);
             mainContent.innerHTML = `<div class="page-cooldown-overlay">
                 <h3>Page Locked</h3>
-                <p>Please wait ${timeLeft}s</p>
+                <p id="cooldownTimerDisplay">Please wait ${timeLeft}s</p>
                 <small>You need to wait before starting a new task.</small>
             </div>`;
-             setTimeout(() => navigateTo(pageToReturn, true), timeLeft * 1000);
+            setTimeout(() => navigateTo(pageToReturn, true), timeLeft * 1000);
         }
 
         async function renderWithdrawPage() { 
@@ -296,7 +296,7 @@
             const rate = appSettings.pointToBdtRate || 0.1;
 
             mainContent.innerHTML = `<div class="task-card">
-                <h2 class="section-title">Withdraw Balance</h2>
+                <h2>Withdraw Balance</h2>
                 <p>${appSettings.notices?.withdraw || ''} Minimum: ${minWithdrawBDT} BDT.</p>
                 <p>Your balance: ${(currentUser.pointBalance || 0).toFixed(2)} Points</p>
                 <p><small>Rate: 1 BDT = ${1/rate} Points</small></p>
@@ -305,7 +305,7 @@
                 <input type="text" id="withdraw-account" placeholder="Account Number / ID" class="input-field">
                 <button id="submit-withdraw" class="btn btn-primary">Submit Request</button>
             </div>
-            <div class="task-card"><h2 class="section-title"><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
+            <div class="task-card"><h2><i class="fas fa-history"></i> History</h2><div id="withdraw-history"></div></div>`; 
             
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
@@ -317,17 +317,13 @@
             let incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayPoints}</div><div class="stat-label">Points Earned</div></div>`;
             const referralCode = currentUser.referralCode || '';
             const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
-            const referralLinkBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2><p style="margin-bottom: 15px;">Share this link directly with friends.</p><div class="input-group"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" id="copyReferralLinkBtn">Copy</button></div><button class="btn btn-primary" id="shareReferralBtn" style="margin-top: 10px;"><i class="fas fa-share-alt"></i> Share on Telegram</button></div>`;
-            const referralCodeBox = `<div class="task-card"><h2 class="section-title"><i class="fas fa-key"></i> Your Referral Code</h2><p style="margin-bottom: 15px;">Or, have friends enter this code manually.</p><div class="input-group"><input type="text" id="referralCodeDisplay" class="input-field" value="${referralCode}" readonly style="text-align:center; font-weight: bold;"><button class="btn" id="copyReferralCodeBtn">Copy</button></div></div>`;
-            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2 class="section-title">Referral Verify Box</h2><p style="margin-bottom: 15px;">Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
-            mainContent.innerHTML = `${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}${referralLinkBox}${referralCodeBox}${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>${incomeStatHtml}</div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
-            document.getElementById('copyReferralLinkBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralLink).then(() => showToast('Link copied!')); });
-            document.getElementById('copyReferralCodeBtn').addEventListener('click', () => { navigator.clipboard.writeText(referralCode).then(() => showToast('Code copied!')); });
-            document.getElementById('shareReferralBtn').addEventListener('click', () => { tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join and earn rewards!")}`); });
+            const referralLinkBox = `<div class="task-card"><h2><i class="fas fa-link"></i> Your Referral Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" id="referralLinkDisplay" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div>`;
+            const referralCodeBox = `<div class="task-card"><h2><i class="fas fa-key"></i> Your Referral Code</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralCode}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralCode}').then(() => showToast('Code copied!'))">Copy</button></div></div>`;
+            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2>Referral Verify Box</h2><p style="margin-bottom: 15px;">Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Friend's Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
+            mainContent.innerHTML = `${appSettings.notices?.referral ? `<div class="task-card"><p>${appSettings.notices.referral}</p></div>` : ''}${referralLinkBox}${referralCodeBox}${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2><i class="fas fa-chart-bar"></i> Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Total Referrals</div></div>${incomeStatHtml}</div></div>`;
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
-            loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
         function handleTaskClick(taskId, type) {
@@ -369,7 +365,7 @@
                     }
                     const timerSeconds = parseInt(task.timer) || 0;
                     if (timerSeconds > 0) {
-                        taskTimers[taskId] = Date.now() + timerSeconds * 1000;
+                        taskTimers[taskId] = { endTime: Date.now() + timerSeconds * 1000, type: 'regular' };
                         updateAllTimers();
                     } else {
                         taskButton.disabled = false;
@@ -377,7 +373,6 @@
                     }
                 }).catch(err => {
                     showToast("Ad failed. Please try again.");
-                    console.error("Ad Error:", err);
                     delete taskTimers[taskId];
                     if (taskButton) {
                         taskButton.disabled = false;
@@ -389,14 +384,16 @@
                 if (task.link) {
                     tg.openLink(task.link);
                 }
+                
                 const rewardPoints = parseFloat(task.rewardPoints) || 0;
                 if (rewardPoints > 0) {
                     database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
                     showToast(`+${rewardPoints.toFixed(2)} Points!`);
                 }
+                
                 const timerSeconds = parseInt(task.timer) || 0;
                 if (timerSeconds > 0) {
-                    taskTimers[taskId] = Date.now() + timerSeconds * 1000;
+                    taskTimers[taskId] = { endTime: Date.now() + timerSeconds * 1000, type: 'special' };
                     updateAllTimers();
                 } else {
                     taskButton.disabled = false;
@@ -406,6 +403,19 @@
                 const cooldown = appSettings.taskPageCooldown || 0;
                 if (cooldown > 0) {
                     taskPageCooldownUntil = Date.now() + cooldown * 1000;
+                    
+                    renderPageCooldown('special-tasks'); 
+                    
+                    const interval = setInterval(() => {
+                        const timeLeft = Math.ceil((taskPageCooldownUntil - Date.now()) / 1000);
+                        const cooldownText = document.getElementById('cooldownTimerDisplay');
+                        if (cooldownText) {
+                            cooldownText.textContent = `Please wait ${timeLeft}s`;
+                        }
+                        if (timeLeft <= 0) {
+                            clearInterval(interval);
+                        }
+                    }, 1000);
                 }
             }
         }
@@ -413,7 +423,7 @@
         function updateAllTimers() {
             const now = Date.now();
             for (const taskId in taskTimers) {
-                const endTime = taskTimers[taskId];
+                const { endTime, type } = taskTimers[taskId];
                 const taskButton = document.getElementById(`taskBtn_${taskId}`);
                 if (taskButton) {
                     if (endTime > now) {
@@ -436,13 +446,8 @@
             const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10); 
             const snapshot = await historyRef.once('value'); 
             const historyData = snapshot.val() || {}; 
-            if (Object.keys(historyData).length === 0) { 
-                historyEl.innerHTML = '<p>No history found.</p>'; 
-                return; 
-            } 
-            historyEl.innerHTML = Object.values(historyData).reverse().map(req => {
-                return `<div class="history-item"><span>${(req.amountBDT || 0).toFixed(2)} BDT - ${req.method}</span><span class="status-${req.status}">${req.status}</span></div>`;
-            }).join(''); 
+            if (Object.keys(historyData).length === 0) { historyEl.innerHTML = '<p>No history found.</p>'; return; } 
+            historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="task-card"><span>${(req.amountBDT || 0).toFixed(2)} BDT - ${req.method}</span><span style="float:right; color:${req.status === 'approved' ? 'green' : (req.status === 'rejected' ? 'red' : 'orange')}">${req.status}</span></div>`).join(''); 
         }
 
         function handleSubmitWithdrawal() {
@@ -464,9 +469,7 @@
             if (requiredPoints > (currentUser.pointBalance || 0)) {
                 return showToast("Insufficient balance.");
             }
-            const requestData = {
-                userId: currentUser.id, userName: currentUser.name, amountBDT: amountBDT, pointAmount: requiredPoints, currency: "BDT", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
-            };
+            const requestData = { userId: currentUser.id, userName: currentUser.name, amountBDT: amountBDT, pointAmount: requiredPoints, currency: "BDT", method: method, account: account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP };
             database.ref('withdrawRequests').push(requestData).then(() => {
                 database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(-requiredPoints));
                 showToast("Withdrawal request submitted!");
@@ -480,33 +483,18 @@
             const listEl = document.querySelector(elementId); 
             if (!listEl) return; 
             listEl.innerHTML = "<p>Loading...</p>"; 
-            
-            const query = (type === 'points') 
-                ? database.ref('users').orderByChild('pointBalance') 
-                : database.ref('users').orderByChild('referrals/count');
-                
+            const query = (type === 'points') ? database.ref('users').orderByChild('pointBalance') : database.ref('users').orderByChild('referrals/count');
             const snapshot = await query.limitToLast(10).once('value'); 
             const data = snapshot.val(); 
-            
             if (!data) { listEl.innerHTML = '<p>No data available.</p>'; return; } 
-            
-            const users = Object.values(data).map(user => ({
-                name: user.name,
-                score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0)
-            }));
-            
-            let headerHtml = `<div class="history-item" style="font-weight:bold;"><span>USER</span><span>${type === 'points' ? 'POINTS' : 'REFERRALS'}</span></div>`;
-
-            listEl.innerHTML = headerHtml + users.sort((a, b) => b.score - a.score).map((user, i) => {
-                return `<div class="history-item"><span>${i+1}. ${user.name}</span><span>${user.score.toFixed(0)}</span></div>`;
-            }).join(''); 
+            const users = Object.values(data).map(user => ({ name: user.name, score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0) }));
+            let headerHtml = `<div style="display:flex; justify-content:space-between; font-weight:bold; padding: 5px;"><span>USER</span><span>${type === 'points' ? 'POINTS' : 'REFERRALS'}</span></div>`;
+            listEl.innerHTML = headerHtml + users.sort((a, b) => b.score - a.score).map((user, i) => `<div style="display:flex; justify-content:space-between; padding: 5px;"><span>${i+1}. ${user.name}</span><span>${user.score.toFixed(0)}</span></div>`).join(''); 
         }
         
         async function handleReferralVerification() {
             const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
-            if (!enteredCode) return showToast("Please enter a code.");
-            if (enteredCode === currentUser.referralCode) return showToast("You cannot use your own code.");
-            if (currentUser.referralApplied) return showToast("You have already applied a code.");
+            if (!enteredCode || enteredCode === currentUser.referralCode || currentUser.referralApplied) return showToast(currentUser.referralApplied ? "Already applied." : "Invalid code.");
 
             try {
                 const snapshot = await database.ref('users').orderByChild('referralCode').equalTo(enteredCode).once('value');
@@ -530,21 +518,17 @@
 
                 await database.ref().update(updates);
                 
-                showToast(`Code applied successfully! You received ${refereeBonus} points.`);
+                showToast(`Code applied! You received ${refereeBonus} points.`);
                 navigateTo('referral', true);
             } catch (error) {
                 showToast("An error occurred. Please try again.");
-                console.error(error);
             }
         }
 
         function timeAgo(timestamp) {
-            const now = Date.now();
-            const seconds = Math.floor((now - timestamp) / 1000);
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
             let interval = seconds / 31536000;
             if (interval > 1) return Math.floor(interval) + " years ago";
-            interval = seconds / 2592000;
-            if (interval > 1) return Math.floor(interval) + " months ago";
             interval = seconds / 86400;
             if (interval > 1) return Math.floor(interval) + " days ago";
             interval = seconds / 3600;
@@ -570,18 +554,9 @@
             allNotifications.sort((a, b) => b.timestamp - a.timestamp);
 
             const listEl = document.getElementById('notificationList');
-            if (allNotifications.length === 0) {
-                listEl.innerHTML = '<p style="text-align:center; padding: 20px;">No new notifications.</p>';
-                return;
-            }
+            if (allNotifications.length === 0) { listEl.innerHTML = '<p style="text-align:center; padding: 20px;">No new notifications.</p>'; return; }
             
-            listEl.innerHTML = allNotifications.map(n => `
-                <div class="notification-item">
-                    <h4>${n.title}</h4>
-                    <p>${n.message}</p>
-                    <div class="time">${timeAgo(n.timestamp)}</div>
-                </div>
-            `).join('');
+            listEl.innerHTML = allNotifications.map(n => `<div class="notification-item"><h4>${n.title}</h4><p>${n.message}</p><div class="time">${timeAgo(n.timestamp)}</div></div>`).join('');
         }
 
         function handleDailyBonus() { 
