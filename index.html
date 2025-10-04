@@ -91,6 +91,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
+        // --- All the Javascript code for the User Panel ---
+        // This is the full and final version.
+        // Copy everything from here to the end of the file.
         const firebaseConfig = {
             apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
             authDomain: "earn-zone-a6dce.firebaseapp.com",
@@ -234,8 +237,31 @@
             }, 1000);
         }
 
-        async function renderWithdrawPage() { /* ... full code from previous response ... */ }
-        function renderReferralPage() { /* ... full code from previous response ... */ }
+        async function renderWithdrawPage() { 
+            const methodsSnap = await database.ref('admin/withdrawMethods').once('value'); 
+            const methods = methodsSnap.val() || {}; 
+            const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
+            const minWithdrawBDT = appSettings.minWithdrawBDT || 50;
+            const rate = appSettings.pointToBdtRate || 0.1;
+
+            mainContent.innerHTML = `<div class="task-card"><h2>Withdraw Balance</h2><p>Minimum: ${minWithdrawBDT} BDT.</p><p>Your balance: ${(currentUser.pointBalance || 0).toFixed(2)} Points</p><p><small>Rate: 1 BDT = ${1/rate} Points</small></p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in BDT" class="input-field" step="1"><input type="text" id="withdraw-account" placeholder="Account Number" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit</button></div><div class="task-card"><h2>History</h2><div id="withdraw-history"></div></div>`; 
+            
+            document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
+            loadWithdrawHistory(); 
+        }
+
+        function renderReferralPage() {
+            const refCount = currentUser.referrals?.count || 0;
+            let earnedDisplayPoints = (currentUser.referrals?.incomePoints || 0).toFixed(2);
+            let incomeStatHtml = `<div class="stat-item"><div class="stat-value">${earnedDisplayPoints}</div><div class="stat-label">Points Earned</div></div>`;
+            const referralCode = currentUser.referralCode || '';
+            const referralLink = `https://t.me/${tg.initDataUnsafe.bot_username}?start=${referralCode}`;
+            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2>Referral Code</h2><p>Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.referral || ''}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div class="stat-value">${refCount}</div><div class="stat-label">Referrals</div></div>${incomeStatHtml}</div></div>`;
+            if (!currentUser.referralApplied) {
+                document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
+            }
+        }
 
         function handleTaskClick(taskId, type) {
             const taskSource = (type === 'special') ? specialTasks : tasks;
@@ -329,32 +355,111 @@
             }
         }
         
-        async function loadNotifications() {
-            const allNotifications = [];
-            const globalNotifs = (await database.ref('admin/notifications/global').once('value')).val() || {};
-            const inactiveNotifs = (await database.ref('admin/notifications/inactive').once('value')).val() || {};
-            
-            Object.values(globalNotifs).forEach(n => allNotifications.push(n));
-            
-            const inactivityThreshold = (appSettings.inactivityThresholdDays || 7) * 86400000;
-            if (Date.now() - new Date(currentUser.lastActive).getTime() > inactivityThreshold) {
-                 Object.values(inactiveNotifs).forEach(n => allNotifications.push(n));
-            }
-            
-            if (currentUser.notifications) {
-                Object.values(currentUser.notifications).forEach(n => allNotifications.push(n));
-            }
-
-            allNotifications.sort((a, b) => b.timestamp - a.timestamp);
-            const listEl = document.getElementById('notificationList');
-            if (allNotifications.length === 0) { listEl.innerHTML = '<p style="padding: 20px; text-align:center;">No notifications.</p>'; return; }
-            listEl.innerHTML = allNotifications.map(n => `<div class="notification-item"><h4>${n.title}</h4><p>${n.message}</p><div class="time">${timeAgo(n.timestamp)}</div></div>`).join('');
+        async function loadWithdrawHistory() {
+            const historyEl = document.getElementById('withdraw-history');
+            if (!historyEl) return;
+            historyEl.innerHTML = '<p>Loading...</p>';
+            const historyRef = database.ref('withdrawRequests').orderByChild('userId').equalTo(currentUser.id).limitToLast(10);
+            const snapshot = await historyRef.once('value');
+            const historyData = snapshot.val() || {};
+            if (Object.keys(historyData).length === 0) { historyEl.innerHTML = '<p>No history found.</p>'; return; }
+            historyEl.innerHTML = Object.values(historyData).reverse().map(req => `<div class="task-card"><span>${(req.amountBDT || 0).toFixed(2)} BDT - ${req.method}</span><span style="float:right; color:${req.status === 'approved' ? 'green' : (req.status === 'rejected' ? 'red' : 'orange')}">${req.status}</span></div>`).join('');
         }
 
-        async function handleReferralVerification() { /* ... full function from previous response ... */ }
-        function handleDailyBonus() { /* ... full function from previous response ... */ }
-        function timeAgo(timestamp) { /* ... full function from previous response ... */ }
-        function showToast(message, duration = 3000) { /* ... full function from previous response ... */ }
+        function handleSubmitWithdrawal() {
+            const method = document.getElementById('withdraw-method').value;
+            const amountBDT = parseFloat(document.getElementById('withdraw-amount').value);
+            const account = document.getElementById('withdraw-account').value.trim();
+            if (!method || isNaN(amountBDT) || amountBDT <= 0 || !account) { return showToast("Please fill all fields correctly."); }
+            const rate = appSettings.pointToBdtRate || 0.1;
+            const minWithdrawBDT = appSettings.minWithdrawBDT || 50;
+            if (amountBDT < minWithdrawBDT) { return showToast(`Minimum withdrawal is ${minWithdrawBDT} BDT.`); }
+            const requiredPoints = amountBDT / rate;
+            if (requiredPoints > (currentUser.pointBalance || 0)) { return showToast("Insufficient balance."); }
+            const requestData = { userId: currentUser.id, userName: currentUser.name, amountBDT, pointAmount: requiredPoints, method, account, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP };
+            database.ref('withdrawRequests').push(requestData).then(() => {
+                database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(-requiredPoints));
+                showToast("Withdrawal request submitted!");
+                navigateTo('withdraw', true);
+            }).catch(err => showToast("Error submitting request."));
+        }
+        
+        async function handleReferralVerification() {
+            const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
+            if (!enteredCode || enteredCode === currentUser.referralCode || currentUser.referralApplied) { return showToast(currentUser.referralApplied ? "Already applied a code." : "Invalid code."); }
+
+            try {
+                const snapshot = await database.ref('users').orderByChild('referralCode').equalTo(enteredCode).once('value');
+                if (!snapshot.exists()) return showToast("Invalid referral code.");
+
+                const referrerData = snapshot.val();
+                const referrerId = Object.keys(referrerData)[0];
+                const referrer = referrerData[referrerId];
+
+                if (referrer.isBanned) return showToast("This referral code is not active.");
+                
+                const refereeBonus = appSettings.referralBonus?.refereePoints || 0;
+                const referrerBonus = appSettings.referralBonus?.referrerPoints || 0;
+
+                const updates = {};
+                updates[`/users/${currentUser.id}/referralApplied`] = true;
+                updates[`/users/${currentUser.id}/pointBalance`] = firebase.database.ServerValue.increment(refereeBonus);
+                updates[`/users/${referrerId}/pointBalance`] = firebase.database.ServerValue.increment(referrerBonus);
+                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${referrerId}/referrals/incomePoints`] = firebase.database.ServerValue.increment(referrerBonus);
+
+                await database.ref().update(updates);
+                
+                showToast(`Code applied! You received ${refereeBonus} points.`);
+                navigateTo('referral', true);
+            } catch (error) { showToast("An error occurred."); }
+        }
+
+        async function loadNotifications() {
+            const allNotifications = [];
+            try {
+                const [globalSnap, inactiveSnap] = await Promise.all([
+                    database.ref('admin/notifications/global').once('value'),
+                    database.ref('admin/notifications/inactive').once('value')
+                ]);
+                Object.values(globalSnap.val() || {}).forEach(n => allNotifications.push(n));
+                
+                const inactivityThreshold = (appSettings.inactivityThresholdDays || 7) * 86400000;
+                if (Date.now() - new Date(currentUser.lastActive).getTime() > inactivityThreshold) {
+                     Object.values(inactiveSnap.val() || {}).forEach(n => allNotifications.push(n));
+                }
+                if (currentUser.notifications) {
+                    Object.values(currentUser.notifications).forEach(n => allNotifications.push(n));
+                }
+                allNotifications.sort((a, b) => b.timestamp - a.timestamp);
+                const listEl = document.getElementById('notificationList');
+                if (allNotifications.length === 0) { listEl.innerHTML = '<p style="padding: 20px; text-align:center;">No notifications.</p>'; return; }
+                listEl.innerHTML = allNotifications.map(n => `<div class="notification-item"><h4>${n.title}</h4><p>${n.message}</p><div class="time">${timeAgo(n.timestamp)}</div></div>`).join('');
+            } catch(e){ console.error("Could not load notifications"); }
+        }
+        
+        function handleDailyBonus() { 
+            if (currentUser.taskStats?.dailyBonusClaimed) return showToast("Already claimed today."); 
+            const rewardPoints = appSettings.dailyBonus?.rewardPoints || 0;
+            if (rewardPoints > 0) {
+                database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
+                database.ref(`users/${currentUser.id}/taskStats/dailyBonusClaimed`).set(true);
+                showToast(`+${rewardPoints.toFixed(0)} Points as Daily Bonus!`);
+            }
+        }
+        
+        function timeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+            let interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " days ago";
+            interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " hours ago";
+            interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " minutes ago";
+            return "Just now";
+        }
+        
+        function showToast(message, duration = 3000) { 
+            const toast = document.getElementById('toast'); 
+            if(toast){ toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), duration); } 
+        }
     </script>
 </body>
 </html>
