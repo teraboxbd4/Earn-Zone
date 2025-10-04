@@ -253,7 +253,6 @@
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
         
         function renderTasksPage() {
-            // No page cooldown check for the regular tasks page
             let tasksHtml = Object.keys(tasks).map(taskId => { 
                 const task = tasks[taskId]; 
                 let rewardDisplay = `${(task.rewardPoints || 0).toFixed(2)} Points`;
@@ -265,7 +264,6 @@
         }
 
         function renderSpecialTasksPage() {
-            // Only check for page cooldown on the special tasks page
             if (taskPageCooldownUntil > Date.now()) {
                 renderPageCooldown('special-tasks');
                 return;
@@ -346,29 +344,69 @@
                 totalClicks: firebase.database.ServerValue.increment(1)
             });
 
-            if (type === 'special' && task.link) {
-                tg.openLink(task.link);
-            }
+            if (type === 'regular') {
+                let adPromise;
+                try {
+                    switch(task.network) {
+                        case 'Monetag': adPromise = window.show_9797628 && window.show_9797628(); break;
+                        case 'Gigapub': adPromise = window.showGiga && window.showGiga(); break;
+                        case 'Adexora': adPromise = window.showAdexora && window.showAdexora(); break;
+                        case 'AdeExtra': adPromise = new Promise(resolve => setTimeout(resolve, 5000)); break;
+                        default: adPromise = Promise.reject('Unknown network');
+                    }
+                    if (!adPromise || typeof adPromise.then !== 'function') {
+                         throw new Error(`SDK for ${task.network} failed or not found.`);
+                    }
+                } catch (e) {
+                    adPromise = Promise.reject(e);
+                }
 
-            const rewardPoints = parseFloat(task.rewardPoints) || 0;
-            if (rewardPoints > 0) {
-                database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
-                showToast(`+${rewardPoints.toFixed(2)} Points!`);
-            }
-            
-            const timerSeconds = parseInt(task.timer) || 0;
-            if (timerSeconds > 0) {
-                taskTimers[taskId] = Date.now() + timerSeconds * 1000;
-                updateAllTimers();
-            } else {
-                taskButton.disabled = false;
-                taskButton.textContent = 'Start Task';
-            }
-            
-            // Apply page cooldown ONLY for special tasks
-            const cooldown = appSettings.taskPageCooldown || 0;
-            if (type === 'special' && cooldown > 0) {
-                taskPageCooldownUntil = Date.now() + cooldown * 1000;
+                Promise.resolve(adPromise).then(() => {
+                    const rewardPoints = parseFloat(task.rewardPoints) || 0;
+                    if (rewardPoints > 0) {
+                        database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
+                        showToast(`+${rewardPoints.toFixed(2)} Points!`);
+                    }
+                    const timerSeconds = parseInt(task.timer) || 0;
+                    if (timerSeconds > 0) {
+                        taskTimers[taskId] = Date.now() + timerSeconds * 1000;
+                        updateAllTimers();
+                    } else {
+                        taskButton.disabled = false;
+                        taskButton.textContent = 'Start Task';
+                    }
+                }).catch(err => {
+                    showToast("Ad failed. Please try again.");
+                    console.error("Ad Error:", err);
+                    delete taskTimers[taskId];
+                    if (taskButton) {
+                        taskButton.disabled = false;
+                        taskButton.textContent = 'Start Task';
+                    }
+                });
+
+            } else if (type === 'special') {
+                if (task.link) {
+                    tg.openLink(task.link);
+                }
+                const rewardPoints = parseFloat(task.rewardPoints) || 0;
+                if (rewardPoints > 0) {
+                    database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
+                    showToast(`+${rewardPoints.toFixed(2)} Points!`);
+                }
+                const timerSeconds = parseInt(task.timer) || 0;
+                if (timerSeconds > 0) {
+                    taskTimers[taskId] = Date.now() + timerSeconds * 1000;
+                    updateAllTimers();
+                } else {
+                    taskButton.disabled = false;
+                    taskButton.textContent = 'Start Special Task';
+                }
+                
+                const cooldown = appSettings.taskPageCooldown || 0;
+                if (cooldown > 0) {
+                    taskPageCooldownUntil = Date.now() + cooldown * 1000;
+                }
             }
         }
         
@@ -383,7 +421,7 @@
                         taskButton.textContent = `Wait ${secondsLeft}s`;
                         taskButton.disabled = true;
                     } else {
-                        taskButton.textContent = 'Start Task';
+                        taskButton.textContent = type === 'special' ? 'Start Special Task' : 'Start Task';
                         taskButton.disabled = false;
                         delete taskTimers[taskId];
                     }
@@ -478,18 +516,14 @@
                 const referrerId = Object.keys(referrerData)[0];
                 const referrer = referrerData[referrerId];
 
-                // Prevent using a banned user's code
                 if (referrer.isBanned) return showToast("This referral code is not active.");
                 
                 const refereeBonus = appSettings.referralBonus?.refereePoints || 0;
                 const referrerBonus = appSettings.referralBonus?.referrerPoints || 0;
 
                 const updates = {};
-                // Update Referee (current user)
                 updates[`/users/${currentUser.id}/referralApplied`] = true;
                 updates[`/users/${currentUser.id}/pointBalance`] = firebase.database.ServerValue.increment(refereeBonus);
-
-                // Update Referrer
                 updates[`/users/${referrerId}/pointBalance`] = firebase.database.ServerValue.increment(referrerBonus);
                 updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
                 updates[`/users/${referrerId}/referrals/incomePoints`] = firebase.database.ServerValue.increment(referrerBonus);
@@ -497,7 +531,7 @@
                 await database.ref().update(updates);
                 
                 showToast(`Code applied successfully! You received ${refereeBonus} points.`);
-                navigateTo('referral', true); // Refresh page to hide the verify box
+                navigateTo('referral', true);
             } catch (error) {
                 showToast("An error occurred. Please try again.");
                 console.error(error);
