@@ -253,6 +253,7 @@
         function renderHomePage() { mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2><div id="leaderboard-list"></div></div>`; document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); loadLeaderboard('points', '#leaderboard-list'); }
         
         function renderTasksPage() {
+            // No page cooldown check for the regular tasks page
             let tasksHtml = Object.keys(tasks).map(taskId => { 
                 const task = tasks[taskId]; 
                 let rewardDisplay = `${(task.rewardPoints || 0).toFixed(2)} Points`;
@@ -264,6 +265,7 @@
         }
 
         function renderSpecialTasksPage() {
+            // Only check for page cooldown on the special tasks page
             if (taskPageCooldownUntil > Date.now()) {
                 renderPageCooldown('special-tasks');
                 return;
@@ -363,6 +365,7 @@
                 taskButton.textContent = 'Start Task';
             }
             
+            // Apply page cooldown ONLY for special tasks
             const cooldown = appSettings.taskPageCooldown || 0;
             if (type === 'special' && cooldown > 0) {
                 taskPageCooldownUntil = Date.now() + cooldown * 1000;
@@ -473,24 +476,25 @@
 
                 const referrerData = snapshot.val();
                 const referrerId = Object.keys(referrerData)[0];
+                const referrer = referrerData[referrerId];
+
+                // Prevent using a banned user's code
+                if (referrer.isBanned) return showToast("This referral code is not active.");
                 
                 const refereeBonus = appSettings.referralBonus?.refereePoints || 0;
                 const referrerBonus = appSettings.referralBonus?.referrerPoints || 0;
 
+                const updates = {};
                 // Update Referee (current user)
-                await database.ref(`users/${currentUser.id}`).update({
-                    referralApplied: true,
-                    pointBalance: firebase.database.ServerValue.increment(refereeBonus)
-                });
+                updates[`/users/${currentUser.id}/referralApplied`] = true;
+                updates[`/users/${currentUser.id}/pointBalance`] = firebase.database.ServerValue.increment(refereeBonus);
 
                 // Update Referrer
-                await database.ref(`users/${referrerId}`).update({
-                    pointBalance: firebase.database.ServerValue.increment(referrerBonus)
-                });
-                await database.ref(`users/${referrerId}/referrals`).update({
-                    count: firebase.database.ServerValue.increment(1),
-                    incomePoints: firebase.database.ServerValue.increment(referrerBonus)
-                });
+                updates[`/users/${referrerId}/pointBalance`] = firebase.database.ServerValue.increment(referrerBonus);
+                updates[`/users/${referrerId}/referrals/count`] = firebase.database.ServerValue.increment(1);
+                updates[`/users/${referrerId}/referrals/incomePoints`] = firebase.database.ServerValue.increment(referrerBonus);
+
+                await database.ref().update(updates);
                 
                 showToast(`Code applied successfully! You received ${refereeBonus} points.`);
                 navigateTo('referral', true); // Refresh page to hide the verify box
