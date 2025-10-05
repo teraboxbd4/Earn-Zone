@@ -23,6 +23,8 @@
         .header { height: 180px; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .notification-btn { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid rgba(255,255,255,0.3); }
+        .notification-btn .badge { position: absolute; top: 0; right: 0; width: 12px; height: 12px; background-color: #e74c3c; border-radius: 50%; border: 2px solid white; display: none; }
+        .notification-btn .badge.show { display: block; }
         .profile-section { margin-top: -50px; padding: 0 20px; position: relative; z-index: 2; }
         .profile-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 70px 20px 20px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); position: relative; text-align: center; }
         .profile-pic { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--card-bg); object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
@@ -34,6 +36,7 @@
         .stat-value { font-weight: 600; color: var(--text-dark); font-size: 1rem; }
         .stat-label { font-size: 0.7rem; color: var(--text-secondary); }
         .content-section { padding: 20px; margin-bottom: 80px; }
+        .section-title { display: flex; align-items: center; gap: 8px; font-size: 1.2rem; font-weight: 600; color: var(--text-dark); margin-bottom: 15px; }
         .task-card { background: var(--card-bg); border-radius: var(--border-radius); padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); border: 1px solid var(--border-color); }
         .btn { display: block; width: 100%; padding: 12px; border-radius: var(--border-radius-sm); border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; text-align: center; text-decoration: none; }
         .btn-primary { background: var(--primary-color); color: white; }
@@ -46,6 +49,12 @@
         .page-cooldown-overlay { text-align: center; padding: 30px; }
         .page-cooldown-overlay h3 { color: var(--primary-color); }
         .page-cooldown-overlay p { font-size: 1.8rem; font-weight: 600; color: var(--accent-color); margin-top: 10px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1002; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; padding: 25px; border-radius: var(--border-radius); width: 90%; max-width: 380px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .modal-header h2 { margin: 0; }
+        .modal-body { font-size: 0.95rem; line-height: 1.5; }
         .notification-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-light); z-index: 200; transform: translateX(100%); transition: transform 0.3s ease-in-out; overflow-y: auto; }
         .notification-modal.show { transform: translateX(0); }
         .notification-header { display: flex; align-items: center; padding: 15px; background: var(--primary-color); color: white; }
@@ -56,14 +65,20 @@
         .notification-item h4 { margin: 0 0 5px 0; }
         .notification-item p { margin: 0 0 8px 0; font-size: 0.9rem; }
         .notification-item .time { font-size: 0.75rem; color: var(--text-secondary); text-align: right; }
+        .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+        .leaderboard-item:last-child { border-bottom: none; }
+        .leaderboard-item span:first-child { display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <div class="header"><button class="notification-btn" id="notificationBtn"><i class="fas fa-bell"></i></button><h1 class="header-title">Earn Zone</h1></div>
+        <div class="header">
+            <button class="notification-btn" id="notificationBtn"><i class="fas fa-bell"></i><span class="badge"></span></button>
+            <h1 class="header-title">Earn Zone</h1>
+        </div>
         <div class="profile-section">
             <div class="profile-card">
-                <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile" class="profile-pic" id="profilePic">
+                <img src="https://i.ibb.co/61Jm00x/avatar.png" alt="Profile" class="profile-pic" id="profilePic">
                 <h1 class="profile-name" id="profileNameDisplay">Loading...</h1>
                 <div class="main-balance-display" id="mainBalanceDisplay"></div>
                 <div class="stats-display">
@@ -83,10 +98,20 @@
         </div>
         <div class="toast" id="toast"></div>
         <div class="notification-modal" id="notificationModal">
-            <div class="notification-header"><button class="close-btn" id="closeNotificationBtn">&times;</button><h2>Notifications</h2></div>
+            <div class="notification-header"><button class="close-btn" id="closeNotificationBtn">&times;</button><h2>In-App Notices</h2></div>
             <div class="notification-list" id="notificationList"></div>
         </div>
+        <div class="modal-overlay" id="entryPopupModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="entryPopupTitle">Welcome</h2>
+                    <button id="closeEntryPopup" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                </div>
+                <div class="modal-body" id="entryPopupMessage"></div>
+            </div>
+        </div>
     </div>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -122,8 +147,13 @@
             if (!tgUser) { document.body.innerHTML = "Please open this in Telegram."; return; }
 
             document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', e => { e.preventDefault(); navigateTo(item.dataset.page); }));
-            document.getElementById('notificationBtn').addEventListener('click', () => document.getElementById('notificationModal').classList.add('show'));
+            document.getElementById('notificationBtn').addEventListener('click', () => {
+                document.getElementById('notificationModal').classList.add('show');
+                document.querySelector('.notification-btn .badge').classList.remove('show');
+                localStorage.setItem('lastNoticeRead', Date.now());
+            });
             document.getElementById('closeNotificationBtn').addEventListener('click', () => document.getElementById('notificationModal').classList.remove('show'));
+            document.getElementById('closeEntryPopup').addEventListener('click', () => document.getElementById('entryPopupModal').classList.remove('show'));
 
             loadInitialData(tgUser);
             setInterval(updateAllTimers, 1000);
@@ -168,6 +198,7 @@
                 
                 navigateTo('home', true);
                 loadNotifications();
+                showEntryPopup();
             } catch (error) { document.body.innerHTML = `<p>${error.message}</p>`; }
         }
         
@@ -193,8 +224,15 @@
         }
 
         function renderHomePage() { 
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.home || 'Welcome!'}</p></div><div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>`;
+            mainContent.innerHTML = `
+                <div class="task-card"><p>${appSettings.notices?.home || 'Welcome to Earn Zone!'}</p></div>
+                <div class="task-card"><button class="btn btn-primary" id="dailyBonusBtn"><i class="fas fa-gift"></i> Daily Bonus</button></div>
+                <div class="task-card">
+                    <h2 class="section-title"><i class="fas fa-trophy"></i> Points Leaderboard</h2>
+                    <div id="leaderboard-list"></div>
+                </div>`; 
             document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); 
+            loadLeaderboard('points', '#leaderboard-list'); 
         }
         
         function renderTasksPage() {
@@ -203,7 +241,7 @@
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}', 'regular')">Start Task (${(task.rewardPoints || 0)} P)</button>`;
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
             }).join(''); 
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p>No tasks.</p>'}`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p>No tasks.</p>'}`;
             updateAllTimers();
         }
 
@@ -249,12 +287,13 @@
             const refCount = currentUser.referrals?.count || 0;
             let earnedDisplayPoints = (currentUser.referrals?.incomePoints || 0).toFixed(2);
             const referralCode = currentUser.referralCode || '';
-            const referralLink = `https://t.me/${tg.initDataUnsafe.bot_username}?start=${referralCode}`;
+            const referralLink = `https://t.me/${tg.initDataUnsafe.bot_username || 'YOUR_BOT_USERNAME'}?start=${referralCode}`;
             const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2>Referral Code</h2><p>Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.referral || ''}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div>${refCount}</div><div>Referrals</div></div><div class="stat-item"><div>${earnedDisplayPoints}</div><div>Points Earned</div></div></div></div>`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.referral || 'Share your code with friends.'}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div>${refCount}</div><div>Referrals</div></div><div class="stat-item"><div>${earnedDisplayPoints}</div><div>Points Earned</div></div></div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
+            loadLeaderboard('referrals', '#ref-leaderboard-list');
         }
 
         function handleTaskClick(taskId, type) {
@@ -297,7 +336,7 @@
                     if (taskButton) { taskButton.disabled = false; taskButton.textContent = `Start Task (${(task.rewardPoints || 0)} P)`; }
                 });
             } else if (type === 'special') {
-                if (task.link) { tg.openLink(task.link); }
+                if (task.link) { tg.openLink(task.link); } // Opens in external browser
                 const rewardPoints = parseFloat(task.rewardPoints) || 0;
                 if (rewardPoints > 0) {
                     database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
@@ -367,6 +406,18 @@
             }).catch(err => showToast("Error submitting request."));
         }
         
+        async function loadLeaderboard(type, elementId) {
+            const listEl = document.getElementById(elementId);
+            if (!listEl) return;
+            listEl.innerHTML = "<p>Loading...</p>";
+            const query = (type === 'points') ? database.ref('users').orderByChild('pointBalance') : database.ref('users').orderByChild('referrals/count');
+            const snapshot = await query.limitToLast(10).once('value');
+            const data = snapshot.val();
+            if (!data) { listEl.innerHTML = '<p>No data to show.</p>'; return; }
+            const users = Object.values(data).map(user => ({ name: user.name, score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0) }));
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="leaderboard-item"><span><b>#${i + 1}</b> ${user.name}</span> <span>${user.score.toFixed(0)}</span></div>`).join('');
+        }
+
         async function handleReferralVerification() {
             const enteredCode = document.getElementById('referralCodeInput').value.trim().toUpperCase();
             if (!enteredCode || enteredCode === currentUser.referralCode || currentUser.referralApplied) { return showToast(currentUser.referralApplied ? "Already applied a code." : "Invalid code."); }
@@ -394,23 +445,38 @@
         async function loadNotifications() {
             const allNotifications = [];
             try {
-                const [globalSnap, inactiveSnap] = await Promise.all([
-                    database.ref('admin/notifications/global').once('value'),
-                    database.ref('admin/notifications/inactive').once('value')
-                ]);
-                Object.values(globalSnap.val() || {}).forEach(n => allNotifications.push(n));
-                const inactivityThreshold = (appSettings.inactivityThresholdDays || 7) * 86400000;
-                if (Date.now() - new Date(currentUser.lastActive).getTime() > inactivityThreshold) {
-                     Object.values(inactiveSnap.val() || {}).forEach(n => allNotifications.push(n));
+                const noticesSnap = await database.ref('admin/inAppNotices').once('value');
+                const notices = noticesSnap.val() || {};
+                let latestNoticeTime = 0;
+                Object.values(notices).forEach(n => {
+                    allNotifications.push(n);
+                    if (n.timestamp > latestNoticeTime) {
+                        latestNoticeTime = n.timestamp;
+                    }
+                });
+
+                const lastReadTime = localStorage.getItem('lastNoticeRead') || 0;
+                if (latestNoticeTime > lastReadTime) {
+                    document.querySelector('.notification-btn .badge').classList.add('show');
                 }
-                if (currentUser.notifications) {
-                    Object.values(currentUser.notifications).forEach(n => allNotifications.push(n));
-                }
+
                 allNotifications.sort((a, b) => b.timestamp - a.timestamp);
                 const listEl = document.getElementById('notificationList');
-                if (allNotifications.length === 0) { listEl.innerHTML = '<p style="padding: 20px; text-align:center;">No notifications.</p>'; return; }
+                if (allNotifications.length === 0) { listEl.innerHTML = '<p style="padding: 20px; text-align:center;">No notices available.</p>'; return; }
                 listEl.innerHTML = allNotifications.map(n => `<div class="notification-item"><h4>${n.title}</h4><p>${n.message}</p><div class="time">${timeAgo(n.timestamp)}</div></div>`).join('');
             } catch(e){ console.error("Could not load notifications"); }
+        }
+        
+        async function showEntryPopup() {
+            try {
+                const snap = await database.ref('admin/entryPopup').once('value');
+                const popup = snap.val();
+                if (popup && popup.title && popup.message) {
+                    document.getElementById('entryPopupTitle').textContent = popup.title;
+                    document.getElementById('entryPopupMessage').textContent = popup.message;
+                    document.getElementById('entryPopupModal').classList.add('show');
+                }
+            } catch (e) { console.error("Could not load entry popup."); }
         }
         
         function handleDailyBonus() { 
