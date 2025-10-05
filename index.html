@@ -205,10 +205,8 @@
         function navigateTo(page, forceRender = false) {
             const currentActive = document.querySelector('.nav-item.active');
             if (!forceRender && currentActive && currentActive.dataset.page === page) return;
-
             document.querySelector('.nav-item.active')?.classList.remove('active');
             document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
-            
             const pages = { home: renderHomePage, tasks: renderTasksPage, "special-tasks": renderSpecialTasksPage, withdraw: renderWithdrawPage, referral: renderReferralPage };
             if (pages[page]) { pages[page](); }
         }
@@ -241,7 +239,7 @@
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}', 'regular')">Start Task (${(task.rewardPoints || 0)} P)</button>`;
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
             }).join(''); 
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p>No tasks.</p>'}`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p>No tasks.</p>'}`;
             updateAllTimers();
         }
 
@@ -254,7 +252,7 @@
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}', 'special')">Start Task (${(specialTasks[taskId].rewardPoints || 0)} P)</button>`;
                 return `<div class="task-card"><h3><i class="fas fa-star"></i> ${specialTasks[taskId].name}</h3><div style="margin-top:15px;">${buttonHtml}</div></div>`;
             }).join(''); 
-            mainContent.innerHTML = `<div class="task-card"><p>Complete special tasks for bigger rewards!</p></div>${tasksHtml || '<p>No special tasks.</p>'}`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.specialTask || 'Complete special tasks for bigger rewards!'}</p></div>${tasksHtml || '<p>No special tasks.</p>'}`;
             updateAllTimers();
         }
         
@@ -278,7 +276,7 @@
             const optionsHtml = Object.values(methods).map(m => `<option value="${m.name}">${m.name}</option>`).join(''); 
             const minWithdrawBDT = appSettings.minWithdrawBDT || 50;
             const rate = appSettings.pointToBdtRate || 0.1;
-            mainContent.innerHTML = `<div class="task-card"><h2>Withdraw Balance</h2><p>Minimum: ${minWithdrawBDT} BDT.</p><p>Your balance: ${(currentUser.pointBalance || 0).toFixed(2)} Points</p><p><small>Rate: 1 BDT = ${1/rate} Points</small></p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in BDT" class="input-field" step="1"><input type="text" id="withdraw-account" placeholder="Account Number" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit</button></div><div class="task-card"><h2>History</h2><div id="withdraw-history"></div></div>`; 
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.withdraw || ''}</p><h2>Withdraw Balance</h2><p>Minimum: ${minWithdrawBDT} BDT.</p><p>Your balance: ${(currentUser.pointBalance || 0).toFixed(2)} Points</p><p><small>Rate: 1 BDT = ${1/rate} Points</small></p><select id="withdraw-method" class="select-field"><option value="">Select Method</option>${optionsHtml}</select><input type="number" id="withdraw-amount" placeholder="Amount in BDT" class="input-field" step="1"><input type="text" id="withdraw-account" placeholder="Account Number" class="input-field"><button id="submit-withdraw" class="btn btn-primary">Submit</button></div><div class="task-card"><h2>History</h2><div id="withdraw-history"></div></div>`; 
             document.getElementById('submit-withdraw').addEventListener('click', handleSubmitWithdrawal); 
             loadWithdrawHistory(); 
         }
@@ -287,9 +285,9 @@
             const refCount = currentUser.referrals?.count || 0;
             let earnedDisplayPoints = (currentUser.referrals?.incomePoints || 0).toFixed(2);
             const referralCode = currentUser.referralCode || '';
-            const referralLink = `https://t.me/${tg.initDataUnsafe.bot_username || 'YOUR_BOT_USERNAME'}?start=${referralCode}`;
+            const referralLink = `https://t.me/${tg.initDataUnsafe.bot?.username || 'earn_zone_user_bot'}?start=${referralCode}`;
             const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2>Referral Code</h2><p>Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.referral || 'Share your code with friends.'}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div>${refCount}</div><div>Referrals</div></div><div class="stat-item"><div>${earnedDisplayPoints}</div><div>Points Earned</div></div></div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.referral || 'Share your code with friends.'}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div><div class="task-card"><h2>Your Code</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralCode}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralCode}').then(() => showToast('Code copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div>${refCount}</div><div>Referrals</div></div><div class="stat-item"><div>${earnedDisplayPoints}</div><div>Points Earned</div></div></div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
@@ -415,7 +413,8 @@
             const data = snapshot.val();
             if (!data) { listEl.innerHTML = '<p>No data to show.</p>'; return; }
             const users = Object.values(data).map(user => ({ name: user.name, score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0) }));
-            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="leaderboard-item"><span><b>#${i + 1}</b> ${user.name}</span> <span>${user.score.toFixed(0)}</span></div>`).join('');
+            const badges = { 1: '🏆', 2: '🥈', 3: '🥉' };
+            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="leaderboard-item"><span><b>${badges[i+1] || `#${i + 1}`}</b> ${user.name}</span> <span>${user.score.toFixed(0)}</span></div>`).join('');
         }
 
         async function handleReferralVerification() {
@@ -450,9 +449,7 @@
                 let latestNoticeTime = 0;
                 Object.values(notices).forEach(n => {
                     allNotifications.push(n);
-                    if (n.timestamp > latestNoticeTime) {
-                        latestNoticeTime = n.timestamp;
-                    }
+                    if (n.timestamp > latestNoticeTime) { latestNoticeTime = n.timestamp; }
                 });
 
                 const lastReadTime = localStorage.getItem('lastNoticeRead') || 0;
