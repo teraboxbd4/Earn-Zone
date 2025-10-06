@@ -117,19 +117,16 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
-  authDomain: "earn-zone-a6dce.firebaseapp.com",
-  databaseURL: "https://earn-zone-a6dce-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "earn-zone-a6dce",
-  storageBucket: "earn-zone-a6dce.appspot.com",
-  messagingSenderId: "470563695372",
-  appId: "1:470563695372:web:323d2941c316cef0a4b729"
-};
+            apiKey: "AIzaSyCRnFOockStuQ6z3AU2dQ9fzZ6Tt_bUDL4",
+            authDomain: "earn-zone-a6dce.firebaseapp.com",
+            databaseURL: "https://earn-zone-a6dce-default-rtdb.asia-southeast1.firebasedatabase.app",
+        };
         firebase.initializeApp(firebaseConfig);
         
         const auth = firebase.auth();
         const database = firebase.database();
         const tg = window.Telegram.WebApp;
+        const BOT_USERNAME = "earn_zone_user_bot";
         
         let currentUser = {};
         let appSettings = {};
@@ -170,6 +167,7 @@
                 if (!adminData) { throw new Error("App config not found."); }
 
                 appSettings = adminData.settings || {};
+                appSettings.notices = adminData.notices || {};
                 tasks = adminData.tasks || {};
                 specialTasks = adminData.specialTasks || {};
 
@@ -243,7 +241,7 @@
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}', 'regular')">Start Task (${(task.rewardPoints || 0)} P)</button>`;
                 return `<div class="task-card"><h3><i class="fas fa-rocket"></i> ${task.name}</h3><div style="margin-top:15px;">${buttonHtml}</div></div>`; 
             }).join(''); 
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p>No tasks.</p>'}`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.taskRules || 'Complete tasks to earn.'}</p></div>${tasksHtml || '<p>No tasks found.</p>'}`;
             updateAllTimers();
         }
 
@@ -256,7 +254,7 @@
                 let buttonHtml = `<button class="btn btn-primary" id="taskBtn_${taskId}" onclick="handleTaskClick('${taskId}', 'special')">Start Task (${(specialTasks[taskId].rewardPoints || 0)} P)</button>`;
                 return `<div class="task-card"><h3><i class="fas fa-star"></i> ${specialTasks[taskId].name}</h3><div style="margin-top:15px;">${buttonHtml}</div></div>`;
             }).join(''); 
-            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.specialTask || 'Complete special tasks for bigger rewards!'}</p></div>${tasksHtml || '<p>No special tasks.</p>'}`;
+            mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.specialTask || 'Complete special tasks for bigger rewards!'}</p></div>${tasksHtml || '<p>No special tasks found.</p>'}`;
             updateAllTimers();
         }
         
@@ -289,8 +287,8 @@
             const refCount = currentUser.referrals?.count || 0;
             let earnedDisplayPoints = (currentUser.referrals?.incomePoints || 0).toFixed(2);
             const referralCode = currentUser.referralCode || '';
-            const referralLink = `https://t.me/${tg.initDataUnsafe.bot?.username || 'earn_zone_user_bot'}?start=${referralCode}`;
-            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2>Referral Code</h2><p>Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
+            const referralLink = `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
+            const verifyBox = `<div class="task-card" id="referralVerifyBox"><h2>Enter Referral Code</h2><p>Enter a friend's code to get a bonus!</p><div class="input-group"><input type="text" id="referralCodeInput" class="input-field" placeholder="Enter Code"><button class="btn btn-primary" id="verifyReferralBtn">Verify</button></div></div>`;
             mainContent.innerHTML = `<div class="task-card"><p>${appSettings.notices?.referral || 'Share your code with friends.'}</p></div><div class="task-card"><h2>Your Link</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralLink}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralLink}').then(() => showToast('Link copied!'))">Copy</button></div></div><div class="task-card"><h2>Your Code</h2><div class="input-group" style="margin-top:10px;"><input type="text" class="input-field" value="${referralCode}" readonly><button class="btn" onclick="navigator.clipboard.writeText('${referralCode}').then(() => showToast('Code copied!'))">Copy</button></div></div>${currentUser.referralApplied ? '' : verifyBox}<div class="task-card"><h2>Your Stats</h2><div class="stats-display"><div class="stat-item"><div>${refCount}</div><div>Referrals</div></div><div class="stat-item"><div>${earnedDisplayPoints}</div><div>Points Earned</div></div></div></div><div class="task-card"><h2 class="section-title"><i class="fas fa-trophy"></i> Referral Leaderboard</h2><div id="ref-leaderboard-list"></div></div>`;
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
