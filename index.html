@@ -433,12 +433,17 @@
             if (!listEl) return;
             listEl.innerHTML = "<p>Loading...</p>";
             const query = (type === 'points') ? database.ref('users').orderByChild('pointBalance') : database.ref('users').orderByChild('referrals/count');
-            const snapshot = await query.limitToLast(10).once('value');
-            const data = snapshot.val();
-            if (!data) { listEl.innerHTML = '<p>No data to show.</p>'; return; }
-            const users = Object.values(data).map(user => ({ name: user.name || "Unnamed", score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0) }));
-            const badges = { 1: '🏆', 2: '🥈', 3: '🥉' };
-            listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="leaderboard-item"><span><b>${badges[i+1] || `#${i + 1}`}</b> ${user.name}</span> <span>${user.score.toFixed(0)}</span></div>`).join('');
+            try {
+                const snapshot = await query.limitToLast(10).once('value');
+                const data = snapshot.val();
+                if (!data) { listEl.innerHTML = '<p>No data to show.</p>'; return; }
+                const users = Object.values(data).map(user => ({ name: user.name || "Unnamed", score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0) }));
+                const badges = { 1: '🏆', 2: '🥈', 3: '🥉' };
+                listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="leaderboard-item"><span><b>${badges[i+1] || `#${i + 1}`}</b> ${user.name}</span> <span>${user.score.toFixed(0)}</span></div>`).join('');
+            } catch (error) {
+                console.error("Leaderboard Error:", error);
+                listEl.innerHTML = "<p>Could not load leaderboard.</p>";
+            }
         }
 
         async function handleReferralVerification() {
