@@ -232,7 +232,7 @@
                     <div id="leaderboard-list"></div>
                 </div>`; 
             document.getElementById('dailyBonusBtn').addEventListener('click', handleDailyBonus); 
-            loadLeaderboard('points', '#leaderboard-list'); 
+            loadLeaderboard('points', 'leaderboard-list'); 
         }
         
         function renderTasksPage() {
@@ -293,7 +293,7 @@
             if (!currentUser.referralApplied) {
                 document.getElementById('verifyReferralBtn').addEventListener('click', handleReferralVerification);
             }
-            loadLeaderboard('referrals', '#ref-leaderboard-list');
+            loadLeaderboard('referrals', 'ref-leaderboard-list');
         }
 
         function handleTaskClick(taskId, type) {
@@ -414,7 +414,7 @@
             const snapshot = await query.limitToLast(10).once('value');
             const data = snapshot.val();
             if (!data) { listEl.innerHTML = '<p>No data to show.</p>'; return; }
-            const users = Object.values(data).map(user => ({ name: user.name, score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0) }));
+            const users = Object.values(data).map(user => ({ name: user.name || "Unnamed", score: type === 'points' ? (user.pointBalance || 0) : (user.referrals?.count || 0) }));
             const badges = { 1: '🏆', 2: '🥈', 3: '🥉' };
             listEl.innerHTML = users.sort((a, b) => b.score - a.score).map((user, i) => `<div class="leaderboard-item"><span><b>${badges[i+1] || `#${i + 1}`}</b> ${user.name}</span> <span>${user.score.toFixed(0)}</span></div>`).join('');
         }
