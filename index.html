@@ -18,9 +18,42 @@
             --primary-color: #4A90E2; --primary-dark: #357ABD; --secondary-color: #50E3C2; --accent-color: #F5A623; --bg-light: #F7F7F7; --card-bg: #FFFFFF; --text-dark: #333333; --text-secondary: #666666; --border-color: #E0E0E0; --border-radius: 12px; --border-radius-sm: 8px; --transition: all 0.3s ease-in-out;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; background-color: var(--bg-light); color: var(--text-dark); }
-        .app-container { max-width: 480px; margin: 0 auto; position: relative; }
-        .header { height: 180px; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            min-height: 100vh; 
+            overflow-x: hidden; 
+            position: relative; 
+            color: var(--text-dark); 
+            background: linear-gradient(-45deg, #4A90E2, #357ABD, #60a5fa, #2563eb);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .app-container { 
+            max-width: 480px; 
+            margin: 0 auto; 
+            position: relative; 
+        }
+
+        .header { 
+            height: 180px; 
+            background: transparent; 
+            position: relative; 
+            overflow: hidden; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+            color: white; 
+        }
+
         .header-title { display: inline-flex; align-items: center; font-size: 1.6rem; font-weight: 700; z-index: 2; letter-spacing: 0.5px; }
         .notification-btn { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; cursor: pointer; z-index: 10; transition: var(--transition); border: 1px solid rgba(255,255,255,0.3); }
         .notification-btn .badge { position: absolute; top: 0; right: 0; width: 12px; height: 12px; background-color: #e74c3c; border-radius: 50%; border: 2px solid white; display: none; }
