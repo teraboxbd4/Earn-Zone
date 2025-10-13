@@ -140,7 +140,18 @@
             else { auth.signInAnonymously().catch(e => document.body.innerHTML = "Connection failed."); }
         });
 
-        function initializeAppLogic() {
+        async function getIPAddress() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                console.error("Could not fetch IP address:", error);
+                return null;
+            }
+        }
+
+        async function initializeAppLogic() {
             tg.ready();
             tg.expand();
             
@@ -177,11 +188,13 @@
                 let userData = snapshot.val();
                 
                 if (!userData) {
+                    const ip = await getIPAddress();
                     userData = {
                         name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || `User_${userId}`,
                         photoUrl: tgUser.photo_url || 'https://i.ibb.co/61Jm00x/avatar.png',
                         chat_id: tgUser.id.toString(), pointBalance: 0, referralCode: 'EZ' + Math.random().toString(36).substring(2, 8).toUpperCase(),
                         referralApplied: false, isBanned: false, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString(),
+                        registrationIP: ip,
                         referrals: { count: 0, incomePoints: 0 },
                         taskStats: { lastResetDate: new Date().toISOString().split('T')[0], clicksToday: 0, totalClicks: 0, dailyBonusClaimed: false },
                     };
@@ -189,12 +202,21 @@
                 }
 
                 currentUser = { id: userId, ...userData };
-                if (currentUser.isBanned) { document.body.innerHTML = "<h1>Account Banned</h1>"; return; }
+                if (currentUser.isBanned) { 
+                    const reason = currentUser.banReason || "Your account has been suspended.";
+                    document.body.innerHTML = `<h1>Account Banned</h1><p style="text-align:center;">${reason}</p>`; 
+                    return; 
+                }
                 
                 database.ref(`users/${currentUser.id}/lastActive`).set(new Date().toISOString());
                 
                 userRef.on('value', snap => {
                     currentUser = { id: userId, ...snap.val() };
+                    if(currentUser.isBanned){
+                        const reason = currentUser.banReason || "Your account has been suspended.";
+                        document.body.innerHTML = `<h1>Account Banned</h1><p style="text-align:center;">${reason}</p>`; 
+                        return;
+                    }
                     updateUI();
                 });
                 
