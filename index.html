@@ -318,15 +318,40 @@
             loadLeaderboard('referrals', 'ref-leaderboard-list');
         }
 
+        // --- NEW SECURE TASK LOGIC STARTS HERE ---
+
         function handleTaskClick(taskId, type) {
             const taskSource = (type === 'special') ? specialTasks : tasks;
             const task = taskSource[taskId];
             const taskButton = document.getElementById(`taskBtn_${taskId}`);
-            if (!task || !taskButton || taskButton.disabled) return;
-            taskButton.disabled = true;
-            taskButton.textContent = 'Loading...';
-            database.ref(`users/${currentUser.id}/taskStats`).update({ clicksToday: firebase.database.ServerValue.increment(1), totalClicks: firebase.database.ServerValue.increment(1) });
-            if (type === 'regular') {
+            
+            if (!task) return;
+
+            if (type === 'special') {
+                const taskButtonContainer = taskButton.parentElement;
+                taskButtonContainer.innerHTML = `
+                    <div style="padding: 10px; border: 1px solid var(--accent-color); border-radius: var(--border-radius-sm); text-align: left;">
+                        <p style="font-size: 0.8rem; margin-bottom: 10px;">
+                            <strong>Important:</strong> You must open this link in an external browser (like Chrome/Safari), not inside Telegram.
+                        </p>
+                        <div class="input-group">
+                            <input type="text" class="input-field" value="${task.link}" readonly>
+                            <button class="btn" onclick="navigator.clipboard.writeText('${task.link}').then(() => showToast('Link Copied!'))">Copy</button>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 10px;" id="startTimerBtn_${taskId}" onclick="startSpecialTaskTimer('${taskId}')">
+                            I have opened the link, Start Verification
+                        </button>
+                    </div>
+                `;
+                
+            } else {
+                // Regular Task Logic
+                if (!taskButton || taskButton.disabled) return;
+                
+                taskButton.disabled = true;
+                taskButton.textContent = 'Loading...';
+                database.ref(`users/${currentUser.id}/taskStats`).update({ clicksToday: firebase.database.ServerValue.increment(1), totalClicks: firebase.database.ServerValue.increment(1) });
+                
                 let adPromise;
                 try {
                     switch(task.network) {
@@ -338,6 +363,7 @@
                     }
                     if (!adPromise?.then) throw new Error(`SDK for ${task.network} failed.`);
                 } catch (e) { adPromise = Promise.reject(e); }
+
                 Promise.resolve(adPromise).then(() => {
                     const rewardPoints = parseFloat(task.rewardPoints) || 0;
                     if (rewardPoints > 0) {
@@ -357,29 +383,82 @@
                     delete taskTimers[taskId];
                     if (taskButton) { taskButton.disabled = false; taskButton.textContent = `Start Task (${(task.rewardPoints || 0)} P)`; }
                 });
-            } else if (type === 'special') {
-                if (task.link) { tg.openLink(task.link); } // Opens in external browser
+            }
+        }
+
+        function startSpecialTaskTimer(taskId) {
+            const task = specialTasks[taskId];
+            const startTimerBtn = document.getElementById(`startTimerBtn_${taskId}`);
+            const taskButtonContainer = startTimerBtn.parentElement.parentElement;
+
+            if (!task || !startTimerBtn || startTimerBtn.disabled) return;
+
+            startTimerBtn.disabled = true;
+            startTimerBtn.textContent = 'Timer Started...';
+            
+            tg.openLink(task.link);
+
+            const timerSeconds = parseInt(task.timer) || 60;
+            let timeLeft = timerSeconds;
+
+            taskButtonContainer.innerHTML = `<button class="btn btn-primary" id="timerDisplay_${taskId}" disabled>Wait ${timeLeft}s</button>`;
+            const timerDisplay = document.getElementById(`timerDisplay_${taskId}`);
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    timerDisplay.textContent = `Wait ${timeLeft}s`;
+                } else {
+                    clearInterval(interval);
+                    taskButtonContainer.innerHTML = `
+                        <div class="input-group">
+                            <input type="text" id="verifyLinkInput_${taskId}" class="input-field" placeholder="Paste the visited link here">
+                            <button class="btn btn-primary" id="verifyBtn_${taskId}" onclick="verifyAndClaimReward('${taskId}')">Verify</button>
+                        </div>
+                    `;
+                }
+            }, 1000);
+        }
+
+        function verifyAndClaimReward(taskId) {
+            const task = specialTasks[taskId];
+            const verifyButton = document.getElementById(`verifyBtn_${taskId}`);
+            const linkInput = document.getElementById(`verifyLinkInput_${taskId}`);
+            
+            if (!task || !verifyButton || !linkInput || verifyButton.disabled) return;
+
+            const pastedLink = linkInput.value.trim();
+            const originalLink = task.link.trim();
+
+            if (pastedLink && (pastedLink === originalLink || pastedLink.includes(originalLink))) {
+                verifyButton.disabled = true;
+                verifyButton.textContent = 'Success!';
+                
                 const rewardPoints = parseFloat(task.rewardPoints) || 0;
                 if (rewardPoints > 0) {
                     database.ref(`users/${currentUser.id}/pointBalance`).set(firebase.database.ServerValue.increment(rewardPoints));
+                    database.ref(`users/${currentUser.id}/taskStats`).update({ 
+                        clicksToday: firebase.database.ServerValue.increment(1), 
+                        totalClicks: firebase.database.ServerValue.increment(1) 
+                    });
                     showToast(`+${rewardPoints} Points!`);
                 }
-                const timerSeconds = parseInt(task.timer) || 0;
-                if (timerSeconds > 0) {
-                    taskTimers[taskId] = { endTime: Date.now() + timerSeconds * 1000, type: 'special' };
-                    updateAllTimers();
-                } else {
-                    taskButton.disabled = false;
-                    taskButton.textContent = `Start Task (${rewardPoints} P)`;
-                }
-                const cooldown = appSettings.taskPageCooldown || 0;
-                if (cooldown > 0) {
-                    taskPageCooldownUntil = Date.now() + cooldown * 1000;
-                    renderPageCooldown('special-tasks'); 
-                }
+                
+                setTimeout(() => {
+                     navigateTo('special-tasks', true);
+                }, 2000);
+
+            } else {
+                showToast("Incorrect link. Please try again.");
+                linkInput.style.border = '1px solid red';
+                setTimeout(() => {
+                    linkInput.style.border = '1px solid var(--border-color)';
+                }, 2000);
             }
         }
-        
+
+        // --- NEW SECURE TASK LOGIC ENDS HERE ---
+
         function updateAllTimers() {
             const now = Date.now();
             for (const taskId in taskTimers) {
